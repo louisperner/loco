@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
+    />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <title>loco</title>
+    <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/styles/style.css" />
+    <script type="module" src="/src/main.jsx"></script>
+  </head>
+  <body>
+    <div id="root">
+      <div id="webviewContainer">
+        <img src="image.jpg" draggable="true" ondragstart="dragStartHandler(event)">
+      </div>
+
+      <div id="canvasContainer" 
+           ondragover="event.preventDefault();" 
+           ondrop="dropHandler(event)"
+           style="border: 2px dashed #ccc; padding: 20px; min-height: 300px;">
+        <canvas id="mainCanvas"></canvas>
+      </div>
+    </div>
+
+    <script>
+    function dragStartHandler(e) {
+      // Add both text and URL data types
+      e.dataTransfer.setData('text/plain', e.target.src);
+      e.dataTransfer.setData('image-url', e.target.src);
+      console.log('Drag started with data:', e.target.src);
+    }
+
+    function dropHandler(e) {
+      e.preventDefault();
+      console.log('Drop event received', e.dataTransfer.types);
+      
+      const canvas = document.getElementById('mainCanvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      // Handle CORS issues
+      img.crossOrigin = "anonymous";
+      img.src = e.dataTransfer.getData('image-url') || 
+               e.dataTransfer.getData('text/plain');
+
+      img.onload = () => {
+        console.log('Image loaded, dimensions:', img.width, 'x', img.height);
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        // Visual feedback
+        canvas.style.border = '2px solid green';
+        setTimeout(() => canvas.style.border = '', 500);
+      };
+      
+      img.onerror = (err) => {
+        console.error('Image load error:', err);
+        alert('Error loading image - check console');
+      };
+    }
+    </script>
+  </body>
+</html>
