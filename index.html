@@ -13,17 +13,20 @@
     <link rel="stylesheet" href="/src/styles/style.css" />
     <link rel="preload" href="/cover_loco2.png" as="image" />
     <script type="module" src="/src/main.jsx"></script>
+    <style>
+      #canvasContainer {
+        width: 100vw;
+        height: 100vh;
+        position: absolute;
+      }
+    </style>
   </head>
   <body>
     <div id="root">
-      <div id="webviewContainer">
-        <img src="image.jpg" draggable="true" ondragstart="dragStartHandler(event)">
-      </div>
-
       <div id="canvasContainer" 
            ondragover="event.preventDefault();" 
            ondrop="dropHandler(event)"
-           style="border: 2px dashed #ccc; padding: 20px; min-height: 300px;">
+        >
         <canvas id="mainCanvas"></canvas>
       </div>
     </div>
