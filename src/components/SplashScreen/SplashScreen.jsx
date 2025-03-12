@@ -21,7 +21,7 @@ const SplashScreen = () => {
       <img 
         src="/cover_loco2.png" 
         alt="Loco Loading" 
-        className="max-w-[40%] max-h-[40%] object-contain" 
+        className="max-w-[30%] max-h-[30%] object-contain" 
       />
     </div>
   );

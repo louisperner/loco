@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls, Html } from '@react-three/drei';
+import { Vector3 } from 'three';
 
 /**
  * FPSControls Component
@@ -9,7 +10,13 @@ import { PointerLockControls, Html } from '@react-three/drei';
  * Handles both keyboard movement (WASD/Arrow keys) and mouse look control
  * in a single system while allowing them to work independently.
  */
-function FPSControls({ speed = 5, enabled = true }) {
+function FPSControls({ 
+  speed = 5, 
+  enabled = true, 
+  gravityEnabled = false, 
+  floorHeight = -2,
+  initialPosition = [0,0,0]
+}) {
   const { camera, gl } = useThree();
   const controls = useRef();
   const moveForward = useRef(false);
@@ -19,6 +26,23 @@ function FPSControls({ speed = 5, enabled = true }) {
   const moveUp = useRef(false);
   const moveDown = useRef(false);
   const [isLocked, setIsLocked] = useState(false);
+  const hasSetInitialPosition = useRef(false);
+  
+  // Referências para controle de gravidade
+  const verticalVelocity = useRef(0);
+  const isOnGround = useRef(false);
+  
+  // Constantes de física
+  const GRAVITY = 0.05;
+  const JUMP_FORCE = 0.2;
+  
+  // Set initial position if provided
+  useEffect(() => {
+    if (initialPosition && !hasSetInitialPosition.current) {
+      camera.position.set(initialPosition[0], initialPosition[1], initialPosition[2]);
+      hasSetInitialPosition.current = true;
+    }
+  }, [camera, initialPosition]);
   
   // Update pointer lock state when enabled changes
   useEffect(() => {
@@ -79,113 +103,132 @@ function FPSControls({ speed = 5, enabled = true }) {
   }, [gl, enabled, isLocked]);
   
   useEffect(() => {
-    const onKeyDown = (event) => {
+    const handleKeyDown = (e) => {
       if (!enabled) return;
       
-      switch (event.code) {
-        case "KeyW":
-        case "ArrowUp":
+      switch (e.code) {
+        case 'KeyW':
           moveForward.current = true;
           break;
-        case "KeyA":
-        case "ArrowLeft":
-          moveLeft.current = true;
-          break;
-        case "KeyS":
-        case "ArrowDown":
+        case 'KeyS':
           moveBackward.current = true;
           break;
-        case "KeyD":
-        case "ArrowRight":
+        case 'KeyA':
+          moveLeft.current = true;
+          break;
+        case 'KeyD':
           moveRight.current = true;
           break;
-        case "Space":
-          moveUp.current = true;
-          break;
-        case "ShiftLeft":
-          moveDown.current = true;
-          break;
-        case "Escape":
-          // Manually handle escape to exit pointer lock
-          if (isLocked && controls.current) {
-            controls.current.disconnect();
+        case 'Space':
+          if (gravityEnabled && isOnGround.current) {
+            // Pular quando estiver no chão com gravidade
+            verticalVelocity.current = JUMP_FORCE;
+            isOnGround.current = false;
+          } else {
+            // Movimento para cima quando sem gravidade
+            moveUp.current = true;
           }
           break;
-        default:
+        case 'ShiftLeft':
+          moveDown.current = true;
           break;
       }
     };
-
-    const onKeyUp = (event) => {
-      if (!enabled) {
-        // Reset all movement when controls are disabled
-        moveForward.current = false;
-        moveBackward.current = false;
-        moveLeft.current = false;
-        moveRight.current = false;
-        moveUp.current = false;
-        moveDown.current = false;
-        return;
-      }
+    
+    const handleKeyUp = (e) => {
+      if (!enabled) return;
       
-      switch (event.code) {
-        case "KeyW":
-        case "ArrowUp":
+      switch (e.code) {
+        case 'KeyW':
           moveForward.current = false;
           break;
-        case "KeyA":
-        case "ArrowLeft":
-          moveLeft.current = false;
-          break;
-        case "KeyS":
-        case "ArrowDown":
+        case 'KeyS':
           moveBackward.current = false;
           break;
-        case "KeyD":
-        case "ArrowRight":
+        case 'KeyA':
+          moveLeft.current = false;
+          break;
+        case 'KeyD':
           moveRight.current = false;
           break;
-        case "Space":
-          moveUp.current = false;
+        case 'Space':
+          if (!gravityEnabled) {
+            moveUp.current = false;
+          }
           break;
-        case "ShiftLeft":
+        case 'ShiftLeft':
           moveDown.current = false;
-          break;
-        default:
           break;
       }
     };
-
-    document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('keyup', onKeyUp);
+    
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+    
     return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.removeEventListener('keyup', onKeyUp);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [enabled, isLocked]);
+  }, [enabled, gravityEnabled]);
 
-  useFrame((_, delta) => {
-    if (!enabled || !isLocked) return;
+  useFrame((state, delta) => {
+    if (!enabled) return;
     
-    // Get camera's forward and right vectors
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-
-    // Zero out Y component to keep movement horizontal
-    forward.y = 0;
-    right.y = 0;
-    forward.normalize();
-    right.normalize();
-
-    // Calculate movement
-    const moveSpeed = speed * delta;
+    // Ajuste de velocidade para suavizar o movimento
+    const actualSpeed = speed * delta;
     
-    if (moveForward.current) camera.position.addScaledVector(forward, moveSpeed);
-    if (moveBackward.current) camera.position.addScaledVector(forward, -moveSpeed);
-    if (moveRight.current) camera.position.addScaledVector(right, moveSpeed);
-    if (moveLeft.current) camera.position.addScaledVector(right, -moveSpeed);
-    if (moveUp.current) camera.position.y += moveSpeed;
-    if (moveDown.current) camera.position.y -= moveSpeed;
+    // Direções de movimento
+    const direction = new Vector3();
+    const sideDirection = new Vector3();
+    
+    // Controle frente/trás
+    if (moveForward.current) direction.z = -1;
+    if (moveBackward.current) direction.z = 1;
+    
+    // Controle esquerda/direita
+    if (moveLeft.current) sideDirection.x = -1;
+    if (moveRight.current) sideDirection.x = 1;
+    
+    // Normalizar para movimento diagonal consistente
+    if (direction.length() > 0) direction.normalize();
+    if (sideDirection.length() > 0) sideDirection.normalize();
+    
+    // Aplicar rotação da câmera ao movimento
+    direction.applyQuaternion(camera.quaternion);
+    sideDirection.applyQuaternion(camera.quaternion);
+    
+    // Manter movimento horizontal
+    direction.y = 0;
+    sideDirection.y = 0;
+    
+    // Normalizar novamente
+    if (direction.length() > 0) direction.normalize();
+    if (sideDirection.length() > 0) sideDirection.normalize();
+    
+    // Aplicar movimento horizontal
+    camera.position.addScaledVector(direction, actualSpeed);
+    camera.position.addScaledVector(sideDirection, actualSpeed);
+    
+    // Sistema de gravidade
+    if (gravityEnabled) {
+      // Verificar colisão com o chão
+      if (camera.position.y <= floorHeight + 1.8) { // 1.8 = altura da câmera/jogador
+        camera.position.y = floorHeight + 1.8;
+        verticalVelocity.current = 0;
+        isOnGround.current = true;
+      } else {
+        // Aplicar gravidade em queda livre
+        verticalVelocity.current -= GRAVITY;
+        isOnGround.current = false;
+      }
+      
+      // Atualizar posição vertical
+      camera.position.y += verticalVelocity.current;
+    } else {
+      // Movimento vertical tradicional (sem gravidade)
+      if (moveUp.current) camera.position.y += actualSpeed;
+      if (moveDown.current) camera.position.y -= actualSpeed;
+    }
   });
 
   return (
