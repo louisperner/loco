@@ -1,4 +1,5 @@
 import { app, screen, BrowserWindow } from 'electron';
+import path from 'path';
 
 app.whenReady().then(() => {
   // const win = new BrowserWindow({
@@ -19,6 +20,7 @@ app.whenReady().then(() => {
     alwaysOnTop: false,
     focusable: true,
     // simpleFullscreen: true
+    icon: path.join(process.cwd(), 'loco-icon.icns'),
     webPreferences: {
       sandbox: true,
       webviewTag: true,

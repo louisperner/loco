@@ -1,0 +1,21 @@
+{
+  "name": "Loco",
+  "short_name": "Loco",
+  "description": "Loco application",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#7c4dff",
+  "icons": [
+    {
+      "src": "./loco-icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./loco-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+} 

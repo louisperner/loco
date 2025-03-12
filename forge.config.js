@@ -3,8 +3,10 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 
 module.exports = {
   packagerConfig: {
-    icon: 'loco-icon.icns',
+    icon: 'loco-icon',
     asar: true,
+    appBundleId: 'com.electron.loco',
+    name: 'loco',
   },
   rebuildConfig: {},
   makers: [

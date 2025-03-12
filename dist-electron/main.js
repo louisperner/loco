@@ -1,5 +1,6 @@
 "use strict";
 const electron = require("electron");
+const path = require("path");
 electron.app.whenReady().then(() => {
   const win = new electron.BrowserWindow({
     show: true,
@@ -13,6 +14,7 @@ electron.app.whenReady().then(() => {
     alwaysOnTop: false,
     focusable: true,
     // simpleFullscreen: true
+    icon: path.join(process.cwd(), "loco-icon.icns"),
     webPreferences: {
       sandbox: true,
       webviewTag: true
