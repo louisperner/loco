@@ -9,9 +9,11 @@ import FPSControls from './FPSControls';
 import ImageCloneManager from './ImageCloneManager';
 import MessageManager from './MessageManager';
 import { useImageStore } from '../../store/useImageStore';
+import { useModelStore } from '../../store/useModelStore';
+import ModelManager from './ModelManager';
 import { SettingsPanel, Button, Switch, Slider } from '@/components/ui';
 import { RgbaColorPicker, RgbaStringColorPicker } from 'react-colorful';
-import { FaTimes, FaUndo, FaPalette, FaSlidersH, FaCheck, FaChevronRight, FaMagic, FaLayerGroup, FaAdjust, FaEye, FaEyeSlash, FaExpand, FaInfinity } from 'react-icons/fa';
+import { FaTimes, FaUndo, FaPalette, FaSlidersH, FaCheck, FaChevronRight, FaMagic, FaLayerGroup, FaAdjust, FaEye, FaEyeSlash, FaExpand, FaInfinity, FaCube } from 'react-icons/fa';
 import { useThemeStore } from '../../store/ThemeStore';
 
 // Componente de mira para o centro da tela com diferentes estilos
@@ -382,19 +384,6 @@ function FrameManager({ onAddFrame }) {
   return null;
 }
 
-function CameraExposer() {
-  const { camera } = useThree();
-  
-  useEffect(() => {
-    window.mainCamera = camera;
-    return () => {
-      window.mainCamera = undefined;
-    };
-  }, [camera]);
-  
-  return null;
-}
-
 const Player = () => {
   const iframeRef = useRef();
   const canvasContainerRef = useRef();
@@ -472,7 +461,19 @@ const Player = () => {
   const [gravityEnabled, setGravityEnabled] = useState(false);
   const [groundShape, setGroundShape] = useState('circle');
 
+  const addImage = useImageStore(state => state.addImage);
+  const updateImage = useImageStore(state => state.updateImage);
+  const addModel = useModelStore(state => state.addModel);
+  const updateModel = useModelStore(state => state.updateModel);
+  const models = useModelStore(state => state.models);
+  const [showModelTip, setShowModelTip] = useState(true);
+
+  // Add a ref to store the camera
+  const cameraRef = useRef(null);
+
+  // Efeito para carregar as configurações salvas quando o componente é montado
   useEffect(() => {
+    // Carregar frames
     const savedFrames = localStorage.getItem('webview-frames');
     if (savedFrames) {
       try {
@@ -482,11 +483,145 @@ const Player = () => {
         console.error('Error loading frames from localStorage:', error);
       }
     }
-  }, []);
+    
+    // Carregar configurações de chão
+    const savedGroundShape = localStorage.getItem('ground-shape');
+    if (savedGroundShape) {
+      setGroundShape(savedGroundShape);
+    }
+    
+    // Carregar configuração de gravidade
+    const savedGravity = localStorage.getItem('gravity-enabled');
+    if (savedGravity !== null) {
+      setGravityEnabled(savedGravity === 'true');
+    }
+    
+    // Carregar as cores salvas
+    const gridColorSaved = localStorage.getItem('grid-color');
+    const gridOpacitySaved = localStorage.getItem('grid-opacity');
+    const floorPlaneColorSaved = localStorage.getItem('floor-plane-color');
+    const floorPlaneOpacitySaved = localStorage.getItem('floor-plane-opacity');
+    const backgroundColorSaved = localStorage.getItem('background-color');
+    const backgroundOpacitySaved = localStorage.getItem('background-opacity');
+    const groundSizeSaved = localStorage.getItem('ground-size');
+    const groundInfiniteSaved = localStorage.getItem('ground-infinite');
+    
+    // Aplicar cores salvas se existirem
+    if (gridColorSaved) setGridColor(gridColorSaved);
+    if (gridOpacitySaved) setGridOpacity(parseInt(gridOpacitySaved));
+    if (floorPlaneColorSaved) setFloorPlaneColor(floorPlaneColorSaved);
+    if (floorPlaneOpacitySaved) setFloorPlaneOpacity(parseInt(floorPlaneOpacitySaved));
+    if (backgroundColorSaved) setBackgroundColor(backgroundColorSaved);
+    if (backgroundOpacitySaved) setBackgroundOpacity(parseInt(backgroundOpacitySaved));
+    if (groundSizeSaved) setGroundSize(parseInt(groundSizeSaved));
+    if (groundInfiniteSaved !== null) setGroundInfinite(groundInfiniteSaved === 'true');
+    
+    // Carregar configurações de crosshair
+    const savedCrosshairSettings = localStorage.getItem('crosshair-settings');
+    if (savedCrosshairSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedCrosshairSettings);
+        setShowCrosshair(parsedSettings.visible);
+        setCrosshairSize(parsedSettings.size);
+        setCrosshairColor(parsedSettings.color);
+        setCrosshairThickness(parsedSettings.thickness);
+        setCrosshairStyle(parsedSettings.style);
+      } catch (error) {
+        console.error('Error loading crosshair settings:', error);
+      }
+    }
+    
+    // Carregar configurações de visibilidade
+    const savedVisibility = localStorage.getItem('visibility-settings');
+    if (savedVisibility) {
+      try {
+        const parsedVisibility = JSON.parse(savedVisibility);
+        setFloorVisible(parsedVisibility.floorVisible);
+        setGridVisible(parsedVisibility.gridVisible);
+        setFloorPlaneVisible(parsedVisibility.floorPlaneVisible);
+        setBackgroundVisible(parsedVisibility.backgroundVisible);
+      } catch (error) {
+        console.error('Error loading visibility settings:', error);
+      }
+    }
+    
+    // Carregar tema selecionado
+    const savedTheme = localStorage.getItem('selected-theme');
+    if (savedTheme) {
+      setSelectedTheme(savedTheme);
+    }
+  }, [setGridColor, setGridOpacity, setFloorPlaneColor, setFloorPlaneOpacity, setBackgroundColor, setBackgroundOpacity, setGroundSize, setGroundInfinite]);
 
+  // Salvar quando os frames mudam
   useEffect(() => {
     localStorage.setItem('webview-frames', JSON.stringify(frames));
   }, [frames]);
+  
+  // Salvar quando a forma do chão muda
+  useEffect(() => {
+    localStorage.setItem('ground-shape', groundShape);
+  }, [groundShape]);
+  
+  // Salvar quando a gravidade muda
+  useEffect(() => {
+    localStorage.setItem('gravity-enabled', gravityEnabled.toString());
+  }, [gravityEnabled]);
+  
+  // Salvar configurações de crosshair quando mudam
+  useEffect(() => {
+    const crosshairSettings = {
+      visible: showCrosshair,
+      size: crosshairSize,
+      color: crosshairColor,
+      thickness: crosshairThickness,
+      style: crosshairStyle
+    };
+    localStorage.setItem('crosshair-settings', JSON.stringify(crosshairSettings));
+  }, [showCrosshair, crosshairSize, crosshairColor, crosshairThickness, crosshairStyle]);
+  
+  // Salvar configurações de visibilidade quando mudam
+  useEffect(() => {
+    const visibilitySettings = {
+      floorVisible,
+      gridVisible,
+      floorPlaneVisible,
+      backgroundVisible
+    };
+    localStorage.setItem('visibility-settings', JSON.stringify(visibilitySettings));
+  }, [floorVisible, gridVisible, floorPlaneVisible, backgroundVisible]);
+
+  // Monitorar mudanças nas cores do ThemeStore e salvá-las
+  useEffect(() => {
+    localStorage.setItem('grid-color', gridColor);
+  }, [gridColor]);
+  
+  useEffect(() => {
+    localStorage.setItem('grid-opacity', gridOpacity.toString());
+  }, [gridOpacity]);
+  
+  useEffect(() => {
+    localStorage.setItem('floor-plane-color', floorPlaneColor);
+  }, [floorPlaneColor]);
+  
+  useEffect(() => {
+    localStorage.setItem('floor-plane-opacity', floorPlaneOpacity.toString());
+  }, [floorPlaneOpacity]);
+  
+  useEffect(() => {
+    localStorage.setItem('background-color', backgroundColor);
+  }, [backgroundColor]);
+  
+  useEffect(() => {
+    localStorage.setItem('background-opacity', backgroundOpacity.toString());
+  }, [backgroundOpacity]);
+  
+  useEffect(() => {
+    localStorage.setItem('ground-size', groundSize.toString());
+  }, [groundSize]);
+  
+  useEffect(() => {
+    localStorage.setItem('ground-infinite', isGroundInfinite.toString());
+  }, [isGroundInfinite]);
 
   const handleAddFrame = (url, pos, rot) => {
     const position = pos || confirmedPosition;
@@ -746,6 +881,9 @@ const Player = () => {
       } else if (typeof color === 'object') {
         setGridOpacity(Math.round(color.a * 100));
       }
+      // Salvar no localStorage
+      localStorage.setItem('grid-color', colorValue);
+      localStorage.setItem('grid-opacity', gridOpacity.toString());
     } else if (type === 'floorPlane') {
       setFloorPlaneColor(colorValue);
       if (colorValue === 'transparent' || (typeof color === 'object' && color.a === 0)) {
@@ -753,6 +891,9 @@ const Player = () => {
       } else if (typeof color === 'object') {
         setFloorPlaneOpacity(Math.round(color.a * 100));
       }
+      // Salvar no localStorage
+      localStorage.setItem('floor-plane-color', colorValue);
+      localStorage.setItem('floor-plane-opacity', floorPlaneOpacity.toString());
     } else if (type === 'background') {
       setBackgroundColor(colorValue);
       if (colorValue === 'transparent' || (typeof color === 'object' && color.a === 0)) {
@@ -760,8 +901,12 @@ const Player = () => {
       } else if (typeof color === 'object') {
         setBackgroundOpacity(Math.round(color.a * 100));
       }
+      // Salvar no localStorage
+      localStorage.setItem('background-color', colorValue);
+      localStorage.setItem('background-opacity', backgroundOpacity.toString());
     } else if (type === 'crosshair') {
       setCrosshairColor(colorValue);
+      // Salvar no localStorage está sendo feito pelo useEffect acima
     }
     
     // Mostra feedback visual
@@ -771,6 +916,15 @@ const Player = () => {
   
   const handleResetColors = () => {
     resetColors();
+    
+    // Também resetar no localStorage
+    localStorage.setItem('grid-color', '#ffffff');
+    localStorage.setItem('grid-opacity', '40');
+    localStorage.setItem('floor-plane-color', '#191f2a80');
+    localStorage.setItem('floor-plane-opacity', '80');
+    localStorage.setItem('background-color', '#000000');
+    localStorage.setItem('background-opacity', '100');
+    
     setIsResetAnimating(true);
     setColorChanged('all');
     setTimeout(() => {
@@ -789,6 +943,15 @@ const Player = () => {
     setGridOpacity(40);
     setFloorPlaneOpacity(80);
     setBackgroundOpacity(100);
+    
+    // Salvar no localStorage
+    localStorage.setItem('grid-color', theme.grid);
+    localStorage.setItem('background-color', theme.bg);
+    localStorage.setItem('floor-plane-color', theme.floorPlane || "#191f2a80");
+    localStorage.setItem('grid-opacity', '40');
+    localStorage.setItem('floor-plane-opacity', '80');
+    localStorage.setItem('background-opacity', '100');
+    localStorage.setItem('selected-theme', theme.id);
     
     // Show visual feedback
     setColorChanged('all');
@@ -853,11 +1016,259 @@ const Player = () => {
   // Adicionar lógica para atualizar o tamanho do ground e o modo infinito
   const handleGroundSizeChange = (value) => {
     setGroundSize(value[0]);
+    localStorage.setItem('ground-size', value[0].toString());
   };
   
   const handleGroundInfiniteToggle = (value) => {
     setGroundInfinite(value);
+    localStorage.setItem('ground-infinite', value.toString());
   };
+
+  // Handle file being dragged over the canvas
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  // Handle file drop on the canvas
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length === 0) return;
+    
+    const file = files[0];
+    const fileName = file.name.toLowerCase();
+    
+    // Handle 3D model files
+    if (fileName.endsWith('.glb') || fileName.endsWith('.gltf')) {
+      handleModelDrop(file);
+    }
+    // Handle image files
+    else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || 
+             fileName.endsWith('.png') || fileName.endsWith('.webp') || 
+             fileName.endsWith('.gif')) {
+      handleImageDrop(file);
+    }
+  };
+
+  // Handle drag leave
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  // Handle 3D model file drop
+  const handleModelDrop = (file) => {
+    try {
+      // Create a Blob URL for the file
+      const objectUrl = URL.createObjectURL(file);
+      
+      // Store the file in the model store to ensure it's not garbage collected
+      const modelFileCache = window._modelFileCache = window._modelFileCache || {};
+      modelFileCache[objectUrl] = file;
+      
+      // Check if we have access to the camera
+      if (!cameraRef.current) {
+        console.error('Camera reference not available. Model will be placed at origin.');
+        
+        // Add model at origin if camera not available
+        addModel({
+          url: objectUrl,
+          fileName: file.name,
+          position: [0, 1, 0], // Default position above ground
+          rotation: [0, 0, 0],
+          scale: 1,
+        });
+        return;
+      }
+      
+      // Use the camera reference to get position and direction
+      const camera = cameraRef.current;
+      const direction = new THREE.Vector3(0, 0, -1);
+      direction.applyQuaternion(camera.quaternion);
+      
+      const position = new THREE.Vector3();
+      position.copy(camera.position);
+      direction.multiplyScalar(3); // Place 3 units in front of camera
+      position.add(direction);
+      
+      // Add model to the store
+      const modelId = addModel({
+        url: objectUrl,
+        fileName: file.name,
+        position: [position.x, position.y, position.z],
+        rotation: [0, 0, 0],
+        scale: 1,
+      });
+
+      console.log(`Added model: ${file.name} at position:`, position);
+
+      // Save the file to disk using Electron's IPC
+      if (window.electron) {
+        window.electron.saveModelFile(file, file.name).then(savedPath => {
+          // Update model with the new file path
+          updateModel(modelId, { url: savedPath });
+          console.log(`Saved model to disk: ${savedPath}`);
+        }).catch(error => {
+          console.error('Error saving model file:', error);
+        });
+      }
+    } catch (error) {
+      console.error('Error handling model drop:', error);
+      alert(`Error loading 3D model: ${error.message}`);
+    }
+  };
+
+  // Handle image file drop
+  const handleImageDrop = (file) => {
+    try {
+      // Create a Blob URL for the file
+      const objectUrl = URL.createObjectURL(file);
+      
+      // Check if we have access to the camera
+      if (!cameraRef.current) {
+        console.error('Camera reference not available. Image will be placed at origin.');
+        
+        // Add image at origin if camera not available
+        const imageId = addImage({
+          src: objectUrl,
+          fileName: file.name,
+          position: [0, 1, 0], // Default position
+          rotation: [0, 0, 0],
+          scale: 1,
+        });
+        
+        // Save the file to disk using Electron's IPC
+        if (window.electron) {
+          window.electron.saveImageFile(file, file.name).then(savedPath => {
+            // Update image with the new file path
+            updateImage(imageId, { src: savedPath });
+            console.log(`Saved image to disk: ${savedPath}`);
+          }).catch(error => {
+            console.error('Error saving image file:', error);
+          });
+        }
+        
+        return;
+      }
+      
+      // Use the camera reference to get position and direction
+      const camera = cameraRef.current;
+      const direction = new THREE.Vector3(0, 0, -1);
+      direction.applyQuaternion(camera.quaternion);
+      
+      const position = new THREE.Vector3();
+      position.copy(camera.position);
+      direction.multiplyScalar(3); // Place 3 units in front of camera
+      position.add(direction);
+      
+      // Calculate image dimensions asynchronously
+      const img = new Image();
+      img.onload = () => {
+        // Calculate aspect ratio
+        const aspectRatio = img.width / img.height;
+        
+        // Add image to the store
+        const imageId = addImage({
+          src: objectUrl,
+          fileName: file.name,
+          position: [position.x, position.y, position.z],
+          rotation: [0, 0, 0],
+          scale: 1,
+          width: img.width,
+          height: img.height,
+          aspectRatio,
+        });
+        
+        console.log(`Added image: ${file.name} at position:`, position);
+        
+        // Save the file to disk using Electron's IPC
+        if (window.electron) {
+          window.electron.saveImageFile(file, file.name).then(savedPath => {
+            // Update image with the new file path
+            updateImage(imageId, { src: savedPath });
+            console.log(`Saved image to disk: ${savedPath}`);
+          }).catch(error => {
+            console.error('Error saving image file:', error);
+          });
+        }
+      };
+      
+      img.onerror = () => {
+        console.error('Error loading image dimensions');
+        
+        // Add image without dimensions
+        const imageId = addImage({
+          src: objectUrl,
+          fileName: file.name,
+          position: [position.x, position.y, position.z],
+          rotation: [0, 0, 0],
+          scale: 1,
+        });
+        
+        // Save the file to disk using Electron's IPC
+        if (window.electron) {
+          window.electron.saveImageFile(file, file.name).then(savedPath => {
+            // Update image with the new file path
+            updateImage(imageId, { src: savedPath });
+            console.log(`Saved image to disk: ${savedPath}`);
+          }).catch(error => {
+            console.error('Error saving image file:', error);
+          });
+        }
+      };
+      
+      img.src = objectUrl;
+    } catch (error) {
+      console.error('Error handling image drop:', error);
+      alert(`Error loading image: ${error.message}`);
+    }
+  };
+
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Hide model tip after 10 seconds
+  useEffect(() => {
+    let timerId;
+    
+    // If there are no models loaded, show the tip
+    if (models.length === 0 && showModelTip) {
+      // Auto-hide after 10 seconds
+      timerId = setTimeout(() => {
+        setShowModelTip(false);
+      }, 10000);
+    } else if (models.length > 0) {
+      // Hide the tip when a model is loaded
+      setShowModelTip(false);
+    }
+    
+    return () => {
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [models.length, showModelTip]);
+
+  // Define CameraExposer inside Player so it has access to cameraRef
+  function CameraExposer() {
+    const { camera } = useThree();
+    
+    useEffect(() => {
+      // Store the camera in the ref
+      cameraRef.current = camera;
+      
+      // Also expose to window for any other uses
+      window.mainCamera = camera;
+      return () => {
+        window.mainCamera = undefined;
+      };
+    }, [camera]);
+    
+    return null;
+  }
 
   return (
     <div 
@@ -866,7 +1277,36 @@ const Player = () => {
       style={{ 
         backgroundColor: backgroundVisible ? getColorWithOpacity(backgroundColor, backgroundOpacity) : 'transparent'
       }}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      onDragLeave={handleDragLeave}
     >
+      {isDragging && (
+        <div className="absolute inset-0 bg-black/40 z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-black/70 p-6 rounded-lg text-white text-center">
+            <div className="text-4xl mb-2">📦</div>
+            <div className="text-xl font-bold">Solte o arquivo 3D aqui</div>
+            <div className="text-sm opacity-70">Formatos suportados: GLB, GLTF</div>
+          </div>
+        </div>
+      )}
+      {models.length === 0 && showModelTip && (
+        <div className="absolute bottom-4 right-4 bg-black/70 p-4 rounded-lg text-white max-w-xs z-10">
+          <div className="flex items-start mb-2">
+            <FaCube className="mr-2 mt-1 text-blue-400" size={16} />
+            <div>
+              <div className="font-bold">Modelos 3D</div>
+              <div className="text-sm opacity-80">Arraste e solte arquivos GLB ou GLTF para adicionar modelos 3D à cena.</div>
+            </div>
+            <button 
+              className="ml-2 opacity-60 hover:opacity-100 transition-opacity"
+              onClick={() => setShowModelTip(false)}
+            >
+              <FaTimes size={12} />
+            </button>
+          </div>
+        </div>
+      )}
       <Canvas 
         camera={{ position: [0, 0, 0], fov: 65 }} 
         className={`z-0 ${canvasInteractive ? '' : ''}`}
@@ -887,6 +1327,7 @@ const Player = () => {
         <CameraExposer />
         
         <ImageCloneManager />
+        <ModelManager />
         
         <WebFrames
           frames={frames}

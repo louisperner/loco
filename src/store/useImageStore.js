@@ -9,7 +9,19 @@ const STORAGE_KEY = 'scene-images';
 const loadImagesFromStorage = () => {
   try {
     const savedImages = localStorage.getItem(STORAGE_KEY);
-    return savedImages ? JSON.parse(savedImages) : [];
+    const parsedImages = savedImages ? JSON.parse(savedImages) : [];
+    
+    // Processar URLs das imagens para converter file:// para app-file://
+    return parsedImages.map(image => {
+      if (image.src && image.src.startsWith('file://')) {
+        console.log('Convertendo URL de imagem salva:', image.src);
+        return {
+          ...image,
+          src: image.src.replace('file://', 'app-file://')
+        };
+      }
+      return image;
+    });
   } catch (error) {
     console.error('Error loading saved images:', error);
     return [];

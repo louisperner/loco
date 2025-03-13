@@ -1,6 +1,6 @@
-// import React, { useState, useRef } from 'react';
-// import { Html } from '@react-three/drei';
-// import * as THREE from 'three';
+import React, { useState, useRef, useEffect } from 'react';
+import { Html } from '@react-three/drei';
+import * as THREE from 'three';
 
 // /**
 //  * Componente para renderizar imagens na cena 3D
@@ -272,3 +272,72 @@
 // };
 
 // export default ImageInScene; 
+
+// Componente interno para lidar com o carregamento de imagens
+function InternalImage({ src, onLoad, onError }) {
+  const [imageSrc, setImageSrc] = useState(src);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const loadImage = async () => {
+      setIsLoading(true);
+      try {
+        // Se o URL começar com file:// ou app-file://, tente carregá-lo com o Electron
+        if ((src && src.startsWith('file://')) || (src && src.startsWith('app-file://'))) {
+          console.log('Carregando imagem com Electron:', src);
+          
+          if (window.electron && window.electron.loadFileAsBlob) {
+            const result = await window.electron.loadFileAsBlob(src);
+            if (result.success) {
+              console.log('Imagem carregada com sucesso, usando blob URL:', result.blobUrl);
+              setImageSrc(result.blobUrl);
+              
+              // Pré-carregar a imagem para garantir que as dimensões estejam disponíveis
+              const img = new Image();
+              img.onload = () => {
+                setIsLoading(false);
+                if (onLoad) onLoad(img);
+              };
+              img.onerror = (error) => {
+                console.error('Erro ao carregar imagem:', error);
+                setIsLoading(false);
+                if (onError) onError(error);
+              };
+              img.src = result.blobUrl;
+            } else {
+              console.error('Erro ao carregar imagem com Electron:', result.error);
+              setIsLoading(false);
+              if (onError) onError(new Error(`Erro ao carregar imagem: ${result.error}`));
+            }
+          } else {
+            console.warn('API Electron não disponível, usando URL original:', src);
+            setImageSrc(src);
+            setIsLoading(false);
+          }
+        } else {
+          // URL normal, manter como está
+          setImageSrc(src);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Erro ao processar URL da imagem:', error);
+        setIsLoading(false);
+        if (onError) onError(error);
+      }
+    };
+    
+    loadImage();
+  }, [src, onLoad, onError]);
+  
+  // Se estiver carregando, retornar null
+  if (isLoading) {
+    return null;
+  }
+  
+  return (
+    <mesh>
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial map={new THREE.TextureLoader().load(imageSrc)} transparent side={THREE.DoubleSide} />
+    </mesh>
+  );
+} 

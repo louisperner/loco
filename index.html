@@ -23,51 +23,9 @@
   </head>
   <body>
     <div id="root">
-      <div id="canvasContainer" 
-           ondragover="event.preventDefault();" 
-           ondrop="dropHandler(event)"
-        >
+      <div id="canvasContainer">
         <canvas id="mainCanvas"></canvas>
       </div>
     </div>
-
-    <script>
-    function dragStartHandler(e) {
-      // Add both text and URL data types
-      e.dataTransfer.setData('text/plain', e.target.src);
-      e.dataTransfer.setData('image-url', e.target.src);
-      console.log('Drag started with data:', e.target.src);
-    }
-
-    function dropHandler(e) {
-      e.preventDefault();
-      console.log('Drop event received', e.dataTransfer.types);
-      
-      const canvas = document.getElementById('mainCanvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      
-      // Handle CORS issues
-      img.crossOrigin = "anonymous";
-      img.src = e.dataTransfer.getData('image-url') || 
-               e.dataTransfer.getData('text/plain');
-
-      img.onload = () => {
-        console.log('Image loaded, dimensions:', img.width, 'x', img.height);
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-        
-        // Visual feedback
-        canvas.style.border = '2px solid green';
-        setTimeout(() => canvas.style.border = '', 500);
-      };
-      
-      img.onerror = (err) => {
-        console.error('Image load error:', err);
-        alert('Error loading image - check console');
-      };
-    }
-    </script>
   </body>
 </html>
