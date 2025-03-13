@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { Html, Grid, OrbitControls, Plane, Text } from '@react-three/drei';
+import { Html, Grid, OrbitControls, Plane, Text, Circle, Ring } from '@react-three/drei';
 import * as THREE from 'three';
 import { useCodeStore } from '../../store/CodeStore';
 import WebFrames from './WebFrames';
@@ -127,7 +127,7 @@ function Crosshair({ visible = true, size = 5, color = 'white', thickness = 1, s
   }
 }
 
-function Floor({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = false }) {
+function Floor({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = false, groundShape = 'circle' }) {
   const gridColor = useThemeStore(state => state.gridColor);
   const floorPlaneColor = useThemeStore(state => state.floorPlaneColor);
   const gridOpacity = useThemeStore(state => state.gridOpacity);
@@ -155,11 +155,25 @@ function Floor({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           fadeDistance={fadeDistance}
           fadeStrength={isInfinite ? 0.5 : 1}
           followCamera={isInfinite}
-          position={[0, 0.1, 0]}
+          position={[0, 0.01, 0]}
           infiniteGrid={isInfinite}
         />
       )}
-      {floorPlaneVisible && (
+      {floorPlaneVisible && groundShape === 'circle' && (
+        <Circle 
+          args={[size / 2]} 
+          rotation={[-Math.PI / 2, 0, 0]} 
+          position={[0, 0, 0]}
+          receiveShadow
+        >
+          <meshStandardMaterial 
+            color={floorPlaneColor}
+            opacity={floorPlaneOpacity / 100}
+            transparent={true}
+          />
+        </Circle>
+      )}
+      {floorPlaneVisible && groundShape === 'square' && (
         <Plane 
           args={[size, size]} 
           rotation={[-Math.PI / 2, 0, 0]} 
@@ -172,6 +186,62 @@ function Floor({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
             transparent={true}
           />
         </Plane>
+      )}
+      {floorPlaneVisible && groundShape === 'hexagon' && (
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]} 
+          position={[0, 0, 0]}
+          receiveShadow
+        >
+          <circleGeometry args={[size / 2, 6]} />
+          <meshStandardMaterial 
+            color={floorPlaneColor}
+            opacity={floorPlaneOpacity / 100}
+            transparent={true}
+          />
+        </mesh>
+      )}
+      {floorPlaneVisible && groundShape === 'triangle' && (
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]} 
+          position={[0, 0, 0]}
+          receiveShadow
+        >
+          <circleGeometry args={[size / 2, 3]} />
+          <meshStandardMaterial 
+            color={floorPlaneColor}
+            opacity={floorPlaneOpacity / 100}
+            transparent={true}
+          />
+        </mesh>
+      )}
+      {floorPlaneVisible && groundShape === 'octagon' && (
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]} 
+          position={[0, 0, 0]}
+          receiveShadow
+        >
+          <circleGeometry args={[size / 2, 8]} />
+          <meshStandardMaterial 
+            color={floorPlaneColor}
+            opacity={floorPlaneOpacity / 100}
+            transparent={true}
+          />
+        </mesh>
+      )}
+      {floorPlaneVisible && groundShape === 'diamond' && (
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]} 
+          position={[0, 0, 0]}
+          receiveShadow
+        >
+          <circleGeometry args={[size / 2, 4, Math.PI/4]} />
+          <meshStandardMaterial 
+            color={floorPlaneColor}
+            opacity={floorPlaneOpacity / 100}
+            transparent={true}
+          />
+        </mesh>
       )}
     </>
   );
@@ -400,6 +470,7 @@ const Player = () => {
 
   // Adicione este estado se não estiver no ThemeStore ainda
   const [gravityEnabled, setGravityEnabled] = useState(false);
+  const [groundShape, setGroundShape] = useState('circle');
 
   useEffect(() => {
     const savedFrames = localStorage.getItem('webview-frames');
@@ -798,7 +869,7 @@ const Player = () => {
     >
       <Canvas 
         camera={{ position: [0, 0, 0], fov: 65 }} 
-        className={`z-0 ${canvasInteractive ? '' : 'pointer-events-none'}`}
+        className={`z-0 ${canvasInteractive ? '' : ''}`}
         frameloop="always"
         onPointerMissed={() => setSelectedFrame(null)}
       >
@@ -843,6 +914,7 @@ const Player = () => {
           floorPlaneVisible={floorPlaneVisible} 
           groundSize={groundSize}
           isInfinite={isGroundInfinite}
+          groundShape={groundShape}
         />
       </Canvas>
       
@@ -1103,6 +1175,95 @@ const Player = () => {
                   {/* Ground Size and Infinite Mode Controls */}
                   <div className="bg-black/20 rounded-md overflow-hidden p-3 mt-4">
                     <h3 className="text-sm font-medium text-white/90 mb-3">Ground Settings</h3>
+                    
+                    {/* Ground Shape Selector */}
+                    <div className="mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="text-sm text-white/80">Ground Shape</label>
+                      </div>
+                      
+                      <div className="bg-black/20 p-2 rounded-md">
+                        <div className="grid grid-cols-3 gap-2 mb-2">
+                          <button
+                            className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
+                              groundShape === 'circle' 
+                                ? 'bg-white/20 border border-white/40' 
+                                : 'bg-black/30 border border-transparent hover:bg-white/10'
+                            }`}
+                            onClick={() => setGroundShape('circle')}
+                          >
+                            <div className="w-6 h-6 rounded-full border-2 border-white mb-1"></div>
+                            Circle
+                          </button>
+                          <button
+                            className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
+                              groundShape === 'square' 
+                                ? 'bg-white/20 border border-white/40' 
+                                : 'bg-black/30 border border-transparent hover:bg-white/10'
+                            }`}
+                            onClick={() => setGroundShape('square')}
+                          >
+                            <div className="w-6 h-6 border-2 border-white mb-1"></div>
+                            Square
+                          </button>
+                          <button
+                            className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
+                              groundShape === 'diamond' 
+                                ? 'bg-white/20 border border-white/40' 
+                                : 'bg-black/30 border border-transparent hover:bg-white/10'
+                            }`}
+                            onClick={() => setGroundShape('diamond')}
+                          >
+                            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                              <path d="M12 2L22 12L12 22L2 12L12 2Z" />
+                            </svg>
+                            Diamond
+                          </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
+                              groundShape === 'triangle' 
+                                ? 'bg-white/20 border border-white/40' 
+                                : 'bg-black/30 border border-transparent hover:bg-white/10'
+                            }`}
+                            onClick={() => setGroundShape('triangle')}
+                          >
+                            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                              <path d="M12 2L22 20H2L12 2Z" />
+                            </svg>
+                            Triangle
+                          </button>
+                          <button
+                            className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
+                              groundShape === 'hexagon' 
+                                ? 'bg-white/20 border border-white/40' 
+                                : 'bg-black/30 border border-transparent hover:bg-white/10'
+                            }`}
+                            onClick={() => setGroundShape('hexagon')}
+                          >
+                            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                              <path d="M12 2L22 8.5V15.5L12 22L2 15.5V8.5L12 2Z" />
+                            </svg>
+                            Hexagon
+                          </button>
+                          <button
+                            className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
+                              groundShape === 'octagon' 
+                                ? 'bg-white/20 border border-white/40' 
+                                : 'bg-black/30 border border-transparent hover:bg-white/10'
+                            }`}
+                            onClick={() => setGroundShape('octagon')}
+                          >
+                            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                              <path d="M8 2L16 2L22 8L22 16L16 22L8 22L2 16L2 8L8 2Z" />
+                            </svg>
+                            Octagon
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                     
                     {/* Ground Size Slider */}
                     <div className="mb-4">

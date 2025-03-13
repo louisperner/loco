@@ -1,13 +1,13 @@
 import React from 'react';
-import { Plane } from '@react-three/drei';
+import { Circle } from '@react-three/drei';
 
 const Floor = () => {
   return (
-    <Plane
+    <Circle
       receiveShadow
       rotation={[-Math.PI / 2, 0, 0]}
       position={[0, -0.5, 0]}
-      args={[100, 100]}
+      args={[50]}
     >
       <meshStandardMaterial 
         attach="material" 
@@ -15,7 +15,7 @@ const Floor = () => {
         roughness={0.7}
         metalness={0.05}
       />
-    </Plane>
+    </Circle>
   );
 };
 

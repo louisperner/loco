@@ -37,7 +37,7 @@ export function SettingsPanel({ children, onToggle }: SettingsPanelProps) {
         </Button>
       </SlidePanelTrigger>
       <SlidePanelContent title="Settings">
-        <div className="flex flex-col h-full text-white">
+        <div className="bg-[#262626] flex flex-col h-full text-white z-50">
           <SlidePanelHeader>
             <SlidePanelTitle>Settings</SlidePanelTitle>
             <SlidePanelClose asChild>

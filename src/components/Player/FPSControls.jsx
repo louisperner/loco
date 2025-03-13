@@ -234,26 +234,6 @@ function FPSControls({
   return (
     <>
       <PointerLockControls ref={controls} args={[camera, gl.domElement]} />
-      {/* {enabled && !isLocked && (
-        <group position={[0, 0, -3]}>
-          <Html center>
-            <div 
-              style={{
-                color: 'white',
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                padding: '1rem',
-                borderRadius: '0.5rem',
-                textAlign: 'center',
-                pointerEvents: 'none',
-                zIndex: 999,
-                opacity: 0.7
-              }}
-            >
-              Click to look around
-            </div>
-          </Html>
-        </group>
-      )} */}
     </>
   );
 }
