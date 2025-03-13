@@ -1290,23 +1290,6 @@ const Player = () => {
           </div>
         </div>
       )}
-      {models.length === 0 && showModelTip && (
-        <div className="absolute bottom-4 right-4 bg-black/70 p-4 rounded-lg text-white max-w-xs z-10">
-          <div className="flex items-start mb-2">
-            <FaCube className="mr-2 mt-1 text-blue-400" size={16} />
-            <div>
-              <div className="font-bold">Modelos 3D</div>
-              <div className="text-sm opacity-80">Arraste e solte arquivos GLB ou GLTF para adicionar modelos 3D à cena.</div>
-            </div>
-            <button 
-              className="ml-2 opacity-60 hover:opacity-100 transition-opacity"
-              onClick={() => setShowModelTip(false)}
-            >
-              <FaTimes size={12} />
-            </button>
-          </div>
-        </div>
-      )}
       <Canvas 
         camera={{ position: [0, 0, 0], fov: 65 }} 
         className={`z-0 ${canvasInteractive ? '' : ''}`}
@@ -1414,7 +1397,6 @@ const Player = () => {
                 {/* Color Options with react-colorful */}
                 <div className="bg-white/5 rounded-lg p-3 space-y-3">
                   <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-xs font-medium text-white/90">Color Adjustments</h3>
                     <button 
                       onClick={handleResetColors}
                       className={`text-blue-400 hover:text-blue-300 flex items-center text-xs transition-colors duration-200 rounded-full px-2 py-0.5 hover:bg-blue-900/20 ${isResetAnimating ? 'animate-pulse' : ''}`}
@@ -1615,8 +1597,6 @@ const Player = () => {
                   
                   {/* Ground Size and Infinite Mode Controls */}
                   <div className="bg-black/20 rounded-md overflow-hidden p-3 mt-4">
-                    <h3 className="text-sm font-medium text-white/90 mb-3">Ground Settings</h3>
-                    
                     {/* Ground Shape Selector */}
                     <div className="mb-4">
                       <div className="flex justify-between items-center mb-2">
@@ -1741,7 +1721,7 @@ const Player = () => {
                   {/* Crosshair (Mira) Settings */}
                   <div className="bg-black/20 rounded-md overflow-hidden mt-4">
                     <div className="flex items-center justify-between p-2.5">
-                      <div className="text-sm text-white/80 font-medium">Mira</div>
+                      <div className="text-sm text-white/80 font-medium">Crosshair</div>
                       <div className="flex items-center">
                         <Switch 
                           checked={showCrosshair} 
@@ -1764,13 +1744,13 @@ const Player = () => {
                         {/* Seletor de estilo da mira */}
                         <div className="mb-3">
                           <div className="flex justify-between items-center mb-1">
-                            <span className="text-xs text-white/70">Estilo</span>
+                            <span className="text-xs text-white/70">Style</span>
                           </div>
                           <div className="grid grid-cols-4 gap-2">
                             {[
-                              { id: 'circle', label: 'Círculo' },
-                              { id: 'dot', label: 'Ponto' },
-                              { id: 'cross', label: 'Cruz' },
+                              { id: 'circle', label: 'Circle' },
+                              { id: 'dot', label: 'Dot' },
+                              { id: 'cross', label: 'Cross' },
                               { id: 'plus', label: 'Plus' }
                             ].map(style => (
                               <button
@@ -1812,7 +1792,7 @@ const Player = () => {
                         
                         <div className="mb-3">
                           <div className="flex justify-between items-center mb-1">
-                            <span className="text-xs text-white/70">Tamanho</span>
+                            <span className="text-xs text-white/70">Size</span>
                             <span className="text-xs text-white/70">{crosshairSize}px</span>
                           </div>
                           <Slider 
@@ -1826,7 +1806,7 @@ const Player = () => {
                         
                         <div>
                           <div className="flex justify-between items-center mb-1">
-                            <span className="text-xs text-white/70">Espessura</span>
+                            <span className="text-xs text-white/70">Thickness</span>
                             <span className="text-xs text-white/70">{crosshairThickness}px</span>
                           </div>
                           <Slider 
