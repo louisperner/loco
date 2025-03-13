@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   SlidePanel,
@@ -12,12 +12,62 @@ import {
 } from '@/components/ui/slide-panel';
 import { FaCog, FaTimes } from 'react-icons/fa';
 
+// Define the tab interface
+export interface SettingsTab {
+  id: string;
+  label: string;
+  icon?: ReactNode;
+  content: ReactNode;
+}
+
 interface SettingsPanelProps {
   children?: React.ReactNode;
   onToggle?: (isOpen: boolean) => void;
+  tabs?: SettingsTab[];
 }
 
-export function SettingsPanel({ children, onToggle }: SettingsPanelProps) {
+// TabsContent component to handle tab navigation and content display
+const TabsContent = ({ tabs }: { tabs: SettingsTab[] }) => {
+  const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id || '');
+
+  if (!tabs || tabs.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Tabs navigation */}
+      <div className="flex mb-2 p-1 bg-white/10 rounded-lg">
+        {tabs.map((tab) => (
+          <Button 
+            key={tab.id}
+            variant={activeTab === tab.id ? 'default' : 'ghost'}
+            className={`flex-1 py-1 px-2 text-xs font-medium ${
+              activeTab === tab.id 
+                ? 'bg-white text-black shadow-sm' 
+                : 'text-white/70 hover:text-white/90 hover:bg-white/10'
+            }`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.icon && (
+              <span className={`mr-1 ${activeTab === tab.id ? 'text-black' : ''}`}>
+                {tab.icon}
+              </span>
+            )}
+            {tab.label}
+          </Button>
+        ))}
+      </div>
+      
+      {/* Active tab content */}
+      <div className="animate-fadeIn">
+        {tabs.find(tab => tab.id === activeTab)?.content}
+      </div>
+    </div>
+  );
+};
+
+export function SettingsPanel({ children, onToggle, tabs }: SettingsPanelProps) {
   const [open, setOpen] = useState(false);
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -52,7 +102,7 @@ export function SettingsPanel({ children, onToggle }: SettingsPanelProps) {
           </SlidePanelHeader>
           
           <SlidePanelBody>
-            {children}
+            {tabs ? <TabsContent tabs={tabs} /> : children}
           </SlidePanelBody>
           
           <SlidePanelFooter>

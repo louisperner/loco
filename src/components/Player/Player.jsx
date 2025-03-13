@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { Html, Grid, OrbitControls, Plane, Text, Circle, Ring } from '@react-three/drei';
+import { Html, Grid, OrbitControls, Plane, Text, Circle, Ring, Sky, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import { useCodeStore } from '../../store/CodeStore';
 import WebFrames from './WebFrames';
@@ -139,7 +139,7 @@ function Floor({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
   const gridColorWithOpacity = getColorWithOpacity(gridColor, gridOpacity);
   const floorPlaneColorWithOpacity = getColorWithOpacity(floorPlaneColor, floorPlaneOpacity);
   
-  // Use the same size for both grid and plane, whether infinite or not
+  // Always use default size when infinite is true
   const size = isInfinite ? 10 : groundSize;
   const fadeDistance = isInfinite ? 100 : groundSize;
   
@@ -161,7 +161,25 @@ function Floor({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           infiniteGrid={isInfinite}
         />
       )}
-      {floorPlaneVisible && groundShape === 'circle' && (
+      
+      {/* Render infinite plane when infinite ground is enabled */}
+      {floorPlaneVisible && isInfinite && (
+        <Plane 
+          args={[2000, 2000]} 
+          rotation={[-Math.PI / 2, 0, 0]} 
+          position={[0, 0, 0]}
+          receiveShadow
+        >
+          <meshStandardMaterial 
+            color={floorPlaneColor}
+            opacity={floorPlaneOpacity / 100}
+            transparent={true}
+          />
+        </Plane>
+      )}
+      
+      {/* Only render shape-specific planes when NOT in infinite mode */}
+      {floorPlaneVisible && !isInfinite && groundShape === 'circle' && (
         <Circle 
           args={[size / 2]} 
           rotation={[-Math.PI / 2, 0, 0]} 
@@ -175,7 +193,7 @@ function Floor({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           />
         </Circle>
       )}
-      {floorPlaneVisible && groundShape === 'square' && (
+      {floorPlaneVisible && !isInfinite && groundShape === 'square' && (
         <Plane 
           args={[size, size]} 
           rotation={[-Math.PI / 2, 0, 0]} 
@@ -189,7 +207,7 @@ function Floor({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           />
         </Plane>
       )}
-      {floorPlaneVisible && groundShape === 'hexagon' && (
+      {floorPlaneVisible && !isInfinite && groundShape === 'hexagon' && (
         <mesh
           rotation={[-Math.PI / 2, 0, 0]} 
           position={[0, 0, 0]}
@@ -203,7 +221,7 @@ function Floor({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           />
         </mesh>
       )}
-      {floorPlaneVisible && groundShape === 'triangle' && (
+      {floorPlaneVisible && !isInfinite && groundShape === 'triangle' && (
         <mesh
           rotation={[-Math.PI / 2, 0, 0]} 
           position={[0, 0, 0]}
@@ -217,7 +235,7 @@ function Floor({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           />
         </mesh>
       )}
-      {floorPlaneVisible && groundShape === 'octagon' && (
+      {floorPlaneVisible && !isInfinite && groundShape === 'octagon' && (
         <mesh
           rotation={[-Math.PI / 2, 0, 0]} 
           position={[0, 0, 0]}
@@ -231,7 +249,7 @@ function Floor({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           />
         </mesh>
       )}
-      {floorPlaneVisible && groundShape === 'diamond' && (
+      {floorPlaneVisible && !isInfinite && groundShape === 'diamond' && (
         <mesh
           rotation={[-Math.PI / 2, 0, 0]} 
           position={[0, 0, 0]}
@@ -454,13 +472,29 @@ const Player = () => {
     groundSize,
     isGroundInfinite,
     setGroundSize,
-    setGroundInfinite
+    setGroundInfinite,
+    skyVisible,
+    skyDistance,
+    skySunPosition,
+    skyInclination,
+    skyAzimuth,
+    skyTurbidity,
+    skyRayleigh,
+    skyOpacity,
+    starsVisible,
+    starsRadius,
+    starsDepth,
+    starsCount,
+    starsFactor,
+    starsSaturation,
+    starsFade,
+    setTheme,
   } = useThemeStore();
 
   // Adicione este estado se não estiver no ThemeStore ainda
   const [gravityEnabled, setGravityEnabled] = useState(false);
   const [groundShape, setGroundShape] = useState('circle');
-
+  
   const addImage = useImageStore(state => state.addImage);
   const updateImage = useImageStore(state => state.updateImage);
   const addModel = useModelStore(state => state.addModel);
@@ -881,9 +915,9 @@ const Player = () => {
       } else if (typeof color === 'object') {
         setGridOpacity(Math.round(color.a * 100));
       }
-      // Salvar no localStorage
+      // Save to localStorage
       localStorage.setItem('grid-color', colorValue);
-      localStorage.setItem('grid-opacity', gridOpacity.toString());
+      localStorage.setItem('grid-opacity', Math.round(typeof color === 'object' ? color.a * 100 : gridOpacity).toString());
     } else if (type === 'floorPlane') {
       setFloorPlaneColor(colorValue);
       if (colorValue === 'transparent' || (typeof color === 'object' && color.a === 0)) {
@@ -891,9 +925,9 @@ const Player = () => {
       } else if (typeof color === 'object') {
         setFloorPlaneOpacity(Math.round(color.a * 100));
       }
-      // Salvar no localStorage
+      // Save to localStorage
       localStorage.setItem('floor-plane-color', colorValue);
-      localStorage.setItem('floor-plane-opacity', floorPlaneOpacity.toString());
+      localStorage.setItem('floor-plane-opacity', Math.round(typeof color === 'object' ? color.a * 100 : floorPlaneOpacity).toString());
     } else if (type === 'background') {
       setBackgroundColor(colorValue);
       if (colorValue === 'transparent' || (typeof color === 'object' && color.a === 0)) {
@@ -901,15 +935,15 @@ const Player = () => {
       } else if (typeof color === 'object') {
         setBackgroundOpacity(Math.round(color.a * 100));
       }
-      // Salvar no localStorage
+      // Save to localStorage
       localStorage.setItem('background-color', colorValue);
-      localStorage.setItem('background-opacity', backgroundOpacity.toString());
+      localStorage.setItem('background-opacity', Math.round(typeof color === 'object' ? color.a * 100 : backgroundOpacity).toString());
     } else if (type === 'crosshair') {
       setCrosshairColor(colorValue);
-      // Salvar no localStorage está sendo feito pelo useEffect acima
+      // Saving to localStorage is handled by the useEffect above
     }
     
-    // Mostra feedback visual
+    // Show visual feedback
     setColorChanged(type);
     setTimeout(() => setColorChanged(null), 500);
   };
@@ -1021,6 +1055,19 @@ const Player = () => {
   
   const handleGroundInfiniteToggle = (value) => {
     setGroundInfinite(value);
+    
+    // When enabling infinite ground, store the previous size value temporarily
+    if (value && !isGroundInfinite) {
+      localStorage.setItem('previous-ground-size', groundSize.toString());
+    } 
+    // When disabling infinite ground, restore previous size if available
+    else if (!value && isGroundInfinite) {
+      const prevSize = localStorage.getItem('previous-ground-size');
+      if (prevSize) {
+        setGroundSize(parseInt(prevSize));
+      }
+    }
+    
     localStorage.setItem('ground-infinite', value.toString());
   };
 
@@ -1309,6 +1356,29 @@ const Player = () => {
         
         <CameraExposer />
         
+        {/* Add Sky and Stars components with state variables */}
+        {(skyVisible ?? true) && (
+          <Sky 
+            distance={skyDistance ?? 450000} 
+            sunPosition={skySunPosition ?? [0, 1, 0]} 
+            inclination={skyInclination ?? 0} 
+            azimuth={skyAzimuth ?? 0.25} 
+            turbidity={skyTurbidity ?? 10}
+            rayleigh={skyRayleigh ?? 2.5}
+            opacity={skyOpacity ?? 1}
+          />
+        )}
+        {(starsVisible ?? true) && (
+          <Stars 
+            radius={starsRadius ?? 100} 
+            depth={starsDepth ?? 50} 
+            count={starsCount ?? 5000} 
+            factor={starsFactor ?? 4} 
+            saturation={starsSaturation ?? 0} 
+            fade={starsFade ?? true} 
+          />
+        )}
+        
         <ImageCloneManager />
         <ModelManager />
         
@@ -1361,526 +1431,759 @@ const Player = () => {
               setMouseOverSettings(true);
             }
           }}
-        >
-          <div className="space-y-4">
-            {/* Tabs - more compact */}
-            <div className="flex mb-2 p-1 bg-white/10 rounded-lg">
-              <Button 
-                variant={activeTab === 'cores' ? 'default' : 'ghost'}
-                className={`flex-1 py-1 px-2 text-xs font-medium ${
-                  activeTab === 'cores' 
-                    ? 'bg-white text-black shadow-sm' 
-                    : 'text-white/70 hover:text-white/90 hover:bg-white/10'
-                }`}
-                onClick={() => setActiveTab('cores')}
-              >
-                <FaPalette className={`mr-1 ${activeTab === 'cores' ? 'text-black' : ''}`} size={10} />
-                Appearance
-              </Button>
-              <Button 
-                variant={activeTab === 'controles' ? 'default' : 'ghost'}
-                className={`flex-1 py-1 px-2 text-xs font-medium ${
-                  activeTab === 'controles' 
-                    ? 'bg-white text-black shadow-sm' 
-                    : 'text-white/70 hover:text-white/90 hover:bg-white/10'
-                }`}
-                onClick={() => setActiveTab('controles')}
-              >
-                <FaSlidersH className={`mr-1 ${activeTab === 'controles' ? 'text-black' : ''}`} size={10} />
-                Controls
-              </Button>
-            </div>
-            
-            {/* Appearance Tab Content */}
-            {activeTab === 'cores' && (
-              <div className="space-y-2 animate-fadeIn">
-                {/* Color Options with react-colorful */}
-                <div className="bg-white/5 rounded-lg p-3 space-y-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <button 
-                      onClick={handleResetColors}
-                      className={`text-blue-400 hover:text-blue-300 flex items-center text-xs transition-colors duration-200 rounded-full px-2 py-0.5 hover:bg-blue-900/20 ${isResetAnimating ? 'animate-pulse' : ''}`}
-                      title="Restore default colors"
-                    >
-                      <FaUndo className="mr-1" size={8} /> Reset
-                    </button>
-                  </div>
-                  
-                  {/* Grid Color Selector with react-colorful */}
-                  <div className="bg-black/20 rounded-md overflow-hidden">
-                    <div className="flex items-center justify-between p-2.5">
-                      <div className="text-sm text-white/80 font-medium">Grid</div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setGridVisible(!gridVisible)}
-                          className={`w-7 h-7 rounded-full flex items-center justify-center ${gridVisible ? 'text-white/80 hover:text-white' : 'text-white/30 hover:text-white/50'}`}
-                          title={gridVisible ? "Hide grid" : "Show grid"}
-                        >
-                          {gridVisible ? <FaEye size={14} /> : <FaEyeSlash size={14} />}
-                        </button>
-                        <button 
-                          onClick={() => setShowColorPicker(showColorPicker === 'grid' ? null : 'grid')}
-                          className={`w-7 h-7 rounded-full border-2 ${showColorPicker === 'grid' ? 'border-white' : 'border-white/30'} overflow-hidden cursor-pointer transition-all duration-200 hover:scale-110`}
-                          style={getButtonColorStyle(gridColor)}
-                          title="Select grid color"
-                          data-color-picker-btn="grid"
-                        />
-                      </div>
+          tabs={[
+            {
+              id: 'appearance',
+              label: 'Appearance',
+              icon: <FaPalette size={10} />,
+              content: (
+                <div className="space-y-2 animate-fadeIn">
+                  {/* Color Options with react-colorful */}
+                  <div className="bg-white/5 rounded-lg p-3 space-y-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <button 
+                        onClick={handleResetColors}
+                        className={`text-blue-400 hover:text-blue-300 flex items-center text-xs transition-colors duration-200 rounded-full px-2 py-0.5 hover:bg-blue-900/20 ${isResetAnimating ? 'animate-pulse' : ''}`}
+                        title="Restore default colors"
+                      >
+                        <FaUndo className="mr-1" size={8} /> Reset
+                      </button>
                     </div>
                     
-                    {/* Color picker dropdown */}
-                    {showColorPicker === 'grid' && (
-                      <div 
-                        ref={el => colorPickerRefs.current.grid = el} 
-                        className="p-3 border-t border-white/10 relative"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium text-white/90">Grid Color</span>
-                          <div className="flex gap-2">
-                            <button 
-                              className="bg-transparent hover:bg-white/10 p-1.5 rounded text-white/80 flex items-center border border-white/20"
-                              onClick={() => {
-                                handleColorChange('grid', 'transparent');
-                              }}
-                              title="Set transparent"
-                            >
-                              <FaEyeSlash size={12} className="mr-1.5" />
-                              <span className="text-xs">Transparent</span>
-                            </button>
-                            <button 
-                              className="bg-white/10 hover:bg-white/20 p-1.5 rounded text-white/80 flex items-center"
-                              onClick={() => setShowColorPicker(null)}
-                              title="Close color picker"
-                            >
-                              <FaTimes size={12} />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="border border-white/10 rounded-md p-2 mb-3">
-                          <RgbaColorPicker 
-                            color={gridColor === 'transparent' ? { r: 255, g: 255, b: 255, a: 0 } : 
-                                   stringToRgba(gridColor)}
-                            onChange={(color) => handleColorChange('grid', color)} 
-                            style={{ width: '100%' }}
+                    {/* Background Color Selector with react-colorful */}
+                    <div className="bg-black/20 rounded-md overflow-hidden">
+                      <div className="flex items-center justify-between p-2.5">
+                        <div className="text-sm text-white/80 font-medium">Background</div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setBackgroundVisible(!backgroundVisible)}
+                            className={`w-7 h-7 rounded-full flex items-center justify-center ${backgroundVisible ? 'text-white/80 hover:text-white' : 'text-white/30 hover:text-white/50'}`}
+                            title={backgroundVisible ? "Hide background" : "Show background"}
+                          >
+                            {backgroundVisible ? <FaEye size={14} /> : <FaEyeSlash size={14} />}
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowColorPicker(showColorPicker === 'background' ? null : 'background');
+                            }}
+                            className={`w-7 h-7 rounded-full border-2 ${showColorPicker === 'background' ? 'border-white' : 'border-white/30'} overflow-hidden cursor-pointer transition-all duration-200 hover:scale-110`}
+                            style={getButtonColorStyle(backgroundColor)}
+                            title="Select background color"
+                            data-color-picker-btn="background"
                           />
                         </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Floor Plane Color Selector with react-colorful */}
-                  <div className="bg-black/20 rounded-md overflow-hidden">
-                    <div className="flex items-center justify-between p-2.5">
-                      <div className="text-sm text-white/80 font-medium">Floor Plane</div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setFloorPlaneVisible(!floorPlaneVisible)}
-                          className={`w-7 h-7 rounded-full flex items-center justify-center ${floorPlaneVisible ? 'text-white/80 hover:text-white' : 'text-white/30 hover:text-white/50'}`}
-                          title={floorPlaneVisible ? "Hide floor plane" : "Show floor plane"}
-                        >
-                          {floorPlaneVisible ? <FaEye size={14} /> : <FaEyeSlash size={14} />}
-                        </button>
-                        <button 
-                          onClick={() => setShowColorPicker(showColorPicker === 'floorPlane' ? null : 'floorPlane')}
-                          className={`w-7 h-7 rounded-full border-2 ${showColorPicker === 'floorPlane' ? 'border-white' : 'border-white/30'} overflow-hidden cursor-pointer transition-all duration-200 hover:scale-110`}
-                          style={getButtonColorStyle(floorPlaneColor)}
-                          title="Select floor plane color"
-                          data-color-picker-btn="floorPlane"
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Color picker dropdown */}
-                    {showColorPicker === 'floorPlane' && (
-                      <div 
-                        ref={el => colorPickerRefs.current.floorPlane = el} 
-                        className="p-3 border-t border-white/10 relative"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium text-white/90">Floor Plane Color</span>
-                          <div className="flex gap-2">
-                            <button 
-                              className="bg-transparent hover:bg-white/10 p-1.5 rounded text-white/80 flex items-center border border-white/20"
-                              onClick={() => {
-                                handleColorChange('floorPlane', 'transparent');
-                              }}
-                              title="Set transparent"
-                            >
-                              <FaEyeSlash size={12} className="mr-1.5" />
-                              <span className="text-xs">Transparent</span>
-                            </button>
-                            <button 
-                              className="bg-white/10 hover:bg-white/20 p-1.5 rounded text-white/80 flex items-center"
-                              onClick={() => setShowColorPicker(null)}
-                              title="Close color picker"
-                            >
-                              <FaTimes size={12} />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="border border-white/10 rounded-md p-2 mb-3">
-                          <RgbaColorPicker 
-                            color={floorPlaneColor === 'transparent' ? { r: 255, g: 255, b: 255, a: 0 } : 
-                                   stringToRgba(floorPlaneColor)}
-                            onChange={(color) => handleColorChange('floorPlane', color)} 
-                            style={{ width: '100%' }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Background Color Selector with react-colorful */}
-                  <div className="bg-black/20 rounded-md overflow-hidden">
-                    <div className="flex items-center justify-between p-2.5">
-                      <div className="text-sm text-white/80 font-medium">Background</div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setBackgroundVisible(!backgroundVisible)}
-                          className={`w-7 h-7 rounded-full flex items-center justify-center ${backgroundVisible ? 'text-white/80 hover:text-white' : 'text-white/30 hover:text-white/50'}`}
-                          title={backgroundVisible ? "Hide background" : "Show background"}
-                        >
-                          {backgroundVisible ? <FaEye size={14} /> : <FaEyeSlash size={14} />}
-                        </button>
-                        <button 
-                          onClick={() => setShowColorPicker(showColorPicker === 'background' ? null : 'background')}
-                          className={`w-7 h-7 rounded-full border-2 ${showColorPicker === 'background' ? 'border-white' : 'border-white/30'} overflow-hidden cursor-pointer transition-all duration-200 hover:scale-110`}
-                          style={getButtonColorStyle(backgroundColor)}
-                          title="Select background color"
-                          data-color-picker-btn="background"
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Color picker dropdown */}
-                    {showColorPicker === 'background' && (
-                      <div 
-                        ref={el => colorPickerRefs.current.background = el} 
-                        className="p-3 border-t border-white/10 relative"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium text-white/90">Background Color</span>
-                          <div className="flex gap-2">
-                            <button 
-                              className="bg-transparent hover:bg-white/10 p-1.5 rounded text-white/80 flex items-center border border-white/20"
-                              onClick={() => {
-                                handleColorChange('background', 'transparent');
-                              }}
-                              title="Set transparent"
-                            >
-                              <FaEyeSlash size={12} className="mr-1.5" />
-                              <span className="text-xs">Transparent</span>
-                            </button>
-                            <button 
-                              className="bg-white/10 hover:bg-white/20 p-1.5 rounded text-white/80 flex items-center"
-                              onClick={() => setShowColorPicker(null)}
-                              title="Close color picker"
-                            >
-                              <FaTimes size={12} />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="border border-white/10 rounded-md p-2 mb-3">
-                          <RgbaColorPicker 
-                            color={backgroundColor === 'transparent' ? { r: 255, g: 255, b: 255, a: 0 } : 
-                                   stringToRgba(backgroundColor)}
-                            onChange={(color) => handleColorChange('background', color)} 
-                            style={{ width: '100%' }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Ground Size and Infinite Mode Controls */}
-                  <div className="bg-black/20 rounded-md overflow-hidden p-3 mt-4">
-                    {/* Ground Shape Selector */}
-                    <div className="mb-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <label className="text-sm text-white/80">Ground Shape</label>
                       </div>
                       
-                      <div className="bg-black/20 p-2 rounded-md">
-                        <div className="grid grid-cols-3 gap-2 mb-2">
+                      {/* Color picker dropdown */}
+                      {showColorPicker === 'background' && (
+                        <div 
+                          ref={el => colorPickerRefs.current.background = el} 
+                          className="p-3 border-t border-white/10 relative"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium text-white/90">Background Color</span>
+                            <div className="flex gap-2">
+                              <button 
+                                className="bg-transparent hover:bg-white/10 p-1.5 rounded text-white/80 flex items-center border border-white/20"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleColorChange('background', 'transparent');
+                                }}
+                                title="Set transparent"
+                              >
+                                <FaEyeSlash size={12} className="mr-1.5" />
+                                <span className="text-xs">Transparent</span>
+                              </button>
+                              <button 
+                                className="bg-white/10 hover:bg-white/20 p-1.5 rounded text-white/80 flex items-center"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowColorPicker(null);
+                                }}
+                                title="Close color picker"
+                              >
+                                <FaTimes size={12} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="border border-white/10 rounded-md p-2 mb-3 z-50">
+                            <RgbaColorPicker 
+                              color={backgroundColor === 'transparent' ? { r: 255, g: 255, b: 255, a: 0 } : 
+                                    stringToRgba(backgroundColor)}
+                              onChange={(color) => handleColorChange('background', color)} 
+                              style={{ width: '100%' }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Grid and Floor Settings - MOVED FROM ENVIRONMENT TAB */}
+                    <div className="bg-black/20 rounded-md overflow-hidden">
+                      <div className="flex items-center justify-between p-2.5">
+                        <div className="text-sm text-white/80 font-medium">Grid</div>
+                        <div className="flex items-center gap-2">
                           <button
-                            className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
-                              groundShape === 'circle' 
-                                ? 'bg-white/20 border border-white/40' 
-                                : 'bg-black/30 border border-transparent hover:bg-white/10'
-                            }`}
-                            onClick={() => setGroundShape('circle')}
+                            onClick={() => setGridVisible(!gridVisible)}
+                            className={`w-7 h-7 rounded-full flex items-center justify-center ${gridVisible ? 'text-white/80 hover:text-white' : 'text-white/30 hover:text-white/50'}`}
+                            title={gridVisible ? "Hide grid" : "Show grid"}
                           >
-                            <div className="w-6 h-6 rounded-full border-2 border-white mb-1"></div>
-                            Circle
+                            {gridVisible ? <FaEye size={14} /> : <FaEyeSlash size={14} />}
                           </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowColorPicker(showColorPicker === 'grid' ? null : 'grid');
+                            }}
+                            className={`w-7 h-7 rounded-full border-2 ${showColorPicker === 'grid' ? 'border-white' : 'border-white/30'} overflow-hidden cursor-pointer transition-all duration-200 hover:scale-110`}
+                            style={getButtonColorStyle(gridColor)}
+                            title="Select grid color"
+                            data-color-picker-btn="grid"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Grid color picker dropdown */}
+                      {showColorPicker === 'grid' && (
+                        <div 
+                          ref={el => colorPickerRefs.current.grid = el} 
+                          className="p-3 border-t border-white/10 relative"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium text-white/90">Grid Color</span>
+                            <div className="flex gap-2">
+                              <button 
+                                className="bg-transparent hover:bg-white/10 p-1.5 rounded text-white/80 flex items-center border border-white/20"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleColorChange('grid', 'transparent');
+                                }}
+                                title="Set transparent"
+                              >
+                                <FaEyeSlash size={12} className="mr-1.5" />
+                                <span className="text-xs">Transparent</span>
+                              </button>
+                              <button 
+                                className="bg-white/10 hover:bg-white/20 p-1.5 rounded text-white/80 flex items-center"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowColorPicker(null);
+                                }}
+                                title="Close color picker"
+                              >
+                                <FaTimes size={12} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="border border-white/10 rounded-md p-2 mb-3 z-50">
+                            <RgbaColorPicker 
+                              color={gridColor === 'transparent' ? { r: 255, g: 255, b: 255, a: 0 } : 
+                                    stringToRgba(gridColor)}
+                              onChange={(color) => handleColorChange('grid', color)} 
+                              style={{ width: '100%' }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Floor Plane Settings */}
+                      <div className="flex items-center justify-between p-2.5 border-t border-white/10">
+                        <div className="text-sm text-white/80 font-medium">Floor Plane</div>
+                        <div className="flex items-center gap-2">
                           <button
-                            className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
-                              groundShape === 'square' 
-                                ? 'bg-white/20 border border-white/40' 
-                                : 'bg-black/30 border border-transparent hover:bg-white/10'
-                            }`}
-                            onClick={() => setGroundShape('square')}
+                            onClick={() => setFloorPlaneVisible(!floorPlaneVisible)}
+                            className={`w-7 h-7 rounded-full flex items-center justify-center ${floorPlaneVisible ? 'text-white/80 hover:text-white' : 'text-white/30 hover:text-white/50'}`}
+                            title={floorPlaneVisible ? "Hide floor plane" : "Show floor plane"}
                           >
-                            <div className="w-6 h-6 border-2 border-white mb-1"></div>
-                            Square
+                            {floorPlaneVisible ? <FaEye size={14} /> : <FaEyeSlash size={14} />}
                           </button>
-                          <button
-                            className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
-                              groundShape === 'diamond' 
-                                ? 'bg-white/20 border border-white/40' 
-                                : 'bg-black/30 border border-transparent hover:bg-white/10'
-                            }`}
-                            onClick={() => setGroundShape('diamond')}
-                          >
-                            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                              <path d="M12 2L22 12L12 22L2 12L12 2Z" />
-                            </svg>
-                            Diamond
-                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowColorPicker(showColorPicker === 'floorPlane' ? null : 'floorPlane');
+                            }}
+                            className={`w-7 h-7 rounded-full border-2 ${showColorPicker === 'floorPlane' ? 'border-white' : 'border-white/30'} overflow-hidden cursor-pointer transition-all duration-200 hover:scale-110`}
+                            style={getButtonColorStyle(floorPlaneColor)}
+                            title="Select floor plane color"
+                            data-color-picker-btn="floorPlane"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Floor plane color picker dropdown */}
+                      {showColorPicker === 'floorPlane' && (
+                        <div 
+                          ref={el => colorPickerRefs.current.floorPlane = el} 
+                          className="p-3 border-t border-white/10 relative"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium text-white/90">Floor Plane Color</span>
+                            <div className="flex gap-2">
+                              <button 
+                                className="bg-transparent hover:bg-white/10 p-1.5 rounded text-white/80 flex items-center border border-white/20"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleColorChange('floorPlane', 'transparent');
+                                }}
+                                title="Set transparent"
+                              >
+                                <FaEyeSlash size={12} className="mr-1.5" />
+                                <span className="text-xs">Transparent</span>
+                              </button>
+                              <button 
+                                className="bg-white/10 hover:bg-white/20 p-1.5 rounded text-white/80 flex items-center"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowColorPicker(null);
+                                }}
+                                title="Close color picker"
+                              >
+                                <FaTimes size={12} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="border border-white/10 rounded-md p-2 mb-3 z-50">
+                            <RgbaColorPicker 
+                              color={floorPlaneColor === 'transparent' ? { r: 255, g: 255, b: 255, a: 0 } : 
+                                    stringToRgba(floorPlaneColor)}
+                              onChange={(color) => handleColorChange('floorPlane', color)} 
+                              style={{ width: '100%' }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Ground Shape and Size Settings - MOVED FROM ENVIRONMENT TAB */}
+                    <div className="bg-black/20 rounded-md overflow-hidden p-3 mt-4">
+                      {/* Ground Shape Selector */}
+                      <div className="mb-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-sm text-white/80">Ground Shape</label>
                         </div>
                         
-                        <div className="grid grid-cols-3 gap-2">
-                          <button
-                            className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
-                              groundShape === 'triangle' 
-                                ? 'bg-white/20 border border-white/40' 
-                                : 'bg-black/30 border border-transparent hover:bg-white/10'
-                            }`}
-                            onClick={() => setGroundShape('triangle')}
-                          >
-                            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                              <path d="M12 2L22 20H2L12 2Z" />
-                            </svg>
-                            Triangle
-                          </button>
-                          <button
-                            className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
-                              groundShape === 'hexagon' 
-                                ? 'bg-white/20 border border-white/40' 
-                                : 'bg-black/30 border border-transparent hover:bg-white/10'
-                            }`}
-                            onClick={() => setGroundShape('hexagon')}
-                          >
-                            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                              <path d="M12 2L22 8.5V15.5L12 22L2 15.5V8.5L12 2Z" />
-                            </svg>
-                            Hexagon
-                          </button>
-                          <button
-                            className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
-                              groundShape === 'octagon' 
-                                ? 'bg-white/20 border border-white/40' 
-                                : 'bg-black/30 border border-transparent hover:bg-white/10'
-                            }`}
-                            onClick={() => setGroundShape('octagon')}
-                          >
-                            <svg className="w-6 h-6 mb-1" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                              <path d="M8 2L16 2L22 8L22 16L16 22L8 22L2 16L2 8L8 2Z" />
-                            </svg>
-                            Octagon
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Ground Size Slider */}
-                    <div className="mb-4">
-                      <div className="flex justify-between items-center mb-1">
-                        <label className="text-sm text-white/80">Ground Size</label>
-                        <span className="text-xs text-white/60">{groundSize} units</span>
-                      </div>
-                      <Slider
-                        disabled={isGroundInfinite}
-                        min={10}
-                        max={100}
-                        step={5}
-                        value={[groundSize]}
-                        onValueChange={handleGroundSizeChange}
-                      />
-                    </div>
-                    
-                    {/* Infinite Ground Toggle */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <label className="text-sm text-white/80 flex items-center">
-                          <FaInfinity className="mr-1.5" size={12} />
-                          Infinite Ground
-                        </label>
-                        <p className="text-white/50 text-xs mt-0.5">Minecraft-style endless ground</p>
-                      </div>
-                      <Switch
-                        checked={isGroundInfinite}
-                        onCheckedChange={handleGroundInfiniteToggle}
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Crosshair (Mira) Settings */}
-                  <div className="bg-black/20 rounded-md overflow-hidden mt-4">
-                    <div className="flex items-center justify-between p-2.5">
-                      <div className="text-sm text-white/80 font-medium">Crosshair</div>
-                      <div className="flex items-center">
-                        <Switch 
-                          checked={showCrosshair} 
-                          onCheckedChange={setShowCrosshair} 
-                          className="mr-2"
-                        />
-                        <button 
-                          onClick={() => setShowColorPicker(showColorPicker === 'crosshair' ? null : 'crosshair')}
-                          className={`w-7 h-7 rounded-full border-2 ${showColorPicker === 'crosshair' ? 'border-white' : 'border-white/30'} overflow-hidden cursor-pointer transition-all duration-200 hover:scale-110`}
-                          style={getButtonColorStyle(crosshairColor)}
-                          title="Selecionar cor da mira"
-                          data-color-picker-btn="crosshair"
-                        >
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {showCrosshair && (
-                      <div className="p-3 border-t border-white/10">
-                        {/* Seletor de estilo da mira */}
-                        <div className="mb-3">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-xs text-white/70">Style</span>
-                          </div>
-                          <div className="grid grid-cols-4 gap-2">
+                        <div className="bg-black/20 p-2 rounded-md">
+                          <div className="grid grid-cols-3 gap-2 mb-2">
                             {[
                               { id: 'circle', label: 'Circle' },
-                              { id: 'dot', label: 'Dot' },
-                              { id: 'cross', label: 'Cross' },
-                              { id: 'plus', label: 'Plus' }
-                            ].map(style => (
+                              { id: 'square', label: 'Square' },
+                              { id: 'diamond', label: 'Diamond' },
+                              { id: 'triangle', label: 'Triangle' },
+                              { id: 'hexagon', label: 'Hexagon' },
+                              { id: 'octagon', label: 'Octagon' }
+                            ].map((shape, index) => (
                               <button
-                                key={style.id}
+                                key={shape.id}
                                 className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
-                                  crosshairStyle === style.id 
+                                  groundShape === shape.id 
                                     ? 'bg-white/20 border border-white/40' 
                                     : 'bg-black/30 border border-transparent hover:bg-white/10'
                                 }`}
-                                onClick={() => setCrosshairStyle(style.id)}
+                                onClick={() => setGroundShape(shape.id)}
                               >
-                                <div className="w-8 h-8 bg-black/40 rounded-sm mb-1 flex items-center justify-center">
-                                  {style.id === 'circle' && (
-                                    <div className="w-4 h-4 rounded-full border-2 border-white" />
+                                <div className="w-6 h-6 mb-1">
+                                  {shape.id === 'circle' && <div className="w-full h-full rounded-full border-2 border-white"></div>}
+                                  {shape.id === 'square' && <div className="w-full h-full border-2 border-white"></div>}
+                                  {shape.id === 'diamond' && (
+                                    <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                                      <path d="M12 2L22 12L12 22L2 12L12 2Z" />
+                                    </svg>
                                   )}
-                                  {style.id === 'dot' && (
-                                    <div className="w-2 h-2 rounded-full bg-white" />
+                                  {shape.id === 'triangle' && (
+                                    <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                                      <path d="M12 2L22 20H2L12 2Z" />
+                                    </svg>
                                   )}
-                                  {style.id === 'cross' && (
-                                    <div className="relative w-6 h-6">
-                                      <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white transform -translate-y-1/2" />
-                                      <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-white transform -translate-x-1/2" />
-                                    </div>
+                                  {shape.id === 'hexagon' && (
+                                    <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                                      <path d="M12 2L22 8.5V15.5L12 22L2 15.5V8.5L12 2Z" />
+                                    </svg>
                                   )}
-                                  {style.id === 'plus' && (
-                                    <div className="relative w-6 h-6">
-                                      <div className="absolute top-1/2 left-0 w-2 h-0.5 bg-white transform -translate-y-1/2" />
-                                      <div className="absolute top-1/2 right-0 w-2 h-0.5 bg-white transform -translate-y-1/2" />
-                                      <div className="absolute top-0 left-1/2 h-2 w-0.5 bg-white transform -translate-x-1/2" />
-                                      <div className="absolute bottom-0 left-1/2 h-2 w-0.5 bg-white transform -translate-x-1/2" />
-                                    </div>
+                                  {shape.id === 'octagon' && (
+                                    <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                                      <path d="M8 2L16 2L22 8L22 16L16 22L8 22L2 16L2 8L8 2Z" />
+                                    </svg>
                                   )}
                                 </div>
-                                <span className="text-white/70">{style.label}</span>
+                                <span className="text-white/70">{shape.label}</span>
                               </button>
                             ))}
                           </div>
                         </div>
-                        
-                        <div className="mb-3">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-xs text-white/70">Size</span>
-                            <span className="text-xs text-white/70">{crosshairSize}px</span>
-                          </div>
-                          <Slider 
-                            value={[crosshairSize]} 
-                            min={4} 
-                            max={20} 
-                            step={1} 
-                            onValueChange={(value) => setCrosshairSize(value[0])} 
-                          />
+                      </div>
+                      
+                      {/* Ground Size Slider */}
+                      <div className="mb-4">
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-sm text-white/80">Ground Size</label>
+                          <span className="text-xs text-white/60">
+                            {isGroundInfinite ? "∞" : `${groundSize} units`}
+                          </span>
                         </div>
-                        
+                        <Slider
+                          disabled={isGroundInfinite}
+                          min={10}
+                          max={100}
+                          step={5}
+                          value={[isGroundInfinite ? 10 : groundSize]}
+                          onValueChange={handleGroundSizeChange}
+                          className={isGroundInfinite ? "opacity-50" : ""}
+                        />
+                      </div>
+                      
+                      {/* Infinite Ground Toggle */}
+                      <div className="flex items-center justify-between">
                         <div>
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-xs text-white/70">Thickness</span>
-                            <span className="text-xs text-white/70">{crosshairThickness}px</span>
-                          </div>
-                          <Slider 
-                            value={[crosshairThickness]} 
-                            min={1} 
-                            max={5} 
-                            step={0.5} 
-                            onValueChange={(value) => setCrosshairThickness(value[0])} 
+                          <label className="text-sm text-white/80 flex items-center">
+                            <FaInfinity className="mr-1.5" size={12} />
+                            Infinite Ground
+                          </label>
+                          <p className="text-white/50 text-xs mt-0.5">Minecraft-style endless ground</p>
+                        </div>
+                        <Switch
+                          checked={isGroundInfinite}
+                          onCheckedChange={handleGroundInfiniteToggle}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Crosshair (Mira) Settings */}
+                    <div className="bg-black/20 rounded-md overflow-hidden mt-4">
+                      <div className="flex items-center justify-between p-2.5">
+                        <div className="text-sm text-white/80 font-medium">Crosshair</div>
+                        <div className="flex items-center">
+                          <Switch 
+                            checked={showCrosshair} 
+                            onCheckedChange={setShowCrosshair} 
+                            className="mr-2"
+                          />
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowColorPicker(showColorPicker === 'crosshair' ? null : 'crosshair');
+                            }}
+                            className={`w-7 h-7 rounded-full border-2 ${showColorPicker === 'crosshair' ? 'border-white' : 'border-white/30'} overflow-hidden cursor-pointer transition-all duration-200 hover:scale-110`}
+                            style={getButtonColorStyle(crosshairColor)}
+                            title="Select crosshair color"
+                            data-color-picker-btn="crosshair"
                           />
                         </div>
                       </div>
-                    )}
+                      
+                      {showCrosshair && (
+                        <div className="p-3 border-t border-white/10">
+                          {/* Crosshair color picker dropdown */}
+                          {showColorPicker === 'crosshair' && (
+                            <div 
+                              ref={el => colorPickerRefs.current.crosshair = el} 
+                              className="mb-4 relative"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-medium text-white/90">Crosshair Color</span>
+                                <div className="flex gap-2">
+                                  <button 
+                                    className="bg-transparent hover:bg-white/10 p-1.5 rounded text-white/80 flex items-center border border-white/20"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleColorChange('crosshair', 'transparent');
+                                    }}
+                                    title="Set transparent"
+                                  >
+                                    <FaEyeSlash size={12} className="mr-1.5" />
+                                    <span className="text-xs">Transparent</span>
+                                  </button>
+                                  <button 
+                                    className="bg-white/10 hover:bg-white/20 p-1.5 rounded text-white/80 flex items-center"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setShowColorPicker(null);
+                                    }}
+                                    title="Close color picker"
+                                  >
+                                    <FaTimes size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="border border-white/10 rounded-md p-2 mb-3 z-50">
+                                <RgbaColorPicker 
+                                  color={crosshairColor === 'transparent' ? { r: 255, g: 255, b: 255, a: 0 } : 
+                                        stringToRgba(crosshairColor)}
+                                  onChange={(color) => handleColorChange('crosshair', color)} 
+                                  style={{ width: '100%' }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Seletor de estilo da mira */}
+                          <div className="mb-3">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs text-white/70">Style</span>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2">
+                              {[
+                                { id: 'circle', label: 'Circle' },
+                                { id: 'dot', label: 'Dot' },
+                                { id: 'cross', label: 'Cross' },
+                                { id: 'plus', label: 'Plus' }
+                              ].map(style => (
+                                <button
+                                  key={style.id}
+                                  className={`p-2 rounded text-xs flex flex-col items-center justify-center ${
+                                    crosshairStyle === style.id 
+                                      ? 'bg-white/20 border border-white/40' 
+                                      : 'bg-black/30 border border-transparent hover:bg-white/10'
+                                  }`}
+                                  onClick={() => setCrosshairStyle(style.id)}
+                                >
+                                  <div className="w-8 h-8 bg-black/40 rounded-sm mb-1 flex items-center justify-center">
+                                    {style.id === 'circle' && (
+                                      <div className="w-4 h-4 rounded-full border-2 border-white" />
+                                    )}
+                                    {style.id === 'dot' && (
+                                      <div className="w-2 h-2 rounded-full bg-white" />
+                                    )}
+                                    {style.id === 'cross' && (
+                                      <div className="relative w-6 h-6">
+                                        <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white transform -translate-y-1/2" />
+                                        <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-white transform -translate-x-1/2" />
+                                      </div>
+                                    )}
+                                    {style.id === 'plus' && (
+                                      <div className="relative w-6 h-6">
+                                        <div className="absolute top-1/2 left-0 w-2 h-0.5 bg-white transform -translate-y-1/2" />
+                                        <div className="absolute top-1/2 right-0 w-2 h-0.5 bg-white transform -translate-y-1/2" />
+                                        <div className="absolute top-0 left-1/2 h-2 w-0.5 bg-white transform -translate-x-1/2" />
+                                        <div className="absolute bottom-0 left-1/2 h-2 w-0.5 bg-white transform -translate-x-1/2" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <span className="text-white/70">{style.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          <div className="mb-3">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs text-white/70">Size</span>
+                              <span className="text-xs text-white/70">{crosshairSize}px</span>
+                            </div>
+                            <Slider 
+                              value={[crosshairSize]} 
+                              min={4} 
+                              max={20} 
+                              step={1} 
+                              onValueChange={(value) => setCrosshairSize(value[0])} 
+                            />
+                          </div>
+                          
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs text-white/70">Thickness</span>
+                              <span className="text-xs text-white/70">{crosshairThickness}px</span>
+                            </div>
+                            <Slider 
+                              value={[crosshairThickness]} 
+                              min={1} 
+                              max={5} 
+                              step={0.5} 
+                              onValueChange={(value) => setCrosshairThickness(value[0])} 
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-            
-            {/* Controls Tab Content - add gravity option here */}
-            {activeTab === 'controles' && (
-              <div className="space-y-3 animate-fadeIn">
-                <div className="bg-white/5 rounded-lg p-3 space-y-2">
-                  <h3 className="text-sm font-medium text-white/90 mb-2">Settings</h3>
-                  
-                  {/* Gravity Control - NEW */}
-                  <div className="flex items-center justify-between bg-black/20 p-2 rounded-md">
-                    <div>
-                      <label className="text-xs text-white/80 block">Enable Gravity</label>
-                      <p className="text-white/50 text-xs mt-0.5">Fall to the ground when active</p>
+              )
+            },
+            {
+              id: 'environment',
+              label: 'Environment',
+              icon: <FaLayerGroup size={10} />,
+              content: (
+                <div className="space-y-2 animate-fadeIn">
+                  <div className="bg-white/5 rounded-lg p-3 space-y-3">
+                    {/* Sky Settings */}
+                    <div className="bg-black/20 rounded-md overflow-hidden">
+                      <div className="flex items-center justify-between p-2.5">
+                        <div className="text-sm text-white/80 font-medium">Sky</div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setTheme({ skyVisible: !(skyVisible ?? true) })}
+                            className={`w-7 h-7 rounded-full flex items-center justify-center ${(skyVisible ?? true) ? 'text-white/80 hover:text-white' : 'text-white/30 hover:text-white/50'}`}
+                            title={(skyVisible ?? true) ? "Hide sky" : "Show sky"}
+                          >
+                            {(skyVisible ?? true) ? <FaEye size={14} /> : <FaEyeSlash size={14} />}
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {(skyVisible ?? true) && (
+                        <div className="p-3 border-t border-white/10">
+                          <div className="space-y-3">
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <label className="text-xs text-white/70">Inclination</label>
+                                <span className="text-xs text-white/50">{(skyInclination ?? 0).toFixed(2)}</span>
+                              </div>
+                              <Slider 
+                                value={[skyInclination ?? 0]} 
+                                min={0} 
+                                max={1} 
+                                step={0.01} 
+                                onValueChange={(value) => setTheme({ skyInclination: value[0] })}
+                              />
+                            </div>
+                            
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <label className="text-xs text-white/70">Azimuth</label>
+                                <span className="text-xs text-white/50">{(skyAzimuth ?? 0).toFixed(2)}</span>
+                              </div>
+                              <Slider 
+                                value={[skyAzimuth ?? 0]} 
+                                min={0} 
+                                max={1} 
+                                step={0.01} 
+                                onValueChange={(value) => setTheme({ skyAzimuth: value[0] })}
+                              />
+                            </div>
+                            
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <label className="text-xs text-white/70">Sun Y Position</label>
+                                <span className="text-xs text-white/50">{((skySunPosition && skySunPosition[1]) ?? 1).toFixed(2)}</span>
+                              </div>
+                              <Slider 
+                                value={[(skySunPosition && skySunPosition[1]) ?? 1]} 
+                                min={0} 
+                                max={10} 
+                                step={0.1} 
+                                onValueChange={(value) => setTheme({ skySunPosition: [0, value[0], 0] })}
+                              />
+                            </div>
+                            
+                            {/* Sky Color/Tone Controls */}
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <label className="text-xs text-white/70">Sky Color (Turbidity)</label>
+                                <span className="text-xs text-white/50">{(skyTurbidity ?? 10).toFixed(1)}</span>
+                              </div>
+                              <Slider 
+                                value={[skyTurbidity ?? 10]} 
+                                min={1} 
+                                max={20} 
+                                step={0.5} 
+                                onValueChange={(value) => setTheme({ skyTurbidity: value[0] })}
+                              />
+                              <p className="text-xs text-white/40 mt-1">Lower = bluer, Higher = hazier</p>
+                            </div>
+                            
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <label className="text-xs text-white/70">Sky Tone (Rayleigh)</label>
+                                <span className="text-xs text-white/50">{(skyRayleigh ?? 2.5).toFixed(1)}</span>
+                              </div>
+                              <Slider 
+                                value={[skyRayleigh ?? 2.5]} 
+                                min={0.1} 
+                                max={4} 
+                                step={0.1} 
+                                onValueChange={(value) => setTheme({ skyRayleigh: value[0] })}
+                              />
+                              <p className="text-xs text-white/40 mt-1">Controls atmospheric scattering</p>
+                            </div>
+                            
+                            {/* Sky Opacity Control */}
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <label className="text-xs text-white/70">Opacity</label>
+                                <span className="text-xs text-white/50">{Math.round((skyOpacity ?? 1) * 100)}%</span>
+                              </div>
+                              <Slider 
+                                value={[skyOpacity ?? 1]} 
+                                min={0} 
+                                max={1} 
+                                step={0.05} 
+                                onValueChange={(value) => setTheme({ skyOpacity: value[0] })}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <Switch
-                      checked={gravityEnabled}
-                      onCheckedChange={setGravityEnabled}
-                    />
+                    
+                    {/* Stars Settings */}
+                    <div className="bg-black/20 rounded-md overflow-hidden">
+                      <div className="flex items-center justify-between p-2.5">
+                        <div className="text-sm text-white/80 font-medium">Stars</div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setTheme({ starsVisible: !(starsVisible ?? true) })}
+                            className={`w-7 h-7 rounded-full flex items-center justify-center ${(starsVisible ?? true) ? 'text-white/80 hover:text-white' : 'text-white/30 hover:text-white/50'}`}
+                            title={(starsVisible ?? true) ? "Hide stars" : "Show stars"}
+                          >
+                            {(starsVisible ?? true) ? <FaEye size={14} /> : <FaEyeSlash size={14} />}
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {(starsVisible ?? true) && (
+                        <div className="p-3 border-t border-white/10">
+                          <div className="space-y-3">
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <label className="text-xs text-white/70">Count</label>
+                                <span className="text-xs text-white/50">{starsCount ?? 5000}</span>
+                              </div>
+                              <Slider 
+                                value={[starsCount ?? 5000]} 
+                                min={1000} 
+                                max={10000} 
+                                step={100} 
+                                onValueChange={(value) => setTheme({ starsCount: value[0] })}
+                              />
+                            </div>
+                            
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <label className="text-xs text-white/70">Radius</label>
+                                <span className="text-xs text-white/50">{starsRadius ?? 100}</span>
+                              </div>
+                              <Slider 
+                                value={[starsRadius ?? 100]} 
+                                min={50} 
+                                max={200} 
+                                step={5} 
+                                onValueChange={(value) => setTheme({ starsRadius: value[0] })}
+                              />
+                            </div>
+                            
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <label className="text-xs text-white/70">Depth</label>
+                                <span className="text-xs text-white/50">{starsDepth ?? 50}</span>
+                              </div>
+                              <Slider 
+                                value={[starsDepth ?? 50]} 
+                                min={10} 
+                                max={100} 
+                                step={5} 
+                                onValueChange={(value) => setTheme({ starsDepth: value[0] })}
+                              />
+                            </div>
+                            
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <label className="text-xs text-white/70">Factor</label>
+                                <span className="text-xs text-white/50">{starsFactor ?? 4}</span>
+                              </div>
+                              <Slider 
+                                value={[starsFactor ?? 4]} 
+                                min={1} 
+                                max={10} 
+                                step={0.5} 
+                                onValueChange={(value) => setTheme({ starsFactor: value[0] })}
+                              />
+                            </div>
+                            
+                            <div>
+                              <div className="flex justify-between mb-1">
+                                <label className="text-xs text-white/70">Saturation</label>
+                                <span className="text-xs text-white/50">{starsSaturation ?? 0}</span>
+                              </div>
+                              <Slider 
+                                value={[starsSaturation ?? 0]} 
+                                min={0} 
+                                max={1} 
+                                step={0.05} 
+                                onValueChange={(value) => setTheme({ starsSaturation: value[0] })}
+                              />
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs text-white/70">Fade Effect</label>
+                              <Switch 
+                                checked={starsFade ?? true} 
+                                onCheckedChange={(value) => setTheme({ starsFade: value })} 
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  
-                  {/* Existing controls */}
-                  <div className="flex items-center justify-between bg-black/20 p-2 rounded-md">
-                    <div>
-                      <label className="text-xs text-white/80 block">Enable Movement</label>
-                      <p className="text-white/50 text-xs mt-0.5">Allow navigation in 3D space</p>
-                    </div>
-                    <Switch
-                      checked={movementEnabled}
-                      onCheckedChange={setMovementEnabled}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between bg-black/20 p-2 rounded-md">
-                    <div>
-                      <label className="text-xs text-white/80 block">Show Frame Controls</label>
-                      <p className="text-white/50 text-xs mt-0.5">Display website controls</p>
-                    </div>
-                    <Switch
-                      checked={showFrameControls}
-                      onCheckedChange={setShowFrameControls}
-                    />
-                  </div>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-between p-2 mt-1 text-left text-xs hover:bg-white/10 transition-colors duration-200 border-white/10"
-                    onClick={handleClearAllFrames}
-                  >
-                    <div>
-                      <div className="font-medium text-xs text-white/80">Clear Frames</div>
-                      <p className="text-white/50 text-xs mt-0.5">Remove all frames from the scene</p>
-                    </div>
-                    <FaChevronRight className="text-white/50 w-2 h-2" />
-                  </Button>
                 </div>
-              </div>
-            )}
-          </div>
-        </SettingsPanel>
+              )
+            },
+            {
+              id: 'controls',
+              label: 'Controls',
+              icon: <FaSlidersH size={10} />,
+              content: (
+                <div className="space-y-3 animate-fadeIn">
+                  <div className="bg-white/5 rounded-lg p-3 space-y-2">
+                    {/* <h3 className="text-sm font-medium text-white/90 mb-2">Settings</h3> */}
+                    
+                    {/* Gravity Control */}
+                    <div className="flex items-center justify-between bg-black/20 p-2 rounded-md">
+                      <div>
+                        <label className="text-xs text-white/80 block">Enable Gravity</label>
+                        <p className="text-white/50 text-xs mt-0.5">Fall to the ground when active</p>
+                      </div>
+                      <Switch
+                        checked={gravityEnabled}
+                        onCheckedChange={setGravityEnabled}
+                      />
+                    </div>
+                    
+                    {/* Movement Control */}
+                    <div className="flex items-center justify-between bg-black/20 p-2 rounded-md">
+                      <div>
+                        <label className="text-xs text-white/80 block">Enable Movement</label>
+                        <p className="text-white/50 text-xs mt-0.5">Allow navigation in 3D space</p>
+                      </div>
+                      <Switch
+                        checked={movementEnabled}
+                        onCheckedChange={setMovementEnabled}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between bg-black/20 p-2 rounded-md">
+                      <div>
+                        <label className="text-xs text-white/80 block">Show Frame Controls</label>
+                        <p className="text-white/50 text-xs mt-0.5">Display website controls</p>
+                      </div>
+                      <Switch
+                        checked={showFrameControls}
+                        onCheckedChange={setShowFrameControls}
+                      />
+                    </div>
+                    
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-between p-2 mt-1 text-left text-xs hover:bg-white/10 transition-colors duration-200 border-white/10"
+                      onClick={handleClearAllFrames}
+                    >
+                      <div>
+                        <div className="font-medium text-xs text-white/80">Clear Frames</div>
+                        <p className="text-white/50 text-xs mt-0.5">Remove all frames from the scene</p>
+                      </div>
+                      <FaChevronRight className="text-white/50 w-2 h-2" />
+                    </Button>
+                  </div>
+                </div>
+              )
+            }
+          ]}
+        />
       </div>
       
       {/* Color picker dropdown */}

@@ -12,7 +12,23 @@ const defaultTheme = {
   backgroundOpacity: 100,
   floorPlaneOpacity: 50,
   groundSize: 30,
-  isGroundInfinite: false
+  isGroundInfinite: false,
+  
+  // Sky settings
+  skyVisible: true,
+  skyDistance: 450000,
+  skySunPosition: [0, 1, 0],
+  skyInclination: 0,
+  skyAzimuth: 0.25,
+  
+  // Stars settings
+  starsVisible: true,
+  starsRadius: 100,
+  starsDepth: 50,
+  starsCount: 5000,
+  starsFactor: 4,
+  starsSaturation: 0,
+  starsFade: true
 };
 
 // Carregar cores salvas do localStorage ou usar valores padrão
@@ -82,6 +98,13 @@ export const useThemeStore = create((set) => ({
     const newState = { ...state, isGroundInfinite: isInfinite };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
     return { isGroundInfinite: isInfinite };
+  }),
+  
+  // Generic function to update any theme property
+  setTheme: (themeUpdate) => set(state => {
+    const newState = { ...state, ...themeUpdate };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+    return themeUpdate;
   }),
   
   // Funções para aplicar cor com opacidade
