@@ -91,6 +91,48 @@ contextBridge.exposeInMainWorld('electron', {
     } catch (error) {
       return { success: false, error: error.message };
     }
+  },
+  
+  // Helper function to load images from app-file URLs
+  loadImageFromAppFile: async (appFilePath) => {
+    try {
+      // If it's already a blob URL, just return it
+      if (appFilePath.startsWith('blob:')) {
+        return { success: true, url: appFilePath };
+      }
+      
+      // If it's an app-file URL, convert it to a blob URL
+      if (appFilePath.startsWith('app-file://')) {
+        const path = appFilePath.substring(11); // Remove 'app-file://'
+        const fileBuffer = await ipcRenderer.invoke('read-file-as-buffer', decodeURI(path));
+        
+        // Determine MIME type based on file extension
+        const ext = path.split('.').pop().toLowerCase();
+        let mimeType = 'application/octet-stream';
+        
+        if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+        else if (ext === 'png') mimeType = 'image/png';
+        else if (ext === 'gif') mimeType = 'image/gif';
+        else if (ext === 'webp') mimeType = 'image/webp';
+        else if (ext === 'svg') mimeType = 'image/svg+xml';
+        
+        // Create a blob with the correct MIME type
+        const blob = new Blob([fileBuffer], { type: mimeType });
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Cache the blob URL to prevent garbage collection
+        window._imageBlobCache = window._imageBlobCache || {};
+        window._imageBlobCache[appFilePath] = blobUrl;
+        
+        return { success: true, url: blobUrl };
+      }
+      
+      // If it's a regular URL, just return it
+      return { success: true, url: appFilePath };
+    } catch (error) {
+      console.error('Error loading image from app-file:', error);
+      return { success: false, error: error.message, url: appFilePath };
+    }
   }
 });
 

@@ -61,9 +61,31 @@ electron.app.whenReady().then(() => {
   electron.protocol.registerFileProtocol("app-file", (request, callback) => {
     const url = request.url.substring(10);
     try {
-      return callback(decodeURI(url));
+      const decodedUrl = decodeURI(url);
+      console.log("Loading file via app-file protocol:", decodedUrl);
+      if (!fs.existsSync(decodedUrl)) {
+        console.error("File not found:", decodedUrl);
+        return callback({ error: -2 });
+      }
+      const ext = path.extname(decodedUrl).toLowerCase();
+      let mimeType = "application/octet-stream";
+      if (ext === ".jpg" || ext === ".jpeg")
+        mimeType = "image/jpeg";
+      else if (ext === ".png")
+        mimeType = "image/png";
+      else if (ext === ".gif")
+        mimeType = "image/gif";
+      else if (ext === ".webp")
+        mimeType = "image/webp";
+      else if (ext === ".svg")
+        mimeType = "image/svg+xml";
+      return callback({
+        path: decodedUrl,
+        mimeType
+      });
     } catch (error) {
       console.error("Protocol handler error:", error);
+      return callback({ error: -2 });
     }
   });
   const win = new electron.BrowserWindow({
@@ -90,12 +112,77 @@ electron.app.whenReady().then(() => {
     }
   });
   win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    if (details.url.startsWith("blob:")) {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Access-Control-Allow-Origin": ["*"],
+          "Access-Control-Allow-Methods": ["GET, POST, OPTIONS"],
+          "Access-Control-Allow-Headers": ["Content-Type, Authorization"],
+          "Content-Security-Policy": ["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file:; img-src 'self' data: blob: https://* http://* app-file:;"]
+        }
+      });
+    } else {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Content-Security-Policy": ["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file:; img-src 'self' data: blob: https://* http://* app-file:;"]
+        }
+      });
+    }
+  });
+  win.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+    if (details.url.startsWith("app-file://")) {
+      console.log("Allowing app-file request:", details.url);
+    }
+    callback({});
+  });
+  const persistentSession = electron.session.fromPartition("persist:webviewsession");
+  persistentSession.protocol.registerFileProtocol("app-file", (request, callback) => {
+    const url = request.url.substring(10);
+    try {
+      const decodedUrl = decodeURI(url);
+      console.log("Loading file via app-file protocol (webview session):", decodedUrl);
+      if (!fs.existsSync(decodedUrl)) {
+        console.error("File not found:", decodedUrl);
+        return callback({ error: -2 });
+      }
+      const ext = path.extname(decodedUrl).toLowerCase();
+      let mimeType = "application/octet-stream";
+      if (ext === ".jpg" || ext === ".jpeg")
+        mimeType = "image/jpeg";
+      else if (ext === ".png")
+        mimeType = "image/png";
+      else if (ext === ".gif")
+        mimeType = "image/gif";
+      else if (ext === ".webp")
+        mimeType = "image/webp";
+      else if (ext === ".svg")
+        mimeType = "image/svg+xml";
+      return callback({
+        path: decodedUrl,
+        mimeType
+      });
+    } catch (error) {
+      console.error("Protocol handler error in webview session:", error);
+      return callback({ error: -2 });
+    }
+  });
+  persistentSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        "Content-Security-Policy": ["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval'"]
+        "Content-Security-Policy": ["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file:; img-src 'self' data: blob: https://* http://* app-file:;"]
       }
     });
+  });
+  persistentSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    webContents.getURL();
+    if (permission === "media" || permission === "mediaKeySystem" || permission === "geolocation" || permission === "notifications" || permission === "fullscreen") {
+      callback(true);
+    } else {
+      callback(false);
+    }
   });
   win.maximize();
   win.show();

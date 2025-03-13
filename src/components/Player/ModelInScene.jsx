@@ -23,6 +23,11 @@ function Model({ url, scale }) {
             const result = await window.electron.loadFileAsBlob(url);
             if (result.success) {
               console.log('Modelo carregado com sucesso, usando blob URL:', result.blobUrl);
+              
+              // Store the blob URL in a global cache to prevent garbage collection
+              window._blobUrlCache = window._blobUrlCache || {};
+              window._blobUrlCache[result.blobUrl] = true;
+              
               setModelUrl(result.blobUrl);
             } else {
               console.error('Erro ao carregar modelo com Electron:', result.error);
@@ -34,6 +39,12 @@ function Model({ url, scale }) {
             console.warn('API Electron não disponível, usando URL original:', url);
             setModelUrl(url);
           }
+        } else if (url && url.startsWith('blob:')) {
+          // For blob URLs, ensure they're cached to prevent garbage collection
+          console.log('Using blob URL directly:', url);
+          window._blobUrlCache = window._blobUrlCache || {};
+          window._blobUrlCache[url] = true;
+          setModelUrl(url);
         } else {
           // URL normal, manter como está
           setModelUrl(url);
@@ -47,6 +58,22 @@ function Model({ url, scale }) {
     };
     
     loadModel();
+    
+    // Cleanup function to revoke blob URLs when component unmounts
+    return () => {
+      if (modelUrl && modelUrl.startsWith('blob:') && window._blobUrlCache) {
+        delete window._blobUrlCache[modelUrl];
+        // Only revoke if no other components are using this blob URL
+        if (!Object.values(window._blobUrlCache).some(v => v === modelUrl)) {
+          try {
+            URL.revokeObjectURL(modelUrl);
+            console.log('Revoked blob URL:', modelUrl);
+          } catch (e) {
+            console.error('Error revoking blob URL:', e);
+          }
+        }
+      }
+    };
   }, [url]);
   
   // Se estiver carregando ou houver erro, não tente carregar o modelo com THREE
@@ -123,6 +150,16 @@ class ModelErrorBoundary extends React.Component {
     // Se o erro for sobre CORS, forneça dicas específicas
     if (error.message && error.message.includes('CORS')) {
       console.info('DICA: O erro pode estar relacionado a restrições de CORS. No Electron, você pode configurar webSecurity: false nas webPreferences ou usar um protocolo personalizado.');
+    }
+    
+    // If the error is about Content Security Policy
+    if (error.message && (error.message.includes('Content Security Policy') || error.message.includes('CSP'))) {
+      console.info('DICA: O erro está relacionado à Política de Segurança de Conteúdo (CSP). Verifique se sua CSP permite blob: URLs no connect-src. Adicione "blob:" à diretiva connect-src na sua CSP.');
+    }
+    
+    // If the error is about Failed to fetch
+    if (error.message && error.message.includes('Failed to fetch')) {
+      console.info('DICA: O erro "Failed to fetch" pode estar relacionado a problemas de rede, CORS ou CSP. Verifique se o URL é acessível e se sua CSP permite o acesso a esse recurso.');
     }
   }
 

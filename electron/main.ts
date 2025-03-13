@@ -1,4 +1,4 @@
-import { app, screen, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
+import { app, screen, BrowserWindow, ipcMain, dialog, protocol, session } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -25,9 +25,34 @@ app.whenReady().then(() => {
   protocol.registerFileProtocol('app-file', (request, callback) => {
     const url = request.url.substring(10); // Remove 'app-file://'
     try {
-      return callback(decodeURI(url));
+      // Decode the URL to handle special characters
+      const decodedUrl = decodeURI(url);
+      console.log('Loading file via app-file protocol:', decodedUrl);
+      
+      // Check if file exists
+      if (!fs.existsSync(decodedUrl)) {
+        console.error('File not found:', decodedUrl);
+        return callback({ error: -2 }); // FILE_NOT_FOUND
+      }
+      
+      // Get file extension to set proper MIME type
+      const ext = path.extname(decodedUrl).toLowerCase();
+      let mimeType = 'application/octet-stream'; // Default MIME type
+      
+      // Set appropriate MIME type for common image formats
+      if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+      else if (ext === '.png') mimeType = 'image/png';
+      else if (ext === '.gif') mimeType = 'image/gif';
+      else if (ext === '.webp') mimeType = 'image/webp';
+      else if (ext === '.svg') mimeType = 'image/svg+xml';
+      
+      return callback({
+        path: decodedUrl,
+        mimeType: mimeType
+      });
     } catch (error) {
       console.error('Protocol handler error:', error);
+      return callback({ error: -2 });
     }
   });
 
@@ -56,12 +81,98 @@ app.whenReady().then(() => {
 
   // Configurar Content Security Policy para permitir carregar recursos locais
   win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    // For blob URLs, ensure CORS headers are set properly
+    if (details.url.startsWith('blob:')) {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Access-Control-Allow-Origin': ['*'],
+          'Access-Control-Allow-Methods': ['GET, POST, OPTIONS'],
+          'Access-Control-Allow-Headers': ['Content-Type, Authorization'],
+          'Content-Security-Policy': ['default-src \'self\' app-file: file: data: blob: \'unsafe-inline\' \'unsafe-eval\' https://* http://*; media-src \'self\' https://* http://* blob: app-file:; connect-src \'self\' https://* http://* ws://* wss://* blob: app-file:; img-src \'self\' data: blob: https://* http://* app-file:;']
+        }
+      });
+    } else {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': ['default-src \'self\' app-file: file: data: blob: \'unsafe-inline\' \'unsafe-eval\' https://* http://*; media-src \'self\' https://* http://* blob: app-file:; connect-src \'self\' https://* http://* ws://* wss://* blob: app-file:; img-src \'self\' data: blob: https://* http://* app-file:;']
+        }
+      });
+    }
+  });
+
+  // Configure the default session to allow loading blob URLs
+  win.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+    // Allow all requests, including blob URLs and app-file URLs
+    if (details.url.startsWith('app-file://')) {
+      console.log('Allowing app-file request:', details.url);
+    }
+    callback({});
+  });
+
+  // Configure persistent session for webviews
+  const persistentSession = session.fromPartition('persist:webviewsession');
+  
+  // Apply the same protocol handler to the persistent session
+  persistentSession.protocol.registerFileProtocol('app-file', (request, callback) => {
+    const url = request.url.substring(10); // Remove 'app-file://'
+    try {
+      // Decode the URL to handle special characters
+      const decodedUrl = decodeURI(url);
+      console.log('Loading file via app-file protocol (webview session):', decodedUrl);
+      
+      // Check if file exists
+      if (!fs.existsSync(decodedUrl)) {
+        console.error('File not found:', decodedUrl);
+        return callback({ error: -2 }); // FILE_NOT_FOUND
+      }
+      
+      // Get file extension to set proper MIME type
+      const ext = path.extname(decodedUrl).toLowerCase();
+      let mimeType = 'application/octet-stream'; // Default MIME type
+      
+      // Set appropriate MIME type for common image formats
+      if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+      else if (ext === '.png') mimeType = 'image/png';
+      else if (ext === '.gif') mimeType = 'image/gif';
+      else if (ext === '.webp') mimeType = 'image/webp';
+      else if (ext === '.svg') mimeType = 'image/svg+xml';
+      
+      return callback({
+        path: decodedUrl,
+        mimeType: mimeType
+      });
+    } catch (error) {
+      console.error('Protocol handler error in webview session:', error);
+      return callback({ error: -2 });
+    }
+  });
+  
+  // Configure the persistent session with the same CSP
+  persistentSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': ['default-src \'self\' app-file: file: data: blob: \'unsafe-inline\' \'unsafe-eval\'']
+        'Content-Security-Policy': ['default-src \'self\' app-file: file: data: blob: \'unsafe-inline\' \'unsafe-eval\' https://* http://*; media-src \'self\' https://* http://* blob: app-file:; connect-src \'self\' https://* http://* ws://* wss://* blob: app-file:; img-src \'self\' data: blob: https://* http://* app-file:;']
       }
     });
+  });
+  
+  // Set permissions for media
+  persistentSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    const url = webContents.getURL();
+    
+    // Allow all permissions for now - you can make this more restrictive if needed
+    if (permission === 'media' || 
+        permission === 'mediaKeySystem' || 
+        permission === 'geolocation' || 
+        permission === 'notifications' ||
+        permission === 'fullscreen') {
+      callback(true);
+    } else {
+      callback(false);
+    }
   });
 
   win.maximize();

@@ -132,6 +132,9 @@ function BoxFrame({
         ref={webviewRef}
         className='w-screen h-screen'
         src={`${url.includes('https://') ? '' : 'https://'}${url}`}
+        allowpopups="true"
+        partition="persist:webviewsession"
+        webpreferences="allowRunningInsecureContent=yes, autoplayPolicy=no-user-gesture-required"
       ></webview>
     </div>
   );

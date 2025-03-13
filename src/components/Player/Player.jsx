@@ -1075,130 +1075,115 @@ const Player = () => {
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
+    
+    if (!isDragging) {
+      console.log('Drag over detected');
+      setIsDragging(true);
+    }
   };
-
-  // Handle file drop on the canvas
+  
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('Drag leave detected');
+    setIsDragging(false);
+  };
+  
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    console.log('Drop detected');
     setIsDragging(false);
     
     const files = e.dataTransfer.files;
-    if (files.length === 0) return;
+    if (files.length === 0) {
+      console.log('No files dropped');
+      return;
+    }
     
+    console.log(`${files.length} file(s) dropped`);
+    
+    // Process only the first file
     const file = files[0];
+    console.log('Dropped file:', file.name, file.type, file.size);
+    
+    // Check file extension
     const fileName = file.name.toLowerCase();
     
     // Handle 3D model files
     if (fileName.endsWith('.glb') || fileName.endsWith('.gltf')) {
+      console.log('Processing as 3D model file');
       handleModelDrop(file);
     }
     // Handle image files
     else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || 
              fileName.endsWith('.png') || fileName.endsWith('.webp') || 
              fileName.endsWith('.gif')) {
+      console.log('Processing as image file');
       handleImageDrop(file);
+    } else {
+      console.log('Unsupported file type:', fileName);
+      alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, PNG, WEBP, GIF`);
     }
-  };
-
-  // Handle drag leave
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
   };
 
   // Handle 3D model file drop
   const handleModelDrop = (file) => {
     try {
+      console.log('Starting model drop handler for file:', file.name);
+      
       // Create a Blob URL for the file
       const objectUrl = URL.createObjectURL(file);
+      console.log('Created blob URL for model:', objectUrl);
       
       // Store the file in the model store to ensure it's not garbage collected
-      const modelFileCache = window._modelFileCache = window._modelFileCache || {};
-      modelFileCache[objectUrl] = file;
+      window._modelFileCache = window._modelFileCache || {};
+      window._modelFileCache[objectUrl] = file;
+      
+      // Also store in the blob URL cache for the Model component
+      window._blobUrlCache = window._blobUrlCache || {};
+      window._blobUrlCache[objectUrl] = true;
       
       // Check if we have access to the camera
       if (!cameraRef.current) {
-        console.error('Camera reference not available. Model will be placed at origin.');
+        console.warn('Camera reference not available. Model will be placed at origin.');
         
         // Add model at origin if camera not available
-        addModel({
+        const modelId = addModel({
           url: objectUrl,
           fileName: file.name,
           position: [0, 1, 0], // Default position above ground
           rotation: [0, 0, 0],
           scale: 1,
         });
-        return;
-      }
-      
-      // Use the camera reference to get position and direction
-      const camera = cameraRef.current;
-      const direction = new THREE.Vector3(0, 0, -1);
-      direction.applyQuaternion(camera.quaternion);
-      
-      const position = new THREE.Vector3();
-      position.copy(camera.position);
-      direction.multiplyScalar(3); // Place 3 units in front of camera
-      position.add(direction);
-      
-      // Add model to the store
-      const modelId = addModel({
-        url: objectUrl,
-        fileName: file.name,
-        position: [position.x, position.y, position.z],
-        rotation: [0, 0, 0],
-        scale: 1,
-      });
-
-      console.log(`Added model: ${file.name} at position:`, position);
-
-      // Save the file to disk using Electron's IPC
-      if (window.electron) {
-        window.electron.saveModelFile(file, file.name).then(savedPath => {
-          // Update model with the new file path
-          updateModel(modelId, { url: savedPath });
-          console.log(`Saved model to disk: ${savedPath}`);
-        }).catch(error => {
-          console.error('Error saving model file:', error);
-        });
-      }
-    } catch (error) {
-      console.error('Error handling model drop:', error);
-      alert(`Error loading 3D model: ${error.message}`);
-    }
-  };
-
-  // Handle image file drop
-  const handleImageDrop = (file) => {
-    try {
-      // Create a Blob URL for the file
-      const objectUrl = URL.createObjectURL(file);
-      
-      // Check if we have access to the camera
-      if (!cameraRef.current) {
-        console.error('Camera reference not available. Image will be placed at origin.');
         
-        // Add image at origin if camera not available
-        const imageId = addImage({
-          src: objectUrl,
-          fileName: file.name,
-          position: [0, 1, 0], // Default position
-          rotation: [0, 0, 0],
-          scale: 1,
-        });
+        console.log('Added model at origin with ID:', modelId);
         
         // Save the file to disk using Electron's IPC
-        if (window.electron) {
-          window.electron.saveImageFile(file, file.name).then(savedPath => {
-            // Update image with the new file path
-            updateImage(imageId, { src: savedPath });
-            console.log(`Saved image to disk: ${savedPath}`);
+        if (window.electron && window.electron.saveModelFile) {
+          console.log('Saving model file to disk...');
+          window.electron.saveModelFile(file, file.name).then(savedPath => {
+            // Update model with the new file path
+            updateModel(modelId, { url: savedPath });
+            console.log(`Saved model to disk: ${savedPath}`);
+            
+            // Clean up the blob URL after the file is saved to disk
+            try {
+              URL.revokeObjectURL(objectUrl);
+              delete window._modelFileCache[objectUrl];
+              delete window._blobUrlCache[objectUrl];
+              console.log('Revoked blob URL after saving to disk:', objectUrl);
+            } catch (e) {
+              console.error('Error revoking blob URL:', e);
+            }
           }).catch(error => {
-            console.error('Error saving image file:', error);
+            console.error('Error saving model file:', error);
+            alert(`Error saving model file: ${error.message}`);
           });
+        } else {
+          console.warn('Electron saveModelFile API not available');
         }
         
         return;
@@ -1214,11 +1199,109 @@ const Player = () => {
       direction.multiplyScalar(3); // Place 3 units in front of camera
       position.add(direction);
       
+      console.log('Placing model at position:', position);
+      
+      // Add model to the store
+      const modelId = addModel({
+        url: objectUrl,
+        fileName: file.name,
+        position: [position.x, position.y, position.z],
+        rotation: [0, 0, 0],
+        scale: 1,
+      });
+      
+      console.log(`Added model: ${file.name} with ID: ${modelId} at position:`, position);
+      
+      // Save the file to disk using Electron's IPC
+      if (window.electron && window.electron.saveModelFile) {
+        console.log('Saving model file to disk...');
+        window.electron.saveModelFile(file, file.name).then(savedPath => {
+          // Update model with the new file path
+          updateModel(modelId, { url: savedPath });
+          console.log(`Saved model to disk: ${savedPath}`);
+          
+          // Clean up the blob URL after the file is saved to disk
+          try {
+            URL.revokeObjectURL(objectUrl);
+            delete window._modelFileCache[objectUrl];
+            delete window._blobUrlCache[objectUrl];
+            console.log('Revoked blob URL after saving to disk:', objectUrl);
+          } catch (e) {
+            console.error('Error revoking blob URL:', e);
+          }
+        }).catch(error => {
+          console.error('Error saving model file:', error);
+          alert(`Error saving model file: ${error.message}`);
+        });
+      } else {
+        console.warn('Electron saveModelFile API not available');
+      }
+    } catch (error) {
+      console.error('Error handling model drop:', error);
+      alert(`Error loading 3D model: ${error.message}`);
+    }
+  };
+
+  // Handle image file drop
+  const handleImageDrop = (file) => {
+    try {
+      console.log('Starting image drop handler for file:', file.name);
+      
+      // Create a Blob URL for the file
+      const objectUrl = URL.createObjectURL(file);
+      console.log('Created blob URL for image:', objectUrl);
+      
+      // Check if we have access to the camera
+      if (!cameraRef.current) {
+        console.warn('Camera reference not available. Image will be placed at origin.');
+        
+        // Add image at origin if camera not available
+        const imageId = addImage({
+          src: objectUrl,
+          fileName: file.name,
+          position: [0, 1, 0], // Default position
+          rotation: [0, 0, 0],
+          scale: 1,
+        });
+        
+        console.log('Added image at origin with ID:', imageId);
+        
+        // Save the file to disk using Electron's IPC
+        if (window.electron && window.electron.saveImageFile) {
+          console.log('Saving image file to disk...');
+          window.electron.saveImageFile(file, file.name).then(savedPath => {
+            // Update image with the new file path
+            updateImage(imageId, { src: savedPath });
+            console.log(`Saved image to disk: ${savedPath}`);
+          }).catch(error => {
+            console.error('Error saving image file:', error);
+            alert(`Error saving image file: ${error.message}`);
+          });
+        } else {
+          console.warn('Electron saveImageFile API not available');
+        }
+        
+        return;
+      }
+      
+      // Use the camera reference to get position and direction
+      const camera = cameraRef.current;
+      const direction = new THREE.Vector3(0, 0, -1);
+      direction.applyQuaternion(camera.quaternion);
+      
+      const position = new THREE.Vector3();
+      position.copy(camera.position);
+      direction.multiplyScalar(3); // Place 3 units in front of camera
+      position.add(direction);
+      
+      console.log('Placing image at position:', position);
+      
       // Calculate image dimensions asynchronously
       const img = new Image();
       img.onload = () => {
         // Calculate aspect ratio
         const aspectRatio = img.width / img.height;
+        console.log('Image loaded with dimensions:', img.width, 'x', img.height, 'aspect ratio:', aspectRatio);
         
         // Add image to the store
         const imageId = addImage({
@@ -1232,22 +1315,26 @@ const Player = () => {
           aspectRatio,
         });
         
-        console.log(`Added image: ${file.name} at position:`, position);
+        console.log(`Added image: ${file.name} with ID: ${imageId} at position:`, position);
         
         // Save the file to disk using Electron's IPC
-        if (window.electron) {
+        if (window.electron && window.electron.saveImageFile) {
+          console.log('Saving image file to disk...');
           window.electron.saveImageFile(file, file.name).then(savedPath => {
             // Update image with the new file path
             updateImage(imageId, { src: savedPath });
             console.log(`Saved image to disk: ${savedPath}`);
           }).catch(error => {
             console.error('Error saving image file:', error);
+            alert(`Error saving image file: ${error.message}`);
           });
+        } else {
+          console.warn('Electron saveImageFile API not available');
         }
       };
       
-      img.onerror = () => {
-        console.error('Error loading image dimensions');
+      img.onerror = (error) => {
+        console.error('Error loading image dimensions:', error);
         
         // Add image without dimensions
         const imageId = addImage({
@@ -1258,15 +1345,21 @@ const Player = () => {
           scale: 1,
         });
         
+        console.log(`Added image without dimensions: ${file.name} with ID: ${imageId}`);
+        
         // Save the file to disk using Electron's IPC
-        if (window.electron) {
+        if (window.electron && window.electron.saveImageFile) {
+          console.log('Saving image file to disk...');
           window.electron.saveImageFile(file, file.name).then(savedPath => {
             // Update image with the new file path
             updateImage(imageId, { src: savedPath });
             console.log(`Saved image to disk: ${savedPath}`);
           }).catch(error => {
             console.error('Error saving image file:', error);
+            alert(`Error saving image file: ${error.message}`);
           });
+        } else {
+          console.warn('Electron saveImageFile API not available');
         }
       };
       
@@ -1278,6 +1371,44 @@ const Player = () => {
   };
 
   const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+  
+  // Handle file selection via input element
+  const handleFileSelect = (e) => {
+    const files = e.target.files;
+    if (files.length === 0) return;
+    
+    const file = files[0];
+    console.log('File selected:', file.name, file.type, file.size);
+    
+    const fileName = file.name.toLowerCase();
+    
+    // Handle 3D model files
+    if (fileName.endsWith('.glb') || fileName.endsWith('.gltf')) {
+      console.log('Processing as 3D model file');
+      handleModelDrop(file);
+    }
+    // Handle image files
+    else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || 
+             fileName.endsWith('.png') || fileName.endsWith('.webp') || 
+             fileName.endsWith('.gif')) {
+      console.log('Processing as image file');
+      handleImageDrop(file);
+    } else {
+      console.log('Unsupported file type:', fileName);
+      alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, PNG, WEBP, GIF`);
+    }
+    
+    // Reset the input value so the same file can be selected again
+    e.target.value = null;
+  };
+  
+  // Handle click on upload button
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
   // Hide model tip after 10 seconds
   useEffect(() => {
@@ -1328,12 +1459,34 @@ const Player = () => {
       onDrop={handleDrop}
       onDragLeave={handleDragLeave}
     >
+      {/* Hidden file input */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileSelect} 
+        accept=".glb,.gltf,.jpg,.jpeg,.png,.webp,.gif" 
+        style={{ display: 'none' }} 
+      />
+      
+      {/* Upload button
+      <button
+        onClick={handleUploadClick}
+        className="absolute bottom-4 right-4 z-40 bg-black/70 hover:bg-black/90 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+        title="Upload 3D model or image"
+      >
+        <span>Upload File</span>
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+        </svg>
+      </button> */}
+      
       {isDragging && (
-        <div className="absolute inset-0 bg-black/40 z-50 flex items-center justify-center pointer-events-none">
-          <div className="bg-black/70 p-6 rounded-lg text-white text-center">
-            <div className="text-4xl mb-2">📦</div>
-            <div className="text-xl font-bold">Solte o arquivo 3D aqui</div>
-            <div className="text-sm opacity-70">Formatos suportados: GLB, GLTF</div>
+        <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center pointer-events-none border-4 border-dashed border-white/30">
+          <div className="bg-black/80 p-8 rounded-lg text-white text-center shadow-xl">
+            <div className="text-5xl mb-4">📦</div>
+            <div className="text-2xl font-bold mb-2">Drop File Here</div>
+            <div className="text-sm opacity-80 mb-1">Supported 3D formats: GLB, GLTF</div>
+            <div className="text-sm opacity-80">Supported image formats: JPG, PNG, WEBP, GIF</div>
           </div>
         </div>
       )}

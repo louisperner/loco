@@ -392,6 +392,14 @@ const WebViewControls = ({ webviewRef, onClose, initialUrl = '', onRestorePositi
       targetUrl = `https://${targetUrl}`;
     }
     
+    // Special handling for YouTube URLs
+    if (targetUrl.includes('youtube.com') || targetUrl.includes('youtu.be')) {
+      // For YouTube, ensure we're using a clean session with proper permissions
+      if (onToast) {
+        onToast(`Loading YouTube, please wait...`, 'info');
+      }
+    }
+    
     webviewRef.current.loadURL(targetUrl);
     setIsNavigating(true);
     lastUrlRef.current = targetUrl;

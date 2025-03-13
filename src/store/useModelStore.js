@@ -6,17 +6,22 @@ import * as THREE from 'three';
  */
 const STORAGE_KEY = 'scene-models';
 
-// Helper function to clean blob URLs when they're no longer needed
+// Helper function to clean up blob URLs
 const cleanupBlobUrl = (url) => {
   if (url && url.startsWith('blob:')) {
     try {
-      // Clear from cache
+      // Remove from caches
       if (window._modelFileCache && window._modelFileCache[url]) {
         delete window._modelFileCache[url];
       }
       
-      // Revoke the blob URL
+      if (window._blobUrlCache && window._blobUrlCache[url]) {
+        delete window._blobUrlCache[url];
+      }
+      
+      // Revoke the URL
       URL.revokeObjectURL(url);
+      console.log('Revoked blob URL:', url);
     } catch (error) {
       console.error('Error cleaning up blob URL:', error);
     }

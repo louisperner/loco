@@ -74,6 +74,39 @@ electron.contextBridge.exposeInMainWorld("electron", {
     } catch (error) {
       return { success: false, error: error.message };
     }
+  },
+  // Helper function to load images from app-file URLs
+  loadImageFromAppFile: async (appFilePath) => {
+    try {
+      if (appFilePath.startsWith("blob:")) {
+        return { success: true, url: appFilePath };
+      }
+      if (appFilePath.startsWith("app-file://")) {
+        const path = appFilePath.substring(11);
+        const fileBuffer = await electron.ipcRenderer.invoke("read-file-as-buffer", decodeURI(path));
+        const ext = path.split(".").pop().toLowerCase();
+        let mimeType = "application/octet-stream";
+        if (ext === "jpg" || ext === "jpeg")
+          mimeType = "image/jpeg";
+        else if (ext === "png")
+          mimeType = "image/png";
+        else if (ext === "gif")
+          mimeType = "image/gif";
+        else if (ext === "webp")
+          mimeType = "image/webp";
+        else if (ext === "svg")
+          mimeType = "image/svg+xml";
+        const blob = new Blob([fileBuffer], { type: mimeType });
+        const blobUrl = URL.createObjectURL(blob);
+        window._imageBlobCache = window._imageBlobCache || {};
+        window._imageBlobCache[appFilePath] = blobUrl;
+        return { success: true, url: blobUrl };
+      }
+      return { success: true, url: appFilePath };
+    } catch (error) {
+      console.error("Error loading image from app-file:", error);
+      return { success: false, error: error.message, url: appFilePath };
+    }
   }
 });
 function withPrototype(obj) {

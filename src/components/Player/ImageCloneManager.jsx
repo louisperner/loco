@@ -32,9 +32,56 @@ const ImageInScene = ({ imageData, onRemove, onUpdate }) => {
   const [transformMode, setTransformMode] = useState('translate');
   const [scale, setScale] = useState(initialScale);
   const [isHovered, setIsHovered] = useState(false);
+  const [imageSrc, setImageSrc] = useState(src);
   
   const groupRef = React.useRef();
   const { camera } = useThree();
+
+  // Handle app-file URLs
+  useEffect(() => {
+    const loadImage = async () => {
+      if (src && (src.startsWith('app-file://') || src.startsWith('file://'))) {
+        try {
+          if (window.electron && window.electron.loadImageFromAppFile) {
+            console.log('Loading image from app-file URL:', src);
+            const result = await window.electron.loadImageFromAppFile(src);
+            if (result.success) {
+              console.log('Successfully loaded image as blob URL:', result.url);
+              setImageSrc(result.url);
+            } else {
+              console.error('Failed to load image from app-file URL:', result.error);
+              setImageSrc(src); // Fallback to original source
+            }
+          } else {
+            console.warn('electron.loadImageFromAppFile not available, using original src');
+            setImageSrc(src);
+          }
+        } catch (error) {
+          console.error('Error loading image from app-file URL:', error);
+          setImageSrc(src);
+        }
+      } else {
+        setImageSrc(src);
+      }
+    };
+    
+    loadImage();
+    
+    // Cleanup function to revoke blob URLs
+    return () => {
+      if (imageSrc && imageSrc.startsWith('blob:') && imageSrc !== src) {
+        try {
+          // Check if this blob URL is in the cache before revoking
+          if (window._imageBlobCache && !Object.values(window._imageBlobCache).includes(imageSrc)) {
+            URL.revokeObjectURL(imageSrc);
+            console.log('Revoked blob URL for image:', imageSrc);
+          }
+        } catch (error) {
+          console.error('Error revoking blob URL:', error);
+        }
+      }
+    };
+  }, [src]);
 
   // Função para salvar as alterações
   const saveChanges = (changes) => {
@@ -409,7 +456,7 @@ const ImageInScene = ({ imageData, onRemove, onUpdate }) => {
         marginBottom: '5px',
       }}>
         <img
-          src={src}
+          src={imageSrc}
           alt={imageData.alt || 'Image'}
           style={{
             width: '100%',
