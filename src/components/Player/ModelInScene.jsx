@@ -3,6 +3,7 @@ import { Html, useGLTF, TransformControls, Box } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useModelStore } from '../../store/useModelStore';
+import { Lock, Unlock, Move, RotateCw, Plus, Minus, MapPin, Trash2 } from 'lucide-react';
 
 // Separate model component to use with Suspense and ErrorBoundary
 function Model({ url, scale }) {
@@ -255,7 +256,7 @@ function ModelInScene({
         }}
         style={controlButtonStyle}
       >
-        {showControls ? '🔒' : '🔓'}
+        {showControls ? <Lock size={16} /> : <Unlock size={16} />}
       </button>
 
       <button
@@ -271,7 +272,7 @@ function ModelInScene({
           cursor: showControls ? 'pointer' : 'not-allowed'
         }}
       >
-        {transformMode === 'translate' ? '↔️' : '🔄'}
+        {transformMode === 'translate' ? <Move size={16} /> : <RotateCw size={16} />}
       </button>
 
       <button
@@ -285,7 +286,7 @@ function ModelInScene({
         }}
         style={controlButtonStyle}
       >
-        ➕
+        <Plus size={16} />
       </button>
 
       <button
@@ -299,7 +300,7 @@ function ModelInScene({
         }}
         style={controlButtonStyle}
       >
-        ➖
+        <Minus size={16} />
       </button>
 
       <button
@@ -333,7 +334,7 @@ function ModelInScene({
         }}
         style={controlButtonStyle}
       >
-        📍
+        <MapPin size={16} />
       </button>
 
       <button
@@ -343,7 +344,7 @@ function ModelInScene({
         }}
         style={{...controlButtonStyle, color: '#ff4d4d'}}
       >
-        🗑️
+        <Trash2 size={16} />
       </button>
     </Html>
   );
@@ -422,6 +423,9 @@ const controlButtonStyle = {
   cursor: 'pointer',
   fontSize: '14px',
   transition: 'background-color 0.2s',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 };
 
 export default ModelInScene; 
