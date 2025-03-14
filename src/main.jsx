@@ -58,14 +58,6 @@ const PlayerWithHotbar = () => {
   return (
     <>
       <Player />
-      
-      {/* Minecraft hotbar always visible at the bottom */}
-      <MinecraftHotbar
-        items={HOTBAR_ITEMS}
-        selectedIndex={selectedHotbarIndex}
-        onSelect={handleHotbarSelect}
-        enableKeyboardShortcuts={true}
-      />
     </>
   );
 };

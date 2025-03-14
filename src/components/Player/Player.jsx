@@ -14,8 +14,9 @@ import ModelManager from './ModelManager';
 import { Button, Switch, Slider } from '@/components/ui';
 import { SettingsPanel } from '@/components/settings';
 import { RgbaColorPicker } from 'react-colorful';
-import { FaTimes, FaUndo, FaPalette, FaSlidersH, FaChevronRight, FaMagic, FaLayerGroup, FaAdjust, FaEye, FaEyeSlash, FaExpand, FaInfinity, FaCube, FaCog } from 'react-icons/fa';
+import { FaTimes, FaUndo, FaPalette, FaSlidersH, FaChevronRight, FaMagic, FaLayerGroup, FaAdjust, FaEye, FaEyeSlash, FaExpand, FaInfinity, FaCube, FaCog, FaImages } from 'react-icons/fa';
 import { useThemeStore } from '../../store/ThemeStore';
+import Inventory from '../Inventory';
 
 // Import separated components
 import { 
@@ -77,6 +78,7 @@ const Player = () => {
   const [movementEnabled, setMovementEnabled] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showInventory, setShowInventory] = useState(false);
   
   const [pendingWebsiteUrl, setPendingWebsiteUrl] = useState(null);
   const [showFrameControls, setShowFrameControls] = useState(true);
@@ -145,21 +147,6 @@ const Player = () => {
     isGroundInfinite,
     setGroundSize,
     setGroundInfinite,
-    skyVisible,
-    skyDistance,
-    skySunPosition,
-    skyInclination,
-    skyAzimuth,
-    skyTurbidity,
-    skyRayleigh,
-    skyOpacity,
-    starsVisible,
-    starsRadius,
-    starsDepth,
-    starsCount,
-    starsFactor,
-    starsSaturation,
-    starsFade,
     setTheme,
   } = useThemeStore();
 
@@ -172,6 +159,9 @@ const Player = () => {
     handleModelDrop,
     handleImageDrop
   } = useFileHandling(cameraRef);
+
+  const addImage = useImageStore(state => state.addImage);
+  const addModel = useModelStore(state => state.addModel);
 
   // Effects
   useEffect(() => {
@@ -464,6 +454,12 @@ const Player = () => {
       if (e.key === 'Escape') {
         handleCancel();
       }
+
+      // Add 'E' key to open inventory
+      if (e.key === 'e' || e.key === 'E') {
+        e.preventDefault();
+        setShowInventory(prev => !prev);
+      }
     };
     
     window.addEventListener('keydown', handleKeyDown);
@@ -510,6 +506,80 @@ const Player = () => {
     }
   };
 
+  const handleOpenInventory = () => {
+    setShowInventory(true);
+  };
+  
+  const handleCloseInventory = () => {
+    setShowInventory(false);
+  };
+  
+  const handleSelectImageFromInventory = (image) => {
+    // Add the selected image to the scene
+    if (image && image.url) {
+      const position = new THREE.Vector3();
+      
+      // If camera is available, place in front of camera
+      if (cameraRef.current) {
+        const camera = cameraRef.current;
+        const direction = new THREE.Vector3(0, 0, -1);
+        direction.applyQuaternion(camera.quaternion);
+        
+        position.copy(camera.position);
+        direction.multiplyScalar(3); // Place 3 units in front of camera
+        position.add(direction);
+      } else {
+        // Default position if camera not available
+        position.set(0, 1, 0);
+      }
+      
+      // Add image to the store
+      addImage({
+        src: image.url,
+        fileName: image.fileName,
+        position: [position.x, position.y, position.z],
+        rotation: [0, 0, 0],
+        scale: 1,
+      });
+    }
+    
+    // Close the inventory
+    setShowInventory(false);
+  };
+  
+  const handleSelectModelFromInventory = (model) => {
+    // Add the selected model to the scene
+    if (model && model.url) {
+      const position = new THREE.Vector3();
+      
+      // If camera is available, place in front of camera
+      if (cameraRef.current) {
+        const camera = cameraRef.current;
+        const direction = new THREE.Vector3(0, 0, -1);
+        direction.applyQuaternion(camera.quaternion);
+        
+        position.copy(camera.position);
+        direction.multiplyScalar(3); // Place 3 units in front of camera
+        position.add(direction);
+      } else {
+        // Default position if camera not available
+        position.set(0, 1, 0);
+      }
+      
+      // Add model to the store
+      addModel({
+        url: model.url,
+        fileName: model.fileName,
+        position: [position.x, position.y, position.z],
+        rotation: [0, 0, 0],
+        scale: 1,
+      });
+    }
+    
+    // Close the inventory
+    setShowInventory(false);
+  };
+
   return (
     <HotbarContext.Provider value={{ selectedHotbarItem, setSelectedHotbarItem: handleHotbarItemSelect }}>
       <div 
@@ -522,6 +592,15 @@ const Player = () => {
         onDrop={handleDrop}
         onDragLeave={handleDragLeave}
       >
+        {/* CSS for internal drag */}
+        <style>
+          {`
+            .drop-overlay.internal-drag {
+              display: none !important;
+            }
+          `}
+        </style>
+        
         {/* Hidden file input */}
         <input 
           type="file" 
@@ -550,7 +629,7 @@ const Player = () => {
         />
         
         {isDragging && (
-          <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center pointer-events-none border-4 border-dashed border-white/30">
+          <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center pointer-events-none border-4 border-dashed border-white/30 drop-overlay">
             <div className="bg-black/80 p-8 rounded-lg text-white text-center shadow-xl">
               <div className="text-5xl mb-4">📦</div>
               <div className="text-2xl font-bold mb-2">Drop File Here</div>
@@ -766,6 +845,14 @@ const Player = () => {
           onAddFrame={handleAddFrame}
           onVisibilityChange={handleSpotlightVisibility}
           showInput={true}
+        />
+
+        {/* Inventory component - always rendered, visibility controlled by isOpen prop */}
+        <Inventory 
+          onSelectImage={handleSelectImageFromInventory}
+          onSelectModel={handleSelectModelFromInventory}
+          onClose={handleCloseInventory}
+          isOpen={showInventory}
         />
       </div>
     </HotbarContext.Provider>

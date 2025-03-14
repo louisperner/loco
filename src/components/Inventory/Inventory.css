@@ -1,0 +1,598 @@
+.inventory-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  max-width: 900px;
+  height: 80%;
+  max-height: 700px;
+  background-color: rgba(30, 30, 30, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1000;
+  color: white;
+  font-family: 'Minecraft', Arial, sans-serif;
+}
+
+.inventory-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: rgba(20, 20, 20, 0.8);
+  border-bottom: 2px solid rgba(50, 50, 50, 0.8);
+}
+
+.inventory-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.inventory-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.inventory-search {
+  flex: 1;
+  margin: 0 20px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: rgba(50, 50, 50, 0.5);
+  border: 1px solid rgba(80, 80, 80, 0.8);
+  border-radius: 4px;
+  color: white;
+  font-size: 0.9rem;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #4d88ff;
+  box-shadow: 0 0 5px rgba(77, 136, 255, 0.5);
+}
+
+.keyboard-hint {
+  font-size: 0.85rem;
+  color: #aaa;
+}
+
+.keyboard-hint kbd {
+  background-color: rgba(80, 80, 80, 0.8);
+  border-radius: 3px;
+  border: 1px solid #666;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+  color: #eee;
+  display: inline-block;
+  font-family: monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 2px 5px;
+  margin: 0 2px;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.8rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.close-button:hover {
+  color: #fff;
+}
+
+.inventory-loading,
+.inventory-error,
+.inventory-empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 20px;
+  text-align: center;
+}
+
+.inventory-error {
+  color: #ff6b6b;
+}
+
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.inventory-item {
+  background-color: rgba(60, 60, 60, 0.5);
+  border: 2px solid transparent;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: grab;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  height: 160px;
+  position: relative;
+}
+
+.inventory-item:hover {
+  background-color: rgba(80, 80, 80, 0.5);
+  transform: translateY(-2px);
+}
+
+.inventory-item.selected {
+  border-color: #4d88ff;
+  background-color: rgba(77, 136, 255, 0.2);
+}
+
+.inventory-item.in-hotbar {
+  border-color: rgba(77, 255, 136, 0.5);
+}
+
+.inventory-item.in-hotbar.selected {
+  border-color: #4d88ff;
+}
+
+.in-hotbar-indicator {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  background-color: rgba(77, 255, 136, 0.7);
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 5px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.inventory-item img {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+  display: block;
+}
+
+.inventory-item-name {
+  padding: 6px;
+  font-size: 0.8rem;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inventory-item-category {
+  font-size: 0.7rem;
+  color: #aaa;
+  text-align: center;
+  padding: 0 6px 6px;
+}
+
+.inventory-item-actions {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: none;
+}
+
+.inventory-item:hover .inventory-item-actions {
+  display: block;
+}
+
+.inventory-item-actions.visible {
+  display: block;
+}
+
+.hotbar-add-button {
+  background-color: rgba(77, 136, 255, 0.7);
+  color: white;
+  border: none;
+  border-radius: 3px;
+  width: 22px;
+  height: 22px;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.hotbar-add-button:hover {
+  background-color: rgba(77, 136, 255, 1);
+}
+
+.hotbar-add-button.disabled {
+  background-color: rgba(100, 100, 100, 0.5);
+  cursor: not-allowed;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.inventory-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 15px 20px;
+  background-color: rgba(20, 20, 20, 0.8);
+  border-top: 2px solid rgba(50, 50, 50, 0.8);
+}
+
+.select-button {
+  background-color: #4d88ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.select-button:hover:not(:disabled) {
+  background-color: #3a75e6;
+}
+
+.select-button:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.inventory-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  background-color: rgba(30, 30, 30, 0.8);
+  border-bottom: 2px solid rgba(50, 50, 50, 0.8);
+  padding: 0 10px;
+}
+
+.inventory-tab {
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+  margin: 0 2px -2px;
+}
+
+.inventory-tab:hover {
+  color: #fff;
+  background-color: rgba(60, 60, 60, 0.5);
+}
+
+.inventory-tab.active {
+  color: #4d88ff;
+  border-bottom-color: #4d88ff;
+  background-color: rgba(77, 136, 255, 0.1);
+}
+
+.model-thumbnail {
+  width: 100%;
+  height: 90px;
+  background-color: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #4d88ff;
+}
+
+.model-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 5px;
+}
+
+.model-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.model-label {
+  font-size: 0.75rem;
+  color: #aaa;
+}
+
+.item-thumbnail {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+  display: block;
+}
+
+.model-thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background-color: #1a1a1a;
+}
+
+/* Rotate animation for model icon */
+@keyframes rotate {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
+}
+
+.model-icon svg {
+  animation: rotate 8s infinite linear;
+  transform-origin: center center;
+}
+
+/* Hotbar Styles */
+.hotbar-container {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.hotbar {
+  display: flex;
+  gap: 4px;
+  background-color: rgba(30, 30, 30, 0.8);
+  padding: 4px;
+  border-radius: 4px;
+  border: 2px solid rgba(60, 60, 60, 0.8);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.hotbar-slot {
+  width: 64px;
+  height: 64px;
+  background-color: rgba(50, 50, 50, 0.5);
+  border: 2px solid rgba(80, 80, 80, 0.8);
+  border-radius: 4px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hotbar-slot.empty {
+  background-color: rgba(40, 40, 40, 0.3);
+}
+
+.hotbar-slot.selected {
+  border-color: #4d88ff;
+  box-shadow: 0 0 8px rgba(77, 136, 255, 0.5);
+}
+
+.hotbar-slot:hover {
+  transform: translateY(-2px);
+  border-color: rgba(100, 100, 100, 0.8);
+}
+
+.hotbar-slot.selected:hover {
+  border-color: #4d88ff;
+}
+
+.hotbar-item-thumbnail {
+  width: 90%;
+  height: 90%;
+  object-fit: contain;
+}
+
+.hotbar-model-thumbnail {
+  width: 90%;
+  height: 90%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.hotbar-item-number {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 0.8rem;
+  color: #ddd;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.7);
+}
+
+.hotbar-remove-button {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  background-color: rgba(255, 77, 77, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background-color 0.2s;
+}
+
+.hotbar-slot:hover .hotbar-remove-button {
+  opacity: 1;
+}
+
+.hotbar-remove-button:hover {
+  background-color: rgba(255, 77, 77, 1);
+}
+
+.hotbar-hint {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.hotbar-mode-active {
+  color: #4d88ff;
+  font-weight: bold;
+}
+
+.hotbar-hint kbd {
+  background-color: rgba(80, 80, 80, 0.8);
+  border-radius: 3px;
+  border: 1px solid #666;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+  color: #eee;
+  display: inline-block;
+  font-family: monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 2px 4px;
+  margin: 0 2px;
+}
+
+/* Inventory Mode Indicator */
+.inventory-mode-indicator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: rgba(40, 40, 40, 0.8);
+  border-bottom: 1px solid rgba(60, 60, 60, 0.8);
+}
+
+.inventory-mode-indicator.active {
+  background-color: rgba(77, 136, 255, 0.2);
+  border-bottom: 1px solid rgba(77, 136, 255, 0.5);
+}
+
+.mode-toggle-button {
+  background-color: rgba(60, 60, 60, 0.8);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.mode-toggle-button:hover {
+  background-color: rgba(80, 80, 80, 0.8);
+}
+
+.inventory-mode-indicator.active .mode-toggle-button {
+  background-color: rgba(77, 136, 255, 0.7);
+}
+
+.inventory-mode-indicator.active .mode-toggle-button:hover {
+  background-color: rgba(77, 136, 255, 0.9);
+}
+
+/* Animation for adding item to hotbar */
+@keyframes item-added-animation {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); border-color: #4dff88; box-shadow: 0 0 12px rgba(77, 255, 136, 0.7); }
+  100% { transform: scale(1); }
+}
+
+.hotbar-slot.item-added {
+  animation: item-added-animation 0.5s ease;
+}
+
+/* Canvas Add Indicator */
+.canvas-add-indicator {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background-color: rgba(77, 136, 255, 0.9);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 1rem;
+  z-index: 2000;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.canvas-add-indicator.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.inventory-toggle-button {
+  background-color: rgba(77, 136, 255, 0.7);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-left: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.inventory-toggle-button:hover {
+  background-color: rgba(77, 136, 255, 0.9);
+}
+
+/* Drag and drop styles */
+.inventory-item:active {
+  cursor: grabbing;
+}
+
+.hotbar-slot.drag-over {
+  background-color: rgba(65, 105, 225, 0.3);
+  box-shadow: inset 0 0 0 2px #4169e1;
+  transition: all 0.2s ease;
+}
+
+.drag-ghost {
+  width: 60px;
+  height: 60px;
+  background-color: rgba(30, 30, 30, 0.8);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.drag-ghost img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+
+/* Animation for successful drop */
+@keyframes successful-drop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); background-color: rgba(46, 204, 113, 0.3); }
+  100% { transform: scale(1); }
+}
+
+.hotbar-slot.item-added {
+  animation: successful-drop 0.5s ease;
+} 

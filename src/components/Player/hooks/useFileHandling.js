@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useImageStore } from '../../../store/useImageStore';
 import { useModelStore } from '../../../store/useModelStore';
 import * as THREE from 'three';
+import { saveModelThumbnail } from '../../../utils/modelThumbnailGenerator';
 
 export const useFileHandling = (cameraRef) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -62,10 +63,17 @@ export const useFileHandling = (cameraRef) => {
         // Save the file to disk using Electron's IPC
         if (window.electron && window.electron.saveModelFile) {
           console.log('Saving model file to disk...');
-          window.electron.saveModelFile(file, file.name).then(savedPath => {
-            // Update model with the new file path
-            updateModel(modelId, { url: savedPath });
+          window.electron.saveModelFile(file, file.name).then(async savedPath => {
+            // Generate and save a thumbnail for the model
+            const thumbnailUrl = await saveModelThumbnail(savedPath, modelId);
+            
+            // Update model with the new file path and thumbnail
+            updateModel(modelId, { 
+              url: savedPath,
+              thumbnailUrl: thumbnailUrl
+            });
             console.log(`Saved model to disk: ${savedPath}`);
+            console.log(`Generated thumbnail: ${thumbnailUrl}`);
             
             // Clean up the blob URL after the file is saved to disk
             try {
@@ -113,10 +121,17 @@ export const useFileHandling = (cameraRef) => {
       // Save the file to disk using Electron's IPC
       if (window.electron && window.electron.saveModelFile) {
         console.log('Saving model file to disk...');
-        window.electron.saveModelFile(file, file.name).then(savedPath => {
-          // Update model with the new file path
-          updateModel(modelId, { url: savedPath });
+        window.electron.saveModelFile(file, file.name).then(async savedPath => {
+          // Generate and save a thumbnail for the model
+          const thumbnailUrl = await saveModelThumbnail(savedPath, modelId);
+          
+          // Update model with the new file path and thumbnail
+          updateModel(modelId, { 
+            url: savedPath,
+            thumbnailUrl: thumbnailUrl
+          });
           console.log(`Saved model to disk: ${savedPath}`);
+          console.log(`Generated thumbnail: ${thumbnailUrl}`);
           
           // Clean up the blob URL after the file is saved to disk
           try {
@@ -274,6 +289,86 @@ export const useFileHandling = (cameraRef) => {
     console.log('Drop detected');
     setIsDragging(false);
     
+    // Check for inventory item data
+    try {
+      const jsonData = e.dataTransfer.getData('application/json');
+      if (jsonData) {
+        const data = JSON.parse(jsonData);
+        if (data.type === 'inventory-item') {
+          console.log('Inventory item dropped:', data.itemData);
+          const item = data.itemData;
+          
+          // Handle based on item type
+          if (item.type === 'image') {
+            // Add the selected image to the scene
+            if (item && item.url) {
+              const position = new THREE.Vector3();
+              
+              // If camera is available, place in front of camera
+              if (cameraRef.current) {
+                const camera = cameraRef.current;
+                const direction = new THREE.Vector3(0, 0, -1);
+                direction.applyQuaternion(camera.quaternion);
+                
+                position.copy(camera.position);
+                direction.multiplyScalar(3); // Place 3 units in front of camera
+                position.add(direction);
+              } else {
+                // Default position if camera not available
+                position.set(0, 1, 0);
+              }
+              
+              // Add image to the store
+              addImage({
+                src: item.url,
+                fileName: item.fileName,
+                position: [position.x, position.y, position.z],
+                rotation: [0, 0, 0],
+                scale: 1,
+              });
+              
+              console.log(`Added image from inventory: ${item.fileName}`);
+              return;
+            }
+          } else if (item.type === 'model') {
+            // Add the selected model to the scene
+            if (item && item.url) {
+              const position = new THREE.Vector3();
+              
+              // If camera is available, place in front of camera
+              if (cameraRef.current) {
+                const camera = cameraRef.current;
+                const direction = new THREE.Vector3(0, 0, -1);
+                direction.applyQuaternion(camera.quaternion);
+                
+                position.copy(camera.position);
+                direction.multiplyScalar(3); // Place 3 units in front of camera
+                position.add(direction);
+              } else {
+                // Default position if camera not available
+                position.set(0, 1, 0);
+              }
+              
+              // Add model to the store
+              addModel({
+                url: item.url,
+                fileName: item.fileName,
+                position: [position.x, position.y, position.z],
+                rotation: [0, 0, 0],
+                scale: 1,
+              });
+              
+              console.log(`Added model from inventory: ${item.fileName}`);
+              return;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error processing inventory item drop:', error);
+    }
+    
+    // If not an inventory item, process as a file drop
     const files = e.dataTransfer.files;
     if (files.length === 0) {
       console.log('No files dropped');
@@ -304,7 +399,7 @@ export const useFileHandling = (cameraRef) => {
       console.log('Unsupported file type:', fileName);
       alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, PNG, WEBP, GIF`);
     }
-  }, [handleModelDrop, handleImageDrop]);
+  }, [handleModelDrop, handleImageDrop, addImage, addModel, cameraRef]);
 
   return {
     isDragging,
