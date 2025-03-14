@@ -20,6 +20,9 @@ const defaultTheme = {
   skySunPosition: [0, 1, 0],
   skyInclination: 0,
   skyAzimuth: 0.25,
+  skyTurbidity: 10,
+  skyRayleigh: 2,
+  skyOpacity: 1,
   
   // Stars settings
   starsVisible: true,
@@ -35,76 +38,87 @@ const defaultTheme = {
 const loadSavedTheme = () => {
   try {
     const savedTheme = localStorage.getItem(STORAGE_KEY);
-    return savedTheme ? JSON.parse(savedTheme) : null;
+    if (!savedTheme) return defaultTheme;
+    
+    const parsedTheme = JSON.parse(savedTheme);
+    // Merge com defaultTheme para garantir que todas as propriedades existam
+    return { ...defaultTheme, ...parsedTheme };
   } catch (error) {
     console.error('Error loading saved theme:', error);
-    return null;
+    return defaultTheme;
   }
 };
 
 // Carrega o tema salvo ou usa o padrão
-const savedTheme = loadSavedTheme() || defaultTheme;
+const initialState = loadSavedTheme();
 
 export const useThemeStore = create((set) => ({
   // Inicializa com o tema salvo ou o padrão
-  ...savedTheme,
+  ...initialState,
   
   // Funções para atualizar cores com persistência
   setGridColor: (color) => set(state => {
     const newState = { ...state, gridColor: color };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-    return { gridColor: color };
+    return newState;
   }),
 
   setBackgroundColor: (color) => set(state => {
     const newState = { ...state, backgroundColor: color };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-    return { backgroundColor: color };
+    return newState;
   }),
 
   setFloorPlaneColor: (color) => set(state => {
     const newState = { ...state, floorPlaneColor: color };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-    return { floorPlaneColor: color };
+    return newState;
   }),
   
   // Funções para atualizar opacidades com persistência
   setGridOpacity: (opacity) => set(state => {
     const newState = { ...state, gridOpacity: opacity };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-    return { gridOpacity: opacity };
+    return newState;
   }),
 
   setBackgroundOpacity: (opacity) => set(state => {
     const newState = { ...state, backgroundOpacity: opacity };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-    return { backgroundOpacity: opacity };
+    return newState;
   }),
 
   setFloorPlaneOpacity: (opacity) => set(state => {
     const newState = { ...state, floorPlaneOpacity: opacity };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-    return { floorPlaneOpacity: opacity };
+    return newState;
   }),
   
   // Funções para ajustar o tamanho do ground e modo infinito
   setGroundSize: (size) => set(state => {
     const newState = { ...state, groundSize: size };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-    return { groundSize: size };
+    return newState;
   }),
   
   setGroundInfinite: (isInfinite) => set(state => {
     const newState = { ...state, isGroundInfinite: isInfinite };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-    return { isGroundInfinite: isInfinite };
+    return newState;
+  }),
+  
+  // Função para resetar as cores para o padrão
+  resetColors: () => set(state => {
+    const newState = { ...state, ...defaultTheme };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+    return newState;
   }),
   
   // Generic function to update any theme property
   setTheme: (themeUpdate) => set(state => {
     const newState = { ...state, ...themeUpdate };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-    return themeUpdate;
+    return newState;
   }),
   
   // Funções para aplicar cor com opacidade
@@ -151,15 +165,9 @@ export const useThemeStore = create((set) => ({
       }
     } catch (e) {
       console.error('Error parsing color:', e);
+      return color;
     }
     
-    // Fallback
     return color;
-  },
-  
-  // Função para resetar cores para o padrão
-  resetColors: () => {
-    localStorage.removeItem(STORAGE_KEY);
-    return set(defaultTheme);
-  },
+  }
 })); 

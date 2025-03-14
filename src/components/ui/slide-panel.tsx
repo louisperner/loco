@@ -37,7 +37,7 @@ const SlidePanelContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-y-0 right-0 z-50 h-full w-[24rem] overflow-y-auto border-l border-white/10 bg-black/40 backdrop-blur-xl shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right-full duration-300",
+        "fixed inset-y-0 right-0 z-50 h-full w-[25rem] overflow-y-auto border-l border-white/10 bg-black/40 backdrop-blur-xl shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right-full duration-300",
         className
       )}
       {...props}
