@@ -1,16 +1,16 @@
-// Converter cores para formato RGBA
+// Convert colors to RGBA format
 export const hexToRgba = (hex, alpha = 1) => {
-  if (hex === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
+  if (!hex || hex === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
   
-  // Remover o # se existir
+  // Remove # if it exists
   hex = hex.replace('#', '');
   
-  // Converter cores de 3 dígitos para 6 dígitos
+  // Convert 3-digit hex to 6-digit
   if (hex.length === 3) {
     hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
   }
   
-  // Converter para RGB
+  // Convert to RGB
   const r = parseInt(hex.substring(0, 2), 16);
   const g = parseInt(hex.substring(2, 4), 16);
   const b = parseInt(hex.substring(4, 6), 16);
@@ -18,32 +18,48 @@ export const hexToRgba = (hex, alpha = 1) => {
   return { r, g, b, a: alpha };
 };
 
-// Converter objeto RGBA para string
-export const rgbaToString = (rgba) => {
-  return `rgba(${rgba.r}, ${rgba.g}, ${rgba.b}, ${rgba.a})`;
+// Convert RGBA object to string
+export const rgbaToString = ({ r, g, b, a }) => {
+  if (a === 0) return 'transparent';
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
 };
 
-// Converter string RGBA para objeto
+// Convert string RGBA to object
 export const stringToRgba = (rgbaStr) => {
-  if (rgbaStr === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
+  if (!rgbaStr || rgbaStr === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
   
-  const match = rgbaStr.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
-  if (match) {
+  // Handle rgba format
+  const rgbaMatch = rgbaStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+  if (rgbaMatch) {
     return {
-      r: parseInt(match[1]),
-      g: parseInt(match[2]),
-      b: parseInt(match[3]),
-      a: parseFloat(match[4])
+      r: parseInt(rgbaMatch[1]),
+      g: parseInt(rgbaMatch[2]),
+      b: parseInt(rgbaMatch[3]),
+      a: rgbaMatch[4] ? parseFloat(rgbaMatch[4]) : 1
     };
   }
   
-  // Fallback para hex
+  // Handle hex format
   return hexToRgba(rgbaStr);
 };
 
-// Gerar estilo de cor com verificação de transparência
+// Parse any color format to RGBA object
+export const parseColor = (color) => {
+  if (!color) return { r: 0, g: 0, b: 0, a: 1 };
+  if (typeof color === 'object') return color;
+  return stringToRgba(color);
+};
+
+// Get color with opacity
+export const getColorWithOpacity = (color, opacity) => {
+  const rgba = parseColor(color);
+  return rgbaToString({ ...rgba, a: opacity });
+};
+
+// Generate button color style with transparency check
 export const getButtonColorStyle = (color) => {
-  if (color === 'transparent') {
+  const rgba = parseColor(color);
+  if (rgba.a === 0) {
     return {
       backgroundColor: 'transparent',
       backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc)',
@@ -51,5 +67,5 @@ export const getButtonColorStyle = (color) => {
       backgroundPosition: '0 0, 5px 5px'
     };
   }
-  return { backgroundColor: color };
+  return { backgroundColor: rgbaToString(rgba) };
 }; 

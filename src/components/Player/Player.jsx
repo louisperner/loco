@@ -11,7 +11,8 @@ import MessageManager from './MessageManager';
 import { useImageStore } from '../../store/useImageStore';
 import { useModelStore } from '../../store/useModelStore';
 import ModelManager from './ModelManager';
-import { SettingsPanel, Button, Switch, Slider } from '@/components/ui';
+import { Button, Switch, Slider } from '@/components/ui';
+import { SettingsPanel } from '@/components/settings';
 import { RgbaColorPicker } from 'react-colorful';
 import { FaTimes, FaUndo, FaPalette, FaSlidersH, FaChevronRight, FaMagic, FaLayerGroup, FaAdjust, FaEye, FaEyeSlash, FaExpand, FaInfinity, FaCube, FaCog } from 'react-icons/fa';
 import { useThemeStore } from '../../store/ThemeStore';
@@ -379,29 +380,19 @@ const Player = () => {
   };
 
   const handleColorChange = (type, color) => {
-    const colorValue = typeof color === 'string' ? color : rgbaToString(color);
+    // If color is an RgbaColor object, convert it to string
+    const colorValue = typeof color === 'object' ? rgbaToString(color) : color;
+    const opacity = typeof color === 'object' ? color.a : 1;
     
     if (type === 'grid') {
       setGridColor(colorValue);
-      if (colorValue === 'transparent' || (typeof color === 'object' && color.a === 0)) {
-        setGridOpacity(0);
-      } else if (typeof color === 'object') {
-        setGridOpacity(Math.round(color.a * 100));
-      }
+      setGridOpacity(Math.round(opacity * 100));
     } else if (type === 'floorPlane') {
       setFloorPlaneColor(colorValue);
-      if (colorValue === 'transparent' || (typeof color === 'object' && color.a === 0)) {
-        setFloorPlaneOpacity(0);
-      } else if (typeof color === 'object') {
-        setFloorPlaneOpacity(Math.round(color.a * 100));
-      }
+      setFloorPlaneOpacity(Math.round(opacity * 100));
     } else if (type === 'background') {
       setBackgroundColor(colorValue);
-      if (colorValue === 'transparent' || (typeof color === 'object' && color.a === 0)) {
-        setBackgroundOpacity(0);
-      } else if (typeof color === 'object') {
-        setBackgroundOpacity(Math.round(color.a * 100));
-      }
+      setBackgroundOpacity(Math.round(opacity * 100));
     } else if (type === 'crosshair') {
       setCrosshairColor(colorValue);
     }
