@@ -37,6 +37,12 @@ import {
 // Import hooks
 import { useFileHandling } from './hooks/useFileHandling';
 
+// Create a context for the hotbar selection
+export const HotbarContext = React.createContext({
+  selectedHotbarItem: null,
+  setSelectedHotbarItem: () => {},
+});
+
 const Player = () => {
   const iframeRef = useRef();
   const canvasContainerRef = useRef();
@@ -44,6 +50,9 @@ const Player = () => {
   const fileInputRef = useRef();
   const settingsPanelRef = useRef(null);
   const colorPickerRefs = useRef({});
+  
+  // Hotbar state
+  const [selectedHotbarItem, setSelectedHotbarItem] = useState(null);
   
   // Code Store
   const { updateCode, updateTranspiledCode, updateComponents } = useCodeStore();
@@ -470,263 +479,298 @@ const Player = () => {
     setCanvasInteractive(!newState);
   };
 
+  // Handle hotbar item selection
+  const handleHotbarItemSelect = (item) => {
+    setSelectedHotbarItem(item);
+    
+    // You can add logic here to handle different item types
+    console.log(`Selected hotbar item: ${item?.name}`);
+    
+    // Example: Switch tools based on item type
+    if (item) {
+      switch (item.id) {
+        case 'sword':
+          // Activate attack mode or weapon
+          console.log('Sword selected - activating attack mode');
+          break;
+        case 'pickaxe':
+          // Activate mining/editing mode
+          console.log('Pickaxe selected - activating edit mode');
+          break;
+        case 'axe':
+          // Activate cutting/removing mode
+          console.log('Axe selected - activating remove mode');
+          break;
+        case 'shovel':
+          // Activate digging/terrain editing mode
+          console.log('Shovel selected - activating terrain edit mode');
+          break;
+        default:
+          // Handle other items or blocks
+          console.log(`Selected ${item.name}`);
+      }
+    }
+  };
+
   return (
-    <div 
-      ref={canvasContainerRef}
-      className="w-screen h-screen relative"
-      style={{ 
-        backgroundColor: backgroundVisible ? getColorWithOpacity(backgroundColor, backgroundOpacity) : 'transparent'
-      }}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-      onDragLeave={handleDragLeave}
-    >
-      {/* Hidden file input */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={(e) => {
-          const files = e.target.files;
-          if (files.length === 0) return;
-          
-          const file = files[0];
-          const fileName = file.name.toLowerCase();
-          
-          if (fileName.endsWith('.glb') || fileName.endsWith('.gltf')) {
-            handleModelDrop(file);
-          } else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || 
-                     fileName.endsWith('.png') || fileName.endsWith('.webp') || 
-                     fileName.endsWith('.gif')) {
-            handleImageDrop(file);
-          } else {
-            alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, PNG, WEBP, GIF`);
-          }
-          
-          e.target.value = null;
-        }} 
-        accept=".glb,.gltf,.jpg,.jpeg,.png,.webp,.gif" 
-        style={{ display: 'none' }} 
-      />
-      
-      {isDragging && (
-        <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center pointer-events-none border-4 border-dashed border-white/30">
-          <div className="bg-black/80 p-8 rounded-lg text-white text-center shadow-xl">
-            <div className="text-5xl mb-4">📦</div>
-            <div className="text-2xl font-bold mb-2">Drop File Here</div>
-            <div className="text-sm opacity-80 mb-1">Supported 3D formats: GLB, GLTF</div>
-            <div className="text-sm opacity-80">Supported image formats: JPG, PNG, WEBP, GIF</div>
-          </div>
-        </div>
-      )}
-
-      <Canvas 
-        camera={{ position: [0, 0, 0], fov: 65 }} 
-        className={`z-0 ${canvasInteractive ? '' : 'pointer-events-none'}`}
-        frameloop="always"
-        onPointerMissed={() => setSelectedFrame(null)}
-      >
-        <FrameRateLimiter />
-        <ambientLight intensity={0.8} />
-        <directionalLight castShadow position={[2.5, 8, 5]} intensity={1.5} shadow-mapSize={1024} />
-        <FPSControls 
-          speed={5} 
-          enabled={movementEnabled} 
-          gravityEnabled={gravityEnabled} 
-          floorHeight={0} 
-          initialPosition={[0, 1.7, 0]}
-        />
-        
-        <CameraExposer cameraRef={cameraRef} />
-        
-        {environmentSettings.skyVisible && (
-          <Sky 
-            distance={environmentSettings.skyDistance} 
-            sunPosition={environmentSettings.skySunPosition} 
-            inclination={environmentSettings.skyInclination} 
-            azimuth={environmentSettings.skyAzimuth} 
-            turbidity={environmentSettings.skyTurbidity}
-            rayleigh={environmentSettings.skyRayleigh}
-            opacity={environmentSettings.skyOpacity}
-          />
-        )}
-        {environmentSettings.starsVisible && (
-          <Stars 
-            radius={environmentSettings.starsRadius} 
-            depth={environmentSettings.starsDepth} 
-            count={environmentSettings.starsCount} 
-            factor={environmentSettings.starsFactor} 
-            saturation={environmentSettings.starsSaturation} 
-            fade={environmentSettings.starsFade} 
-          />
-        )}
-        
-        <ImageCloneManager />
-        <ModelManager />
-        
-        <WebFrames
-          frames={frames}
-          onCloseFrame={handleCloseFrame}
-          onRestorePosition={handleRestoreFramePosition}
-          onUpdateFrameUrl={(frameId, newUrl) => {
-            setFrames(prevFrames => prevFrames.map(frame => 
-              frame.id === frameId ? { ...frame, url: newUrl } : frame
-            ));
-          }}
-        />
-
-        {showPreview && !confirmedPosition && (
-          <PreviewFrame
-            isVisible={showPreview}
-            onPositionConfirm={handlePositionConfirm}
-            isPositionConfirmed={!!confirmedPosition}
-            hasPendingWebsite={pendingWebsiteUrl !== null}
-          />
-        )}
-
-        <MessageManager />
-        
-        <Floor 
-          gridVisible={gridVisible} 
-          floorPlaneVisible={floorPlaneVisible} 
-          groundSize={groundSize}
-          isInfinite={isGroundInfinite}
-          groundShape={groundShape}
-        />
-      </Canvas>
-      
-      {/* Settings Panel */}
+    <HotbarContext.Provider value={{ selectedHotbarItem, setSelectedHotbarItem: handleHotbarItemSelect }}>
       <div 
-        ref={settingsPanelRef}
-        onMouseEnter={() => setMouseOverSettings(true)}
-        onMouseLeave={() => {
-          if (!showColorPicker) {
-            setMouseOverSettings(false);
-            setCanvasInteractive(true);
-          }
+        ref={canvasContainerRef}
+        className="w-screen h-screen relative"
+        style={{ 
+          backgroundColor: backgroundVisible ? getColorWithOpacity(backgroundColor, backgroundOpacity) : 'transparent'
         }}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onDragLeave={handleDragLeave}
       >
-        <SettingsPanel 
-          onToggle={(isOpen) => {
-            if (!isOpen) {
-              setCanvasInteractive(true);
-              setShowColorPicker(null);
-              setMouseOverSettings(false);
+        {/* Hidden file input */}
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={(e) => {
+            const files = e.target.files;
+            if (files.length === 0) return;
+            
+            const file = files[0];
+            const fileName = file.name.toLowerCase();
+            
+            if (fileName.endsWith('.glb') || fileName.endsWith('.gltf')) {
+              handleModelDrop(file);
+            } else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || 
+                       fileName.endsWith('.png') || fileName.endsWith('.webp') || 
+                       fileName.endsWith('.gif')) {
+              handleImageDrop(file);
             } else {
-              setCanvasInteractive(false);
-              setMouseOverSettings(true);
+              alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, PNG, WEBP, GIF`);
+            }
+            
+            e.target.value = null;
+          }} 
+          accept=".glb,.gltf,.jpg,.jpeg,.png,.webp,.gif" 
+          style={{ display: 'none' }} 
+        />
+        
+        {isDragging && (
+          <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center pointer-events-none border-4 border-dashed border-white/30">
+            <div className="bg-black/80 p-8 rounded-lg text-white text-center shadow-xl">
+              <div className="text-5xl mb-4">📦</div>
+              <div className="text-2xl font-bold mb-2">Drop File Here</div>
+              <div className="text-sm opacity-80 mb-1">Supported 3D formats: GLB, GLTF</div>
+              <div className="text-sm opacity-80">Supported image formats: JPG, PNG, WEBP, GIF</div>
+            </div>
+          </div>
+        )}
+
+        <Canvas 
+          camera={{ position: [0, 0, 0], fov: 65 }} 
+          className={`z-0 ${canvasInteractive ? '' : 'pointer-events-none'}`}
+          frameloop="always"
+          onPointerMissed={() => setSelectedFrame(null)}
+        >
+          <FrameRateLimiter />
+          <ambientLight intensity={0.8} />
+          <directionalLight castShadow position={[2.5, 8, 5]} intensity={1.5} shadow-mapSize={1024} />
+          <FPSControls 
+            speed={5} 
+            enabled={movementEnabled} 
+            gravityEnabled={gravityEnabled} 
+            floorHeight={0} 
+            initialPosition={[0, 1.7, 0]}
+          />
+          
+          <CameraExposer cameraRef={cameraRef} />
+          
+          {environmentSettings.skyVisible && (
+            <Sky 
+              distance={environmentSettings.skyDistance} 
+              sunPosition={environmentSettings.skySunPosition} 
+              inclination={environmentSettings.skyInclination} 
+              azimuth={environmentSettings.skyAzimuth} 
+              turbidity={environmentSettings.skyTurbidity}
+              rayleigh={environmentSettings.skyRayleigh}
+              opacity={environmentSettings.skyOpacity}
+            />
+          )}
+          {environmentSettings.starsVisible && (
+            <Stars 
+              radius={environmentSettings.starsRadius} 
+              depth={environmentSettings.starsDepth} 
+              count={environmentSettings.starsCount} 
+              factor={environmentSettings.starsFactor} 
+              saturation={environmentSettings.starsSaturation} 
+              fade={environmentSettings.starsFade} 
+            />
+          )}
+          
+          <ImageCloneManager />
+          <ModelManager />
+          
+          <WebFrames
+            frames={frames}
+            onCloseFrame={handleCloseFrame}
+            onRestorePosition={handleRestoreFramePosition}
+            onUpdateFrameUrl={(frameId, newUrl) => {
+              setFrames(prevFrames => prevFrames.map(frame => 
+                frame.id === frameId ? { ...frame, url: newUrl } : frame
+              ));
+            }}
+          />
+
+          {showPreview && !confirmedPosition && (
+            <PreviewFrame
+              isVisible={showPreview}
+              onPositionConfirm={handlePositionConfirm}
+              isPositionConfirmed={!!confirmedPosition}
+              hasPendingWebsite={pendingWebsiteUrl !== null}
+            />
+          )}
+
+          <MessageManager />
+          
+          <Floor 
+            gridVisible={gridVisible} 
+            floorPlaneVisible={floorPlaneVisible} 
+            groundSize={groundSize}
+            isInfinite={isGroundInfinite}
+            groundShape={groundShape}
+          />
+        </Canvas>
+        
+        {/* Settings Panel */}
+        <div 
+          ref={settingsPanelRef}
+          onMouseEnter={() => setMouseOverSettings(true)}
+          onMouseLeave={() => {
+            if (!showColorPicker) {
+              setMouseOverSettings(false);
+              setCanvasInteractive(true);
             }
           }}
-          isOpen={showSettings}
-          onClose={() => setShowSettings(false)}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onColorChange={handleColorChange}
-          onResetColors={handleResetColors}
-          isResetAnimating={isResetAnimating}
-          colorChanged={colorChanged}
-          showColorPicker={showColorPicker}
-          onColorPickerChange={setShowColorPicker}
-          colorPickerRefs={colorPickerRefs}
-          colors={{
-            grid: gridColor,
-            floorPlane: floorPlaneColor,
-            background: backgroundColor,
-            crosshair: crosshairColor
-          }}
-          opacities={{
-            grid: gridOpacity,
-            floorPlane: floorPlaneOpacity,
-            background: backgroundOpacity
-          }}
-          onOpacityChange={(type, value) => {
-            if (type === 'grid') setGridOpacity(value);
-            else if (type === 'floorPlane') setFloorPlaneOpacity(value);
-            else if (type === 'background') setBackgroundOpacity(value);
-          }}
-          groundSize={groundSize}
-          onGroundSizeChange={handleGroundSizeChange}
-          isGroundInfinite={isGroundInfinite}
-          onGroundInfiniteToggle={handleGroundInfiniteToggle}
-          groundShape={groundShape}
-          onGroundShapeChange={setGroundShape}
-          crosshairSettings={{
-            visible: showCrosshair,
-            size: crosshairSize,
-            thickness: crosshairThickness,
-            style: crosshairStyle
-          }}
-          onCrosshairSettingChange={(setting, value) => {
-            if (setting === 'visible') setShowCrosshair(value);
-            else if (setting === 'size') setCrosshairSize(value);
-            else if (setting === 'thickness') setCrosshairThickness(value);
-            else if (setting === 'style') setCrosshairStyle(value);
-          }}
-          visibilitySettings={{
-            floor: floorVisible,
-            grid: gridVisible,
-            floorPlane: floorPlaneVisible,
-            background: backgroundVisible
-          }}
-          onVisibilityChange={(setting, value) => {
-            if (setting === 'floor') setFloorVisible(value);
-            else if (setting === 'grid') setGridVisible(value);
-            else if (setting === 'floorPlane') setFloorPlaneVisible(value);
-            else if (setting === 'background') setBackgroundVisible(value);
-          }}
-          gravityEnabled={gravityEnabled}
-          onGravityToggle={setGravityEnabled}
-          selectedTheme={selectedTheme}
-          onThemeSelect={(theme) => {
-            setSelectedTheme(theme);
-            setTheme(theme);
-          }}
-          environmentSettings={environmentSettings}
-          onEnvironmentSettingChange={handleEnvironmentSettingChange}
+        >
+          <SettingsPanel 
+            onToggle={(isOpen) => {
+              if (!isOpen) {
+                setCanvasInteractive(true);
+                setShowColorPicker(null);
+                setMouseOverSettings(false);
+              } else {
+                setCanvasInteractive(false);
+                setMouseOverSettings(true);
+              }
+            }}
+            isOpen={showSettings}
+            onClose={() => setShowSettings(false)}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            onColorChange={handleColorChange}
+            onResetColors={handleResetColors}
+            isResetAnimating={isResetAnimating}
+            colorChanged={colorChanged}
+            showColorPicker={showColorPicker}
+            onColorPickerChange={setShowColorPicker}
+            colorPickerRefs={colorPickerRefs}
+            colors={{
+              grid: gridColor,
+              floorPlane: floorPlaneColor,
+              background: backgroundColor,
+              crosshair: crosshairColor
+            }}
+            opacities={{
+              grid: gridOpacity,
+              floorPlane: floorPlaneOpacity,
+              background: backgroundOpacity
+            }}
+            onOpacityChange={(type, value) => {
+              if (type === 'grid') setGridOpacity(value);
+              else if (type === 'floorPlane') setFloorPlaneOpacity(value);
+              else if (type === 'background') setBackgroundOpacity(value);
+            }}
+            groundSize={groundSize}
+            onGroundSizeChange={handleGroundSizeChange}
+            isGroundInfinite={isGroundInfinite}
+            onGroundInfiniteToggle={handleGroundInfiniteToggle}
+            groundShape={groundShape}
+            onGroundShapeChange={setGroundShape}
+            crosshairSettings={{
+              visible: showCrosshair,
+              size: crosshairSize,
+              thickness: crosshairThickness,
+              style: crosshairStyle
+            }}
+            onCrosshairSettingChange={(setting, value) => {
+              if (setting === 'visible') setShowCrosshair(value);
+              else if (setting === 'size') setCrosshairSize(value);
+              else if (setting === 'thickness') setCrosshairThickness(value);
+              else if (setting === 'style') setCrosshairStyle(value);
+            }}
+            visibilitySettings={{
+              floor: floorVisible,
+              grid: gridVisible,
+              floorPlane: floorPlaneVisible,
+              background: backgroundVisible
+            }}
+            onVisibilityChange={(setting, value) => {
+              if (setting === 'floor') setFloorVisible(value);
+              else if (setting === 'grid') setGridVisible(value);
+              else if (setting === 'floorPlane') setFloorPlaneVisible(value);
+              else if (setting === 'background') setBackgroundVisible(value);
+            }}
+            gravityEnabled={gravityEnabled}
+            onGravityToggle={setGravityEnabled}
+            selectedTheme={selectedTheme}
+            onThemeSelect={(theme) => {
+              setSelectedTheme(theme);
+              setTheme(theme);
+            }}
+            environmentSettings={environmentSettings}
+            onEnvironmentSettingChange={handleEnvironmentSettingChange}
+          />
+        </div>
+
+        {/* Mode indicator */}
+        {currentMode === 'build' && !confirmedPosition && (
+          <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center">
+            <span>
+              {pendingWebsiteUrl ? "Move to position the website and click to confirm" : "Select a website from the catalog or use Cmd+B to open the catalog"}
+            </span>
+            {pendingWebsiteUrl && (
+              <button 
+                onClick={handleCancel}
+                className="ml-3 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
+                title="Cancel positioning (Esc)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
+        
+        {currentMode === 'build' && confirmedPosition && (
+          <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg">
+            {pendingWebsiteUrl ? "Website positioned! Choose another or press 1 to return to Live mode" : "Position confirmed!"}
+          </div>
+        )}
+
+        {/* Crosshair */}
+        <Crosshair 
+          visible={showCrosshair} 
+          size={crosshairSize} 
+          color={crosshairColor} 
+          thickness={crosshairThickness} 
+          style={crosshairStyle}
+        />
+
+        {/* Spotlight */}
+        <Spotlight 
+          onAddFrame={handleAddFrame}
+          onVisibilityChange={handleSpotlightVisibility}
+          showInput={true}
         />
       </div>
-
-      {/* Mode indicator */}
-      {currentMode === 'build' && !confirmedPosition && (
-        <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center">
-          <span>
-            {pendingWebsiteUrl ? "Move to position the website and click to confirm" : "Select a website from the catalog or use Cmd+B to open the catalog"}
-          </span>
-          {pendingWebsiteUrl && (
-            <button 
-              onClick={handleCancel}
-              className="ml-3 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
-              title="Cancel positioning (Esc)"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-          )}
-        </div>
-      )}
-      
-      {currentMode === 'build' && confirmedPosition && (
-        <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg">
-          {pendingWebsiteUrl ? "Website positioned! Choose another or press 1 to return to Live mode" : "Position confirmed!"}
-        </div>
-      )}
-
-      {/* Crosshair */}
-      <Crosshair 
-        visible={showCrosshair} 
-        size={crosshairSize} 
-        color={crosshairColor} 
-        thickness={crosshairThickness} 
-        style={crosshairStyle}
-      />
-
-      {/* Spotlight */}
-      <Spotlight 
-        onAddFrame={handleAddFrame}
-        onVisibilityChange={handleSpotlightVisibility}
-        showInput={true}
-      />
-    </div>
+    </HotbarContext.Provider>
   );
 };
 
