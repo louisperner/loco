@@ -459,8 +459,6 @@ const Player = () => {
       
       if (e.key === '1') {
         handleModeChange('live');
-      } else if (e.key === '2') {
-        handleModeChange('build');
       }
       
       if (e.key === 'Escape') {
