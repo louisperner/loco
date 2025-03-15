@@ -70,12 +70,12 @@ app.whenReady().then(() => {
     // simpleFullscreen: true
     icon: path.join(process.cwd(), 'loco-icon.icns'),
     webPreferences: {
-      sandbox: false, 
+      sandbox: true, 
       webviewTag: true,
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
-      webSecurity: false, // Permite carregar arquivos locais (use com cuidado em produção)
+      webSecurity: true, // Permite carregar arquivos locais (use com cuidado em produção)
     },
   });
 
@@ -96,7 +96,7 @@ app.whenReady().then(() => {
       callback({
         responseHeaders: {
           ...details.responseHeaders,
-          'Content-Security-Policy': ['default-src \'self\' app-file: file: data: blob: \'unsafe-inline\' \'unsafe-eval\' https://* http://*; media-src \'self\' https://* http://* blob: app-file:; connect-src \'self\' https://* http://* ws://* wss://* blob: app-file:; img-src \'self\' data: blob: https://* http://* app-file:;']
+          'Content-Security-Policy': ['default-src \'self\' app-file: file: data: blob: \'unsafe-inline\' https://* http://*; media-src \'self\' https://* http://* blob: app-file:; connect-src \'self\' https://* http://* ws://* wss://* blob: app-file:; img-src \'self\' data: blob: https://* http://* app-file:;']
         }
       });
     }
