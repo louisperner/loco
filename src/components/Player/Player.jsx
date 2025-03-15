@@ -53,6 +53,9 @@ const Player = () => {
   const colorPickerRefs = useRef({});
   const inventoryRef = useRef(null);
   
+  // UI visibility state
+  const [uiVisible, setUiVisible] = useState(true);
+  
   // Hotbar state
   const [selectedHotbarItem, setSelectedHotbarItem] = useState(null);
   
@@ -443,6 +446,11 @@ const Player = () => {
         setMovementEnabled(!showCatalog);
       }
       
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        setUiVisible(prev => !prev);
+      }
+      
       if (e.key === 'F1') {
         e.preventDefault();
         handleToggleHelp();
@@ -716,109 +724,111 @@ const Player = () => {
         </Canvas>
         
         {/* Settings Panel */}
-        <div 
-          ref={settingsPanelRef}
-          className={`settings-panel-container ${showSettings ? 'active' : ''}`}
-          onMouseEnter={() => setMouseOverSettings(true)}
-          onMouseLeave={() => {
-            if (!showColorPicker) {
-              setMouseOverSettings(false);
-              setCanvasInteractive(true);
-            }
-          }}
-        >
-          <SettingsPanel 
-            onToggle={(isOpen) => {
-              if (!isOpen) {
-                setCanvasInteractive(true);
-                setShowColorPicker(null);
+        {uiVisible && (
+          <div 
+            ref={settingsPanelRef}
+            className={`settings-panel-container ${showSettings ? 'active' : ''}`}
+            onMouseEnter={() => setMouseOverSettings(true)}
+            onMouseLeave={() => {
+              if (!showColorPicker) {
                 setMouseOverSettings(false);
+                setCanvasInteractive(true);
+              }
+            }}
+          >
+            <SettingsPanel 
+              onToggle={(isOpen) => {
+                if (!isOpen) {
+                  setCanvasInteractive(true);
+                  setShowColorPicker(null);
+                  setMouseOverSettings(false);
+                  // Reload inventory when settings panel is closed
+                  if (inventoryRef.current && inventoryRef.current.reloadInventory) {
+                    inventoryRef.current.reloadInventory();
+                  }
+                } else {
+                  setCanvasInteractive(false);
+                  setMouseOverSettings(true);
+                }
+              }}
+              isOpen={showSettings}
+              onClose={() => {
+                setShowSettings(false);
                 // Reload inventory when settings panel is closed
                 if (inventoryRef.current && inventoryRef.current.reloadInventory) {
                   inventoryRef.current.reloadInventory();
                 }
-              } else {
-                setCanvasInteractive(false);
-                setMouseOverSettings(true);
-              }
-            }}
-            isOpen={showSettings}
-            onClose={() => {
-              setShowSettings(false);
-              // Reload inventory when settings panel is closed
-              if (inventoryRef.current && inventoryRef.current.reloadInventory) {
-                inventoryRef.current.reloadInventory();
-              }
-            }}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            onColorChange={handleColorChange}
-            onResetColors={handleResetColors}
-            isResetAnimating={isResetAnimating}
-            colorChanged={colorChanged}
-            showColorPicker={showColorPicker}
-            onColorPickerChange={setShowColorPicker}
-            colorPickerRefs={colorPickerRefs}
-            colors={{
-              grid: gridColor,
-              floorPlane: floorPlaneColor,
-              background: backgroundColor,
-              crosshair: crosshairColor
-            }}
-            opacities={{
-              grid: gridOpacity,
-              floorPlane: floorPlaneOpacity,
-              background: backgroundOpacity
-            }}
-            onOpacityChange={(type, value) => {
-              if (type === 'grid') setGridOpacity(value);
-              else if (type === 'floorPlane') setFloorPlaneOpacity(value);
-              else if (type === 'background') setBackgroundOpacity(value);
-            }}
-            groundSize={groundSize}
-            onGroundSizeChange={handleGroundSizeChange}
-            isGroundInfinite={isGroundInfinite}
-            onGroundInfiniteToggle={handleGroundInfiniteToggle}
-            groundShape={groundShape}
-            onGroundShapeChange={setGroundShape}
-            crosshairSettings={{
-              visible: showCrosshair,
-              size: crosshairSize,
-              thickness: crosshairThickness,
-              style: crosshairStyle
-            }}
-            onCrosshairSettingChange={(setting, value) => {
-              if (setting === 'visible') setShowCrosshair(value);
-              else if (setting === 'size') setCrosshairSize(value);
-              else if (setting === 'thickness') setCrosshairThickness(value);
-              else if (setting === 'style') setCrosshairStyle(value);
-            }}
-            visibilitySettings={{
-              floor: floorVisible,
-              grid: gridVisible,
-              floorPlane: floorPlaneVisible,
-              background: backgroundVisible
-            }}
-            onVisibilityChange={(setting, value) => {
-              if (setting === 'floor') setFloorVisible(value);
-              else if (setting === 'grid') setGridVisible(value);
-              else if (setting === 'floorPlane') setFloorPlaneVisible(value);
-              else if (setting === 'background') setBackgroundVisible(value);
-            }}
-            gravityEnabled={gravityEnabled}
-            onGravityToggle={setGravityEnabled}
-            selectedTheme={selectedTheme}
-            onThemeSelect={(theme) => {
-              setSelectedTheme(theme);
-              setTheme(theme);
-            }}
-            environmentSettings={environmentSettings}
-            onEnvironmentSettingChange={handleEnvironmentSettingChange}
-          />
-        </div>
+              }}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              onColorChange={handleColorChange}
+              onResetColors={handleResetColors}
+              isResetAnimating={isResetAnimating}
+              colorChanged={colorChanged}
+              showColorPicker={showColorPicker}
+              onColorPickerChange={setShowColorPicker}
+              colorPickerRefs={colorPickerRefs}
+              colors={{
+                grid: gridColor,
+                floorPlane: floorPlaneColor,
+                background: backgroundColor,
+                crosshair: crosshairColor
+              }}
+              opacities={{
+                grid: gridOpacity,
+                floorPlane: floorPlaneOpacity,
+                background: backgroundOpacity
+              }}
+              onOpacityChange={(type, value) => {
+                if (type === 'grid') setGridOpacity(value);
+                else if (type === 'floorPlane') setFloorPlaneOpacity(value);
+                else if (type === 'background') setBackgroundOpacity(value);
+              }}
+              groundSize={groundSize}
+              onGroundSizeChange={handleGroundSizeChange}
+              isGroundInfinite={isGroundInfinite}
+              onGroundInfiniteToggle={handleGroundInfiniteToggle}
+              groundShape={groundShape}
+              onGroundShapeChange={setGroundShape}
+              crosshairSettings={{
+                visible: showCrosshair,
+                size: crosshairSize,
+                thickness: crosshairThickness,
+                style: crosshairStyle
+              }}
+              onCrosshairSettingChange={(setting, value) => {
+                if (setting === 'visible') setShowCrosshair(value);
+                else if (setting === 'size') setCrosshairSize(value);
+                else if (setting === 'thickness') setCrosshairThickness(value);
+                else if (setting === 'style') setCrosshairStyle(value);
+              }}
+              visibilitySettings={{
+                floor: floorVisible,
+                grid: gridVisible,
+                floorPlane: floorPlaneVisible,
+                background: backgroundVisible
+              }}
+              onVisibilityChange={(setting, value) => {
+                if (setting === 'floor') setFloorVisible(value);
+                else if (setting === 'grid') setGridVisible(value);
+                else if (setting === 'floorPlane') setFloorPlaneVisible(value);
+                else if (setting === 'background') setBackgroundVisible(value);
+              }}
+              gravityEnabled={gravityEnabled}
+              onGravityToggle={setGravityEnabled}
+              selectedTheme={selectedTheme}
+              onThemeSelect={(theme) => {
+                setSelectedTheme(theme);
+                setTheme(theme);
+              }}
+              environmentSettings={environmentSettings}
+              onEnvironmentSettingChange={handleEnvironmentSettingChange}
+            />
+          </div>
+        )}
 
         {/* Mode indicator */}
-        {currentMode === 'build' && !confirmedPosition && (
+        {uiVisible && currentMode === 'build' && !confirmedPosition && (
           <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center">
             <span>
               {pendingWebsiteUrl ? "Move to position the website and click to confirm" : "Select a website from the catalog or use Cmd+B to open the catalog"}
@@ -837,36 +847,42 @@ const Player = () => {
           </div>
         )}
         
-        {currentMode === 'build' && confirmedPosition && (
+        {uiVisible && currentMode === 'build' && confirmedPosition && (
           <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg">
             {pendingWebsiteUrl ? "Website positioned! Choose another or press 1 to return to Live mode" : "Position confirmed!"}
           </div>
         )}
 
         {/* Crosshair */}
-        <Crosshair 
-          visible={showCrosshair} 
-          size={crosshairSize} 
-          color={crosshairColor} 
-          thickness={crosshairThickness} 
-          style={crosshairStyle}
-        />
+        {uiVisible && (
+          <Crosshair 
+            visible={showCrosshair} 
+            size={crosshairSize} 
+            color={crosshairColor} 
+            thickness={crosshairThickness} 
+            style={crosshairStyle}
+          />
+        )}
 
         {/* Spotlight */}
-        <Spotlight 
-          onAddFrame={handleAddFrame}
-          onVisibilityChange={handleSpotlightVisibility}
-          showInput={true}
-        />
+        {uiVisible && (
+          <Spotlight 
+            onAddFrame={handleAddFrame}
+            onVisibilityChange={handleSpotlightVisibility}
+            showInput={true}
+          />
+        )}
 
         {/* Inventory component - always rendered, visibility controlled by isOpen prop */}
-        <Inventory 
-          ref={inventoryRef}
-          onSelectImage={handleSelectImageFromInventory}
-          onSelectModel={handleSelectModelFromInventory}
-          onClose={handleCloseInventory}
-          isOpen={showInventory}
-        />
+        {uiVisible && (
+          <Inventory 
+            ref={inventoryRef}
+            onSelectImage={handleSelectImageFromInventory}
+            onSelectModel={handleSelectModelFromInventory}
+            onClose={handleCloseInventory}
+            isOpen={showInventory}
+          />
+        )}
       </div>
     </HotbarContext.Provider>
   );
