@@ -10,13 +10,24 @@ import {
   SlidePanelFooter,
   SlidePanelClose,
 } from '@/components/ui/slide-panel';
-import { FaCog, FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaMagic } from 'react-icons/fa';
+import { FaCog, FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaMagic, FaDatabase } from 'react-icons/fa';
 import { ColorsTab } from './tabs/ColorsTab';
 import { GroundTab } from './tabs/GroundTab';
 import { CrosshairTab } from './tabs/CrosshairTab';
 import { EnvironmentTab } from './tabs/EnvironmentTab';
+import { DataManagementTab } from './tabs/DataManagementTab';
 import { SettingsPanelProps, SettingsTab } from './types';
 import { loadSettings, saveSettings } from './utils';
+
+// Add window.electron type declaration
+declare global {
+  interface Window {
+    electron?: {
+      cleanAllFiles: () => Promise<{ success: boolean; message?: string; error?: string }>;
+      [key: string]: any;
+    };
+  }
+}
 
 // TabsContent component to handle tab navigation and content display
 const TabsContent = ({ tabs, activeTab, onTabChange }: { 
@@ -75,7 +86,7 @@ export function SettingsPanel({
   colorChanged,
   showColorPicker,
   onColorPickerChange,
-  colorPickerRefs = useRef<{ [key: string]: HTMLDivElement | null }>({}),
+  colorPickerRefs,
   colors = {},
   opacities = {
     grid: 1,
@@ -129,6 +140,26 @@ export function SettingsPanel({
 }: SettingsPanelProps) {
   const [open, setOpen] = useState(isOpen || false);
   const colorPickerContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Create a default colorPickerRefs if not provided
+  const defaultColorPickerRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const effectiveColorPickerRefs = colorPickerRefs || defaultColorPickerRefs;
+
+  // Handle clean all files function for DataManagementTab
+  const handleCleanAllFiles = async () => {
+    try {
+      // Implementation for cleaning all files
+      if (window.electron && typeof window.electron.cleanAllFiles === 'function') {
+        return await window.electron.cleanAllFiles();
+      } else {
+        console.error('Clean files function not available');
+        return { success: false, error: 'Clean files function not available' };
+      }
+    } catch (error) {
+      console.error('Error cleaning files:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  };
 
   // Load saved settings on component mount
   useEffect(() => {
@@ -203,7 +234,7 @@ export function SettingsPanel({
       if (!showColorPicker) return;
 
       // Check if click is inside any of the color picker containers
-      const isColorPickerClick = Object.values(colorPickerRefs.current).some(
+      const isColorPickerClick = Object.values(effectiveColorPickerRefs.current).some(
         ref => ref && ref.contains(event.target as Node)
       );
 
@@ -221,23 +252,24 @@ export function SettingsPanel({
     };
   }, [showColorPicker, onColorPickerChange]);
 
+  // Define default tabs if none are provided
   const defaultTabs: SettingsTab[] = [
     {
       id: 'cores',
       label: 'Colors',
       icon: <FaPalette className="w-4 h-4" />,
       content: (
-        <ColorsTab
+        <ColorsTab 
           colors={colors}
-          visibilitySettings={visibilitySettings}
-          onVisibilityChange={onVisibilityChange || (() => {})}
           onColorChange={onColorChange || (() => {})}
           onResetColors={onResetColors || (() => {})}
           isResetAnimating={isResetAnimating || false}
           showColorPicker={showColorPicker || null}
           onColorPickerChange={onColorPickerChange || (() => {})}
-          colorPickerRefs={colorPickerRefs}
+          colorPickerRefs={effectiveColorPickerRefs}
           colorPickerContainerRef={colorPickerContainerRef}
+          visibilitySettings={visibilitySettings}
+          onVisibilityChange={onVisibilityChange || (() => {})}
         />
       )
     },
@@ -246,7 +278,7 @@ export function SettingsPanel({
       label: 'Ground',
       icon: <FaLayerGroup className="w-4 h-4" />,
       content: (
-        <GroundTab
+        <GroundTab 
           colors={colors}
           visibilitySettings={visibilitySettings}
           onVisibilityChange={onVisibilityChange || (() => {})}
@@ -263,7 +295,7 @@ export function SettingsPanel({
           onOpacityChange={onOpacityChange || (() => {})}
           showColorPicker={showColorPicker || null}
           onColorPickerChange={onColorPickerChange || (() => {})}
-          colorPickerRefs={colorPickerRefs}
+          colorPickerRefs={effectiveColorPickerRefs}
           colorPickerContainerRef={colorPickerContainerRef}
         />
       )
@@ -273,28 +305,38 @@ export function SettingsPanel({
       label: 'Crosshair',
       icon: <FaAdjust className="w-4 h-4" />,
       content: (
-        <CrosshairTab
+        <CrosshairTab 
           colors={colors}
           crosshairSettings={crosshairSettings}
           onCrosshairSettingChange={onCrosshairSettingChange || (() => {})}
           onColorChange={onColorChange || (() => {})}
           showColorPicker={showColorPicker || null}
           onColorPickerChange={onColorPickerChange || (() => {})}
-          colorPickerRefs={colorPickerRefs}
+          colorPickerRefs={effectiveColorPickerRefs}
           colorPickerContainerRef={colorPickerContainerRef}
         />
       )
     },
     {
-      id: 'ambiente',
+      id: 'environment',
       label: 'Environment',
       icon: <FaMagic className="w-4 h-4" />,
       content: (
-        <EnvironmentTab
+        <EnvironmentTab 
           environmentSettings={environmentSettings}
           onEnvironmentSettingChange={onEnvironmentSettingChange || (() => {})}
           gravityEnabled={gravityEnabled}
           onGravityToggle={onGravityToggle || (() => {})}
+        />
+      )
+    },
+    {
+      id: 'data',
+      label: 'Data',
+      icon: <FaDatabase className="w-4 h-4" />,
+      content: (
+        <DataManagementTab 
+          onCleanAllFiles={handleCleanAllFiles}
         />
       )
     }

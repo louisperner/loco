@@ -43,10 +43,10 @@ const ImageInScene = ({ imageData, onRemove, onUpdate }) => {
       if (src && (src.startsWith('app-file://') || src.startsWith('file://'))) {
         try {
           if (window.electron && window.electron.loadImageFromAppFile) {
-            console.log('Loading image from app-file URL:', src);
+            // console.log('Loading image from app-file URL:', src);
             const result = await window.electron.loadImageFromAppFile(src);
             if (result.success) {
-              console.log('Successfully loaded image as blob URL:', result.url);
+              // console.log('Successfully loaded image as blob URL:', result.url);
               setImageSrc(result.url);
             } else {
               console.error('Failed to load image from app-file URL:', result.error);

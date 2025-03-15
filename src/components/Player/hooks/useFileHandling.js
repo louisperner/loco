@@ -291,77 +291,86 @@ export const useFileHandling = (cameraRef) => {
     
     // Check for inventory item data
     try {
+      // First, check if this is an inventory item drop
       const jsonData = e.dataTransfer.getData('application/json');
+      console.log('Checking for JSON data in drop:', jsonData);
+      
       if (jsonData) {
-        const data = JSON.parse(jsonData);
-        if (data.type === 'inventory-item') {
-          console.log('Inventory item dropped:', data.itemData);
-          const item = data.itemData;
+        try {
+          const data = JSON.parse(jsonData);
+          console.log('Parsed drop data:', data);
           
-          // Handle based on item type
-          if (item.type === 'image') {
-            // Add the selected image to the scene
-            if (item && item.url) {
-              const position = new THREE.Vector3();
-              
-              // If camera is available, place in front of camera
-              if (cameraRef.current) {
-                const camera = cameraRef.current;
-                const direction = new THREE.Vector3(0, 0, -1);
-                direction.applyQuaternion(camera.quaternion);
+          if (data.type === 'inventory-item' && data.itemData) {
+            console.log('Inventory item dropped:', data.itemData);
+            const item = data.itemData;
+            
+            // Handle based on item type
+            if (item.type === 'image') {
+              // Add the selected image to the scene
+              if (item && item.url) {
+                const position = new THREE.Vector3();
                 
-                position.copy(camera.position);
-                direction.multiplyScalar(3); // Place 3 units in front of camera
-                position.add(direction);
-              } else {
-                // Default position if camera not available
-                position.set(0, 1, 0);
-              }
-              
-              // Add image to the store
-              addImage({
-                src: item.url,
-                fileName: item.fileName,
-                position: [position.x, position.y, position.z],
-                rotation: [0, 0, 0],
-                scale: 1,
-              });
-              
-              console.log(`Added image from inventory: ${item.fileName}`);
-              return;
-            }
-          } else if (item.type === 'model') {
-            // Add the selected model to the scene
-            if (item && item.url) {
-              const position = new THREE.Vector3();
-              
-              // If camera is available, place in front of camera
-              if (cameraRef.current) {
-                const camera = cameraRef.current;
-                const direction = new THREE.Vector3(0, 0, -1);
-                direction.applyQuaternion(camera.quaternion);
+                // If camera is available, place in front of camera
+                if (cameraRef.current) {
+                  const camera = cameraRef.current;
+                  const direction = new THREE.Vector3(0, 0, -1);
+                  direction.applyQuaternion(camera.quaternion);
+                  
+                  position.copy(camera.position);
+                  direction.multiplyScalar(3); // Place 3 units in front of camera
+                  position.add(direction);
+                } else {
+                  // Default position if camera not available
+                  position.set(0, 1, 0);
+                }
                 
-                position.copy(camera.position);
-                direction.multiplyScalar(3); // Place 3 units in front of camera
-                position.add(direction);
-              } else {
-                // Default position if camera not available
-                position.set(0, 1, 0);
+                // Add image to the store
+                const imageId = addImage({
+                  src: item.url,
+                  fileName: item.fileName || 'Untitled Image',
+                  position: [position.x, position.y, position.z],
+                  rotation: [0, 0, 0],
+                  scale: 1,
+                });
+                
+                console.log(`Added image from inventory: ${item.fileName} with ID: ${imageId}`);
+                return; // Exit early since we've handled the drop
               }
-              
-              // Add model to the store
-              addModel({
-                url: item.url,
-                fileName: item.fileName,
-                position: [position.x, position.y, position.z],
-                rotation: [0, 0, 0],
-                scale: 1,
-              });
-              
-              console.log(`Added model from inventory: ${item.fileName}`);
-              return;
+            } else if (item.type === 'model') {
+              // Add the selected model to the scene
+              if (item && item.url) {
+                const position = new THREE.Vector3();
+                
+                // If camera is available, place in front of camera
+                if (cameraRef.current) {
+                  const camera = cameraRef.current;
+                  const direction = new THREE.Vector3(0, 0, -1);
+                  direction.applyQuaternion(camera.quaternion);
+                  
+                  position.copy(camera.position);
+                  direction.multiplyScalar(3); // Place 3 units in front of camera
+                  position.add(direction);
+                } else {
+                  // Default position if camera not available
+                  position.set(0, 1, 0);
+                }
+                
+                // Add model to the store
+                const modelId = addModel({
+                  url: item.url,
+                  fileName: item.fileName || 'Untitled Model',
+                  position: [position.x, position.y, position.z],
+                  rotation: [0, 0, 0],
+                  scale: 1,
+                });
+                
+                console.log(`Added model from inventory: ${item.fileName} with ID: ${modelId}`);
+                return; // Exit early since we've handled the drop
+              }
             }
           }
+        } catch (jsonError) {
+          console.error('Error parsing JSON data from drop:', jsonError);
         }
       }
     } catch (error) {

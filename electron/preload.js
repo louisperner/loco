@@ -153,6 +153,16 @@ contextBridge.exposeInMainWorld(
           reject(error);
         }
       });
+    },
+    
+    // Clean all files from inventory
+    cleanAllFiles: async () => {
+      try {
+        const result = await ipcRenderer.invoke('clean-all-files');
+        return result;
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
     }
   }
 );

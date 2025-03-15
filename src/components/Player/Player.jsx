@@ -51,6 +51,7 @@ const Player = () => {
   const fileInputRef = useRef();
   const settingsPanelRef = useRef(null);
   const colorPickerRefs = useRef({});
+  const inventoryRef = useRef(null);
   
   // Hotbar state
   const [selectedHotbarItem, setSelectedHotbarItem] = useState(null);
@@ -717,6 +718,7 @@ const Player = () => {
         {/* Settings Panel */}
         <div 
           ref={settingsPanelRef}
+          className={`settings-panel-container ${showSettings ? 'active' : ''}`}
           onMouseEnter={() => setMouseOverSettings(true)}
           onMouseLeave={() => {
             if (!showColorPicker) {
@@ -731,13 +733,23 @@ const Player = () => {
                 setCanvasInteractive(true);
                 setShowColorPicker(null);
                 setMouseOverSettings(false);
+                // Reload inventory when settings panel is closed
+                if (inventoryRef.current && inventoryRef.current.reloadInventory) {
+                  inventoryRef.current.reloadInventory();
+                }
               } else {
                 setCanvasInteractive(false);
                 setMouseOverSettings(true);
               }
             }}
             isOpen={showSettings}
-            onClose={() => setShowSettings(false)}
+            onClose={() => {
+              setShowSettings(false);
+              // Reload inventory when settings panel is closed
+              if (inventoryRef.current && inventoryRef.current.reloadInventory) {
+                inventoryRef.current.reloadInventory();
+              }
+            }}
             activeTab={activeTab}
             onTabChange={setActiveTab}
             onColorChange={handleColorChange}
@@ -849,6 +861,7 @@ const Player = () => {
 
         {/* Inventory component - always rendered, visibility controlled by isOpen prop */}
         <Inventory 
+          ref={inventoryRef}
           onSelectImage={handleSelectImageFromInventory}
           onSelectModel={handleSelectModelFromInventory}
           onClose={handleCloseInventory}

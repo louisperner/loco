@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useImageStore } from '../../store/useImageStore';
 import { useModelStore } from '../../store/useModelStore';
 import './Inventory.css';
@@ -6,7 +6,7 @@ import './Inventory.css';
 // Create a key for localStorage
 const HOTBAR_STORAGE_KEY = 'loco-hotbar-items';
 
-const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }) => {
+const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,11 +19,317 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }) => {
   const [categories, setCategories] = useState([]);
   const [isAddingToHotbar, setIsAddingToHotbar] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null); // Track the item being dragged
+  const [dragOverSlot, setDragOverSlot] = useState(null); // Track which slot is being dragged over
   const searchInputRef = useRef(null);
   
   // Get images and models from the stores as a fallback
   const storeImages = useImageStore(state => state.images);
   const storeModels = useModelStore(state => state.models);
+  
+  // Function to reload items from disk
+  const loadItemsFromDisk = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Check if we have access to the electron API
+      if (!window.electron) {
+        throw new Error('Electron API not available');
+      }
+      
+      let allItems = [];
+      
+      // Load images
+      try {
+        if (typeof window.electron.listImagesFromDisk === 'function') {
+          const result = await window.electron.listImagesFromDisk();
+          
+          if (result.success) {
+            const imageItems = result.images.map(img => ({
+              ...img,
+              type: 'image',
+              category: getImageCategory(img.fileName)
+            }));
+            allItems = [...allItems, ...imageItems];
+          }
+        } else {
+          console.warn('listImagesFromDisk function not available, using images from store instead');
+          // Use images from the store as a fallback
+          const storeImageItems = storeImages.map(img => ({
+            id: img.id,
+            type: 'image',
+            fileName: img.fileName || 'Unknown',
+            url: img.src,
+            thumbnailUrl: img.src,
+            createdAt: new Date().toISOString(),
+            modifiedAt: new Date().toISOString(),
+            category: getImageCategory(img.fileName || 'Unknown')
+          }));
+          allItems = [...allItems, ...storeImageItems];
+        }
+      } catch (error) {
+        console.error('Error loading images:', error);
+      }
+      
+      // Load models
+      try {
+        if (typeof window.electron.listModelsFromDisk === 'function') {
+          const result = await window.electron.listModelsFromDisk();
+          
+          if (result.success) {
+            const modelItems = result.models.map(model => ({
+              ...model,
+              type: 'model',
+              category: getModelCategory(model.fileName)
+            }));
+            allItems = [...allItems, ...modelItems];
+          }
+        } else {
+          console.warn('listModelsFromDisk function not available, using models from store instead');
+          // Use models from the store as a fallback
+          const storeModelItems = storeModels.map(model => ({
+            id: model.id,
+            type: 'model',
+            fileName: model.fileName || 'Unknown',
+            url: model.url,
+            thumbnailUrl: model.thumbnailUrl,
+            createdAt: new Date().toISOString(),
+            modifiedAt: new Date().toISOString(),
+            category: getModelCategory(model.fileName || 'Unknown')
+          }));
+          allItems = [...allItems, ...storeModelItems];
+        }
+      } catch (error) {
+        console.error('Error loading models:', error);
+      }
+      
+      // Extract unique categories
+      const uniqueCategories = [...new Set(allItems.map(item => item.category))].filter(Boolean);
+      setCategories(['all', 'images', 'models', ...uniqueCategories.filter(cat => cat !== 'images' && cat !== 'models')]);
+      
+      // Improved deduplication logic
+      const uniqueItems = [];
+      const seenUrls = new Map(); // Track items by URL
+      const seenPaths = new Map(); // Track items by file path
+      const seenIds = new Set(); // Continue tracking by ID for backward compatibility
+      
+      allItems.forEach(item => {
+        // Skip if we've already seen this ID
+        if (seenIds.has(item.id)) {
+          return;
+        }
+        
+        // Check for duplicate URLs
+        const normalizedUrl = item.url ? item.url.replace(/\\/g, '/').toLowerCase() : null;
+        if (normalizedUrl && seenUrls.has(normalizedUrl)) {
+          // Update the existing item with any new information if needed
+          const existingItemIndex = seenUrls.get(normalizedUrl);
+          const existingItem = uniqueItems[existingItemIndex];
+          
+          // Merge any missing properties
+          if (!existingItem.thumbnailUrl && item.thumbnailUrl) {
+            uniqueItems[existingItemIndex].thumbnailUrl = item.thumbnailUrl;
+          }
+          
+          // Track this ID as seen
+          seenIds.add(item.id);
+          return;
+        }
+        
+        // Check for duplicate file paths (for local files)
+        const filePath = item.filePath ? item.filePath.replace(/\\/g, '/').toLowerCase() : null;
+        if (filePath && seenPaths.has(filePath)) {
+          // Update the existing item with any new information if needed
+          const existingItemIndex = seenPaths.get(filePath);
+          const existingItem = uniqueItems[existingItemIndex];
+          
+          // Merge any missing properties
+          if (!existingItem.thumbnailUrl && item.thumbnailUrl) {
+            uniqueItems[existingItemIndex].thumbnailUrl = item.thumbnailUrl;
+          }
+          
+          // Track this ID as seen
+          seenIds.add(item.id);
+          return;
+        }
+        
+        // Check for duplicate filenames as a last resort
+        const existingItemWithSameFileName = uniqueItems.findIndex(
+          existingItem => existingItem.fileName === item.fileName && 
+                         existingItem.type === item.type &&
+                         existingItem.fileSize === item.fileSize
+        );
+        
+        if (existingItemWithSameFileName !== -1) {
+          // Update the existing item with any new information if needed
+          if (!uniqueItems[existingItemWithSameFileName].thumbnailUrl && item.thumbnailUrl) {
+            uniqueItems[existingItemWithSameFileName].thumbnailUrl = item.thumbnailUrl;
+          }
+          
+          // Track this ID as seen
+          seenIds.add(item.id);
+          return;
+        }
+        
+        // This is a new unique item
+        const itemIndex = uniqueItems.length;
+        uniqueItems.push(item);
+        seenIds.add(item.id);
+        
+        // Track by URL and file path for future checks
+        if (normalizedUrl) {
+          seenUrls.set(normalizedUrl, itemIndex);
+        }
+        if (filePath) {
+          seenPaths.set(filePath, itemIndex);
+        }
+      });
+      
+      // console.log(`Deduplicated ${allItems.length} items to ${uniqueItems.length} unique items`);
+      setItems(uniqueItems);
+      
+      // Restore hotbar items from localStorage
+      try {
+        const savedHotbar = localStorage.getItem(HOTBAR_STORAGE_KEY);
+        if (savedHotbar) {
+          const savedHotbarIds = JSON.parse(savedHotbar);
+          const newHotbarItems = Array(9).fill(null);
+          
+          // Find the items by ID and restore them to the hotbar
+          savedHotbarIds.forEach((id, index) => {
+            if (id) {
+              const item = uniqueItems.find(item => item.id === id);
+              if (item) {
+                newHotbarItems[index] = item;
+              }
+            }
+          });
+          
+          setHotbarItems(newHotbarItems);
+        }
+      } catch (error) {
+        console.error('Error restoring hotbar from localStorage:', error);
+      }
+      
+      setSelectedItem(null);
+      setLoading(false);
+    } catch (error) {
+      console.error(`Error loading items from disk:`, error);
+      setError(error.message);
+      
+      // Use items from the store as a fallback
+      const fallbackItems = [
+        ...storeImages.map(img => ({
+          id: img.id,
+          type: 'image',
+          fileName: img.fileName || 'Unknown',
+          url: img.src,
+          thumbnailUrl: img.src,
+          createdAt: new Date().toISOString(),
+          modifiedAt: new Date().toISOString(),
+          category: getImageCategory(img.fileName || 'Unknown')
+        })),
+        ...storeModels.map(model => ({
+          id: model.id,
+          type: 'model',
+          fileName: model.fileName || 'Unknown',
+          url: model.url,
+          thumbnailUrl: model.thumbnailUrl,
+          createdAt: new Date().toISOString(),
+          modifiedAt: new Date().toISOString(),
+          category: getModelCategory(model.fileName || 'Unknown')
+        }))
+      ];
+      
+      // Improved deduplication for fallback items
+      const uniqueItems = [];
+      const seenUrls = new Map();
+      const seenPaths = new Map();
+      const seenIds = new Set();
+      
+      fallbackItems.forEach(item => {
+        // Skip if we've already seen this ID
+        if (seenIds.has(item.id)) {
+          return;
+        }
+        
+        // Check for duplicate URLs
+        const normalizedUrl = item.url ? item.url.replace(/\\/g, '/').toLowerCase() : null;
+        if (normalizedUrl && seenUrls.has(normalizedUrl)) {
+          // Update the existing item with any new information if needed
+          const existingItemIndex = seenUrls.get(normalizedUrl);
+          const existingItem = uniqueItems[existingItemIndex];
+          
+          // Merge any missing properties
+          if (!existingItem.thumbnailUrl && item.thumbnailUrl) {
+            uniqueItems[existingItemIndex].thumbnailUrl = item.thumbnailUrl;
+          }
+          
+          // Track this ID as seen
+          seenIds.add(item.id);
+          return;
+        }
+        
+        // Check for duplicate filenames as a last resort
+        const existingItemWithSameFileName = uniqueItems.findIndex(
+          existingItem => existingItem.fileName === item.fileName && 
+                         existingItem.type === item.type
+        );
+        
+        if (existingItemWithSameFileName !== -1) {
+          // Update the existing item with any new information if needed
+          if (!uniqueItems[existingItemWithSameFileName].thumbnailUrl && item.thumbnailUrl) {
+            uniqueItems[existingItemWithSameFileName].thumbnailUrl = item.thumbnailUrl;
+          }
+          
+          // Track this ID as seen
+          seenIds.add(item.id);
+          return;
+        }
+        
+        // This is a new unique item
+        const itemIndex = uniqueItems.length;
+        uniqueItems.push(item);
+        seenIds.add(item.id);
+        
+        // Track by URL for future checks
+        if (normalizedUrl) {
+          seenUrls.set(normalizedUrl, itemIndex);
+        }
+      });
+      
+      // Extract unique categories
+      const uniqueCategories = [...new Set(uniqueItems.map(item => item.category))].filter(Boolean);
+      setCategories(['all', 'images', 'models', ...uniqueCategories.filter(cat => cat !== 'images' && cat !== 'models')]);
+      
+      setItems(uniqueItems);
+      
+      // Try to restore hotbar from localStorage
+      try {
+        const savedHotbar = localStorage.getItem(HOTBAR_STORAGE_KEY);
+        if (savedHotbar) {
+          const savedHotbarIds = JSON.parse(savedHotbar);
+          const newHotbarItems = Array(9).fill(null);
+          
+          // Find the items by ID and restore them to the hotbar
+          savedHotbarIds.forEach((id, index) => {
+            if (id) {
+              const item = uniqueItems.find(item => item.id === id);
+              if (item) {
+                newHotbarItems[index] = item;
+              }
+            }
+          });
+          
+          setHotbarItems(newHotbarItems);
+        }
+      } catch (error) {
+        console.error('Error restoring hotbar from localStorage:', error);
+      }
+      
+      setError(null);
+      setLoading(false);
+    }
+  }, [storeImages, storeModels]);
   
   // Update showFullInventory when isOpen prop changes
   useEffect(() => {
@@ -46,312 +352,8 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }) => {
   
   // Load items from disk on component mount
   useEffect(() => {
-    const loadItemsFromDisk = async () => {
-      try {
-        setLoading(true);
-        
-        // Check if we have access to the electron API
-        if (!window.electron) {
-          throw new Error('Electron API not available');
-        }
-        
-        let allItems = [];
-        
-        // Load images
-        try {
-          if (typeof window.electron.listImagesFromDisk === 'function') {
-            const result = await window.electron.listImagesFromDisk();
-            
-            if (result.success) {
-              const imageItems = result.images.map(img => ({
-                ...img,
-                type: 'image',
-                category: getImageCategory(img.fileName)
-              }));
-              allItems = [...allItems, ...imageItems];
-            }
-          } else {
-            console.warn('listImagesFromDisk function not available, using images from store instead');
-            // Use images from the store as a fallback
-            const storeImageItems = storeImages.map(img => ({
-              id: img.id,
-              type: 'image',
-              fileName: img.fileName || 'Unknown',
-              url: img.src,
-              thumbnailUrl: img.src,
-              createdAt: new Date().toISOString(),
-              modifiedAt: new Date().toISOString(),
-              category: getImageCategory(img.fileName || 'Unknown')
-            }));
-            allItems = [...allItems, ...storeImageItems];
-          }
-        } catch (error) {
-          console.error('Error loading images:', error);
-        }
-        
-        // Load models
-        try {
-          if (typeof window.electron.listModelsFromDisk === 'function') {
-            const result = await window.electron.listModelsFromDisk();
-            
-            if (result.success) {
-              const modelItems = result.models.map(model => ({
-                ...model,
-                type: 'model',
-                category: getModelCategory(model.fileName)
-              }));
-              allItems = [...allItems, ...modelItems];
-            }
-          } else {
-            console.warn('listModelsFromDisk function not available, using models from store instead');
-            // Use models from the store as a fallback
-            const storeModelItems = storeModels.map(model => ({
-              id: model.id,
-              type: 'model',
-              fileName: model.fileName || 'Unknown',
-              url: model.url,
-              thumbnailUrl: model.thumbnailUrl,
-              createdAt: new Date().toISOString(),
-              modifiedAt: new Date().toISOString(),
-              category: getModelCategory(model.fileName || 'Unknown')
-            }));
-            allItems = [...allItems, ...storeModelItems];
-          }
-        } catch (error) {
-          console.error('Error loading models:', error);
-        }
-        
-        // Extract unique categories
-        const uniqueCategories = [...new Set(allItems.map(item => item.category))].filter(Boolean);
-        setCategories(['all', 'images', 'models', ...uniqueCategories]);
-        
-        // Improved deduplication logic
-        const uniqueItems = [];
-        const seenUrls = new Map(); // Track items by URL
-        const seenPaths = new Map(); // Track items by file path
-        const seenIds = new Set(); // Continue tracking by ID for backward compatibility
-        
-        allItems.forEach(item => {
-          // Skip if we've already seen this ID
-          if (seenIds.has(item.id)) {
-            return;
-          }
-          
-          // Check for duplicate URLs
-          const normalizedUrl = item.url ? item.url.replace(/\\/g, '/').toLowerCase() : null;
-          if (normalizedUrl && seenUrls.has(normalizedUrl)) {
-            // Update the existing item with any new information if needed
-            const existingItemIndex = seenUrls.get(normalizedUrl);
-            const existingItem = uniqueItems[existingItemIndex];
-            
-            // Merge any missing properties
-            if (!existingItem.thumbnailUrl && item.thumbnailUrl) {
-              uniqueItems[existingItemIndex].thumbnailUrl = item.thumbnailUrl;
-            }
-            
-            // Track this ID as seen
-            seenIds.add(item.id);
-            return;
-          }
-          
-          // Check for duplicate file paths (for local files)
-          const filePath = item.filePath ? item.filePath.replace(/\\/g, '/').toLowerCase() : null;
-          if (filePath && seenPaths.has(filePath)) {
-            // Update the existing item with any new information if needed
-            const existingItemIndex = seenPaths.get(filePath);
-            const existingItem = uniqueItems[existingItemIndex];
-            
-            // Merge any missing properties
-            if (!existingItem.thumbnailUrl && item.thumbnailUrl) {
-              uniqueItems[existingItemIndex].thumbnailUrl = item.thumbnailUrl;
-            }
-            
-            // Track this ID as seen
-            seenIds.add(item.id);
-            return;
-          }
-          
-          // Check for duplicate filenames as a last resort
-          const existingItemWithSameFileName = uniqueItems.findIndex(
-            existingItem => existingItem.fileName === item.fileName && 
-                           existingItem.type === item.type &&
-                           existingItem.fileSize === item.fileSize
-          );
-          
-          if (existingItemWithSameFileName !== -1) {
-            // Update the existing item with any new information if needed
-            if (!uniqueItems[existingItemWithSameFileName].thumbnailUrl && item.thumbnailUrl) {
-              uniqueItems[existingItemWithSameFileName].thumbnailUrl = item.thumbnailUrl;
-            }
-            
-            // Track this ID as seen
-            seenIds.add(item.id);
-            return;
-          }
-          
-          // This is a new unique item
-          const itemIndex = uniqueItems.length;
-          uniqueItems.push(item);
-          seenIds.add(item.id);
-          
-          // Track by URL and file path for future checks
-          if (normalizedUrl) {
-            seenUrls.set(normalizedUrl, itemIndex);
-          }
-          if (filePath) {
-            seenPaths.set(filePath, itemIndex);
-          }
-        });
-        
-        console.log(`Deduplicated ${allItems.length} items to ${uniqueItems.length} unique items`);
-        setItems(uniqueItems);
-        
-        // Restore hotbar items from localStorage
-        try {
-          const savedHotbar = localStorage.getItem(HOTBAR_STORAGE_KEY);
-          if (savedHotbar) {
-            const savedHotbarIds = JSON.parse(savedHotbar);
-            const newHotbarItems = Array(9).fill(null);
-            
-            // Find the items by ID and restore them to the hotbar
-            savedHotbarIds.forEach((id, index) => {
-              if (id) {
-                const item = uniqueItems.find(item => item.id === id);
-                if (item) {
-                  newHotbarItems[index] = item;
-                }
-              }
-            });
-            
-            setHotbarItems(newHotbarItems);
-          }
-        } catch (error) {
-          console.error('Error restoring hotbar from localStorage:', error);
-        }
-        
-        setSelectedItem(null);
-        setLoading(false);
-      } catch (error) {
-        console.error(`Error loading items from disk:`, error);
-        setError(error.message);
-        
-        // Use items from the store as a fallback
-        const fallbackItems = [
-          ...storeImages.map(img => ({
-            id: img.id,
-            type: 'image',
-            fileName: img.fileName || 'Unknown',
-            url: img.src,
-            thumbnailUrl: img.src,
-            createdAt: new Date().toISOString(),
-            modifiedAt: new Date().toISOString(),
-            category: getImageCategory(img.fileName || 'Unknown')
-          })),
-          ...storeModels.map(model => ({
-            id: model.id,
-            type: 'model',
-            fileName: model.fileName || 'Unknown',
-            url: model.url,
-            thumbnailUrl: model.thumbnailUrl,
-            createdAt: new Date().toISOString(),
-            modifiedAt: new Date().toISOString(),
-            category: getModelCategory(model.fileName || 'Unknown')
-          }))
-        ];
-        
-        // Improved deduplication for fallback items
-        const uniqueItems = [];
-        const seenUrls = new Map();
-        const seenPaths = new Map();
-        const seenIds = new Set();
-        
-        fallbackItems.forEach(item => {
-          // Skip if we've already seen this ID
-          if (seenIds.has(item.id)) {
-            return;
-          }
-          
-          // Check for duplicate URLs
-          const normalizedUrl = item.url ? item.url.replace(/\\/g, '/').toLowerCase() : null;
-          if (normalizedUrl && seenUrls.has(normalizedUrl)) {
-            // Update the existing item with any new information if needed
-            const existingItemIndex = seenUrls.get(normalizedUrl);
-            const existingItem = uniqueItems[existingItemIndex];
-            
-            // Merge any missing properties
-            if (!existingItem.thumbnailUrl && item.thumbnailUrl) {
-              uniqueItems[existingItemIndex].thumbnailUrl = item.thumbnailUrl;
-            }
-            
-            // Track this ID as seen
-            seenIds.add(item.id);
-            return;
-          }
-          
-          // Check for duplicate filenames as a last resort
-          const existingItemWithSameFileName = uniqueItems.findIndex(
-            existingItem => existingItem.fileName === item.fileName && 
-                           existingItem.type === item.type
-          );
-          
-          if (existingItemWithSameFileName !== -1) {
-            // Update the existing item with any new information if needed
-            if (!uniqueItems[existingItemWithSameFileName].thumbnailUrl && item.thumbnailUrl) {
-              uniqueItems[existingItemWithSameFileName].thumbnailUrl = item.thumbnailUrl;
-            }
-            
-            // Track this ID as seen
-            seenIds.add(item.id);
-            return;
-          }
-          
-          // This is a new unique item
-          const itemIndex = uniqueItems.length;
-          uniqueItems.push(item);
-          seenIds.add(item.id);
-          
-          // Track by URL for future checks
-          if (normalizedUrl) {
-            seenUrls.set(normalizedUrl, itemIndex);
-          }
-        });
-        
-        // Extract unique categories
-        const uniqueCategories = [...new Set(uniqueItems.map(item => item.category))].filter(Boolean);
-        setCategories(['all', 'images', 'models', ...uniqueCategories]);
-        
-        setItems(uniqueItems);
-        
-        // Try to restore hotbar from localStorage
-        try {
-          const savedHotbar = localStorage.getItem(HOTBAR_STORAGE_KEY);
-          if (savedHotbar) {
-            const savedHotbarIds = JSON.parse(savedHotbar);
-            const newHotbarItems = Array(9).fill(null);
-            
-            // Find the items by ID and restore them to the hotbar
-            savedHotbarIds.forEach((id, index) => {
-              if (id) {
-                const item = uniqueItems.find(item => item.id === id);
-                if (item) {
-                  newHotbarItems[index] = item;
-                }
-              }
-            });
-            
-            setHotbarItems(newHotbarItems);
-          }
-        } catch (error) {
-          console.error('Error restoring hotbar from localStorage:', error);
-        }
-        
-        setError(null);
-        setLoading(false);
-      }
-    };
-    
     loadItemsFromDisk();
-  }, [storeImages, storeModels]);
+  }, [loadItemsFromDisk]);
   
   // Save hotbar to localStorage whenever it changes
   useEffect(() => {
@@ -593,11 +595,32 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }) => {
   const handleDragStart = (e, item) => {
     setDraggedItem(item);
     
+    console.log('Starting drag for item:', item);
+    
     // Set custom data for canvas drop
-    e.dataTransfer.setData('application/json', JSON.stringify({
-      type: 'inventory-item',
-      itemData: item
-    }));
+    try {
+      const itemData = {
+        type: 'inventory-item',
+        itemData: {
+          id: item.id,
+          type: item.type,
+          url: item.url,
+          fileName: item.fileName,
+          thumbnailUrl: item.thumbnailUrl,
+          category: item.category
+        }
+      };
+      
+      // Stringify the data and set it in the dataTransfer
+      const jsonData = JSON.stringify(itemData);
+      e.dataTransfer.setData('application/json', jsonData);
+      console.log('Set drag data:', jsonData);
+      
+      // Also set text data as fallback
+      e.dataTransfer.setData('text/plain', item.fileName);
+    } catch (error) {
+      console.error('Error setting drag data:', error);
+    }
     
     // Set a ghost image for the drag operation
     const ghostImage = document.createElement('div');
@@ -634,58 +657,61 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }) => {
   };
   
   const handleDragEnd = (e) => {
-    // Reset the "drop files" overlay class when drag ends
-    const dropOverlay = document.querySelector('.drop-overlay');
-    if (dropOverlay) {
-      dropOverlay.classList.remove('internal-drag');
-    }
-    
+    // Reset the dragged item and any visual indicators
     setDraggedItem(null);
+    setDragOverSlot(null);
+    
+    // Remove any ghost elements
+    const ghostElement = document.querySelector('.drag-ghost');
+    if (ghostElement) {
+      document.body.removeChild(ghostElement);
+    }
   };
   
   const handleDragOver = (e, index) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    // Add a visual indicator for the drop target
-    const slot = e.currentTarget;
-    slot.classList.add('drag-over');
+    setDragOverSlot(index);
   };
   
   const handleDragLeave = (e, index) => {
-    // Remove the visual indicator
-    const slot = e.currentTarget;
-    slot.classList.remove('drag-over');
+    e.preventDefault();
+    if (dragOverSlot === index) {
+      setDragOverSlot(null);
+    }
   };
   
   const handleDrop = (e, index) => {
     e.preventDefault();
-    // Remove the visual indicator
-    const slot = e.currentTarget;
-    slot.classList.remove('drag-over');
+    setDragOverSlot(null);
     
-    // Get the dragged item
     if (draggedItem) {
-      // Add the item to the hotbar slot
       addItemToHotbarSlot(draggedItem, index);
       setDraggedItem(null);
     }
   };
+  
+  // Expose the loadItemsFromDisk function to parent components
+  React.useImperativeHandle(ref, () => ({
+    reloadInventory: loadItemsFromDisk
+  }));
   
   return (
     <>
       {/* Hotbar (always visible at bottom) */}
       <div className="hotbar-container">
         <div className="hotbar">
-          {Array(9).fill(null).map((_, index) => {
-            const item = hotbarItems[index];
+          {hotbarItems.map((item, index) => {
             return (
               <div 
-                key={index} 
-                className={`hotbar-slot ${selectedHotbarSlot === index ? 'selected' : ''} ${item ? '' : 'empty'}`}
+                key={index}
+                className={`hotbar-slot ${!item ? 'empty' : ''} ${selectedHotbarSlot === index ? 'selected' : ''} ${dragOverSlot === index ? 'drag-over' : ''}`}
                 onClick={() => handleHotbarSlotClick(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragLeave={(e) => handleDragLeave(e, index)}
                 onDrop={(e) => handleDrop(e, index)}
+                draggable={!!item}
+                onDragStart={(e) => item && handleDragStart(e, item)}
+                onDragEnd={handleDragEnd}
               >
                 {item ? (
                   <>
@@ -905,4 +931,4 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }) => {
   );
 };
 
-export default Inventory; 
+export default React.forwardRef(Inventory); 

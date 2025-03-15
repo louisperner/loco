@@ -230,7 +230,6 @@ electron.app.whenReady().then(() => {
   });
   electron.ipcMain.handle("read-file-as-buffer", async (event, filePath) => {
     try {
-      console.log(`Lendo arquivo como buffer: ${filePath}`);
       if (!fs.existsSync(filePath)) {
         throw new Error(`Arquivo não encontrado: ${filePath}`);
       }

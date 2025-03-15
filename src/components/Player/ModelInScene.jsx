@@ -18,12 +18,12 @@ function Model({ url, scale }) {
       try {
         // Se o URL começar com file:// ou app-file://, tente carregá-lo com o Electron
         if ((url && url.startsWith('file://')) || (url && url.startsWith('app-file://'))) {
-          console.log('Carregando modelo com Electron:', url);
+          // console.log('Carregando modelo com Electron:', url);
           
           if (window.electron && window.electron.loadFileAsBlob) {
             const result = await window.electron.loadFileAsBlob(url);
             if (result.success) {
-              console.log('Modelo carregado com sucesso, usando blob URL:', result.blobUrl);
+              // console.log('Modelo carregado com sucesso, usando blob URL:', result.blobUrl);
               
               // Store the blob URL in a global cache to prevent garbage collection
               window._blobUrlCache = window._blobUrlCache || {};

@@ -280,7 +280,7 @@ app.whenReady().then(() => {
   // Manipulador para ler arquivo como buffer
   ipcMain.handle('read-file-as-buffer', async (event, filePath) => {
     try {
-      console.log(`Lendo arquivo como buffer: ${filePath}`);
+      // console.log(`Lendo arquivo como buffer: ${filePath}`);
       
       // Verificar se o arquivo existe
       if (!fs.existsSync(filePath)) {

@@ -280,7 +280,7 @@ app.whenReady().then(() => {
   // Read file as buffer
   ipcMain.handle('read-file-as-buffer', async (event, filePath) => {
     try {
-      console.log(`Lendo arquivo como buffer: ${filePath}`);
+      // console.log(`Lendo arquivo como buffer: ${filePath}`);
       
       if (!fs.existsSync(filePath)) {
         throw new Error(`Arquivo não encontrado: ${filePath}`);
@@ -291,6 +291,67 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error(`Erro ao ler arquivo ${filePath}:`, error);
       throw error;
+    }
+  });
+
+  // Clean all files from inventory
+  ipcMain.handle('clean-all-files', async (event) => {
+    try {
+      console.log('Cleaning all files from inventory...');
+      
+      // Check if directories exist
+      if (!fs.existsSync(IMAGES_DIR) && !fs.existsSync(MODELS_DIR)) {
+        console.log('No directories to clean');
+        return { success: true, message: 'No files to clean' };
+      }
+      
+      let deletedCount = 0;
+      
+      // Clean images directory
+      if (fs.existsSync(IMAGES_DIR)) {
+        console.log(`Images directory exists at: ${IMAGES_DIR}`);
+        const imageFiles = fs.readdirSync(IMAGES_DIR);
+        console.log(`Found ${imageFiles.length} image files to delete`);
+        
+        for (const file of imageFiles) {
+          const filePath = path.join(IMAGES_DIR, file);
+          console.log(`Deleting image file: ${filePath}`);
+          fs.unlinkSync(filePath);
+          deletedCount++;
+        }
+        console.log(`Deleted ${imageFiles.length} image files`);
+      } else {
+        console.log(`Images directory does not exist: ${IMAGES_DIR}`);
+      }
+      
+      // Clean models directory
+      if (fs.existsSync(MODELS_DIR)) {
+        console.log(`Models directory exists at: ${MODELS_DIR}`);
+        const modelFiles = fs.readdirSync(MODELS_DIR);
+        console.log(`Found ${modelFiles.length} model files to delete`);
+        
+        for (const file of modelFiles) {
+          const filePath = path.join(MODELS_DIR, file);
+          console.log(`Deleting model file: ${filePath}`);
+          fs.unlinkSync(filePath);
+          deletedCount++;
+        }
+        console.log(`Deleted ${modelFiles.length} model files`);
+      } else {
+        console.log(`Models directory does not exist: ${MODELS_DIR}`);
+      }
+      
+      console.log(`Clean operation completed. Deleted ${deletedCount} files in total.`);
+      return { 
+        success: true, 
+        message: `Successfully cleaned ${deletedCount} files from inventory` 
+      };
+    } catch (error) {
+      console.error('Error cleaning files from inventory:', error);
+      return { 
+        success: false, 
+        error: error.message 
+      };
     }
   });
 }); 
