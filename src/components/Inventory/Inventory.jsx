@@ -394,6 +394,22 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
       
       if (e.key === 'e' || e.key === 'E' || e.key === 'Escape') {
         e.preventDefault();
+        
+        // Emulate a click on canvas when closing inventory with keyboard
+        if (document.pointerLockElement === null) {
+          // Find the canvas element and dispatch a click event
+          const canvas = document.querySelector('canvas');
+          if (canvas) {
+            // Create and dispatch a mouse click event
+            const clickEvent = new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              view: window
+            });
+            canvas.dispatchEvent(clickEvent);
+          }
+        }
+
         onClose();
       } else if (e.key >= '1' && e.key <= '9') {
         // Select hotbar slot with number keys
@@ -422,7 +438,10 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
   useEffect(() => {
     if (showFullInventory && searchInputRef.current) {
       setTimeout(() => {
-        searchInputRef.current.focus();
+        // searchInputRef.current.focus();
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
       }, 100);
     }
   }, [showFullInventory]);
