@@ -2,6 +2,7 @@
 const electron = require("electron");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 const byteToHex = [];
 for (let i = 0; i < 256; ++i) {
   byteToHex.push((i + 256).toString(16).slice(1));
@@ -9,22 +10,19 @@ for (let i = 0; i < 256; ++i) {
 function unsafeStringify(arr, offset = 0) {
   return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
 }
-let getRandomValues;
-const rnds8 = new Uint8Array(16);
+const rnds8Pool = new Uint8Array(256);
+let poolPtr = rnds8Pool.length;
 function rng() {
-  if (!getRandomValues) {
-    if (typeof crypto === "undefined" || !crypto.getRandomValues) {
-      throw new Error("crypto.getRandomValues() not supported. See https://github.com/uuidjs/uuid#getrandomvalues-not-supported");
-    }
-    getRandomValues = crypto.getRandomValues.bind(crypto);
+  if (poolPtr > rnds8Pool.length - 16) {
+    crypto.randomFillSync(rnds8Pool);
+    poolPtr = 0;
   }
-  return getRandomValues(rnds8);
+  return rnds8Pool.slice(poolPtr, poolPtr += 16);
 }
-const randomUUID = typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID.bind(crypto);
-const native = { randomUUID };
+const native = { randomUUID: crypto.randomUUID };
 function v4(options, buf, offset) {
   var _a;
-  if (native.randomUUID && !buf && !options) {
+  if (native.randomUUID && true && !options) {
     return native.randomUUID();
   }
   options = options || {};
@@ -34,16 +32,6 @@ function v4(options, buf, offset) {
   }
   rnds[6] = rnds[6] & 15 | 64;
   rnds[8] = rnds[8] & 63 | 128;
-  if (buf) {
-    offset = offset || 0;
-    if (offset < 0 || offset + 16 > buf.length) {
-      throw new RangeError(`UUID byte range ${offset}:${offset + 15} is out of buffer bounds`);
-    }
-    for (let i = 0; i < 16; ++i) {
-      buf[offset + i] = rnds[i];
-    }
-    return buf;
-  }
   return unsafeStringify(rnds);
 }
 const ASSETS_DIR = path.join(electron.app.getPath("userData"), "assets");
@@ -69,16 +57,11 @@ electron.app.whenReady().then(() => {
       }
       const ext = path.extname(decodedUrl).toLowerCase();
       let mimeType = "application/octet-stream";
-      if (ext === ".jpg" || ext === ".jpeg")
-        mimeType = "image/jpeg";
-      else if (ext === ".png")
-        mimeType = "image/png";
-      else if (ext === ".gif")
-        mimeType = "image/gif";
-      else if (ext === ".webp")
-        mimeType = "image/webp";
-      else if (ext === ".svg")
-        mimeType = "image/svg+xml";
+      if (ext === ".jpg" || ext === ".jpeg") mimeType = "image/jpeg";
+      else if (ext === ".png") mimeType = "image/png";
+      else if (ext === ".gif") mimeType = "image/gif";
+      else if (ext === ".webp") mimeType = "image/webp";
+      else if (ext === ".svg") mimeType = "image/svg+xml";
       return callback({
         path: decodedUrl,
         mimeType
@@ -149,16 +132,11 @@ electron.app.whenReady().then(() => {
       }
       const ext = path.extname(decodedUrl).toLowerCase();
       let mimeType = "application/octet-stream";
-      if (ext === ".jpg" || ext === ".jpeg")
-        mimeType = "image/jpeg";
-      else if (ext === ".png")
-        mimeType = "image/png";
-      else if (ext === ".gif")
-        mimeType = "image/gif";
-      else if (ext === ".webp")
-        mimeType = "image/webp";
-      else if (ext === ".svg")
-        mimeType = "image/svg+xml";
+      if (ext === ".jpg" || ext === ".jpeg") mimeType = "image/jpeg";
+      else if (ext === ".png") mimeType = "image/png";
+      else if (ext === ".gif") mimeType = "image/gif";
+      else if (ext === ".webp") mimeType = "image/webp";
+      else if (ext === ".svg") mimeType = "image/svg+xml";
       return callback({
         path: decodedUrl,
         mimeType
