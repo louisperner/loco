@@ -129,7 +129,7 @@ function FPSControls({
             moveUp.current = true;
           }
           break;
-        case 'ShiftLeft':
+        case 'ControlLeft':
           moveDown.current = true;
           break;
       }
@@ -156,7 +156,7 @@ function FPSControls({
             moveUp.current = false;
           }
           break;
-        case 'ShiftLeft':
+        case 'ControlLeft':
           moveDown.current = false;
           break;
       }
