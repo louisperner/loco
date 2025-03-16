@@ -267,7 +267,7 @@ export function SettingsPanel({
           showColorPicker={showColorPicker || null}
           onColorPickerChange={onColorPickerChange || (() => {})}
           colorPickerRefs={effectiveColorPickerRefs}
-          colorPickerContainerRef={colorPickerContainerRef}
+          colorPickerContainerRef={colorPickerContainerRef as React.RefObject<HTMLDivElement>}
           visibilitySettings={visibilitySettings}
           onVisibilityChange={onVisibilityChange || (() => {})}
         />
@@ -296,7 +296,7 @@ export function SettingsPanel({
           showColorPicker={showColorPicker || null}
           onColorPickerChange={onColorPickerChange || (() => {})}
           colorPickerRefs={effectiveColorPickerRefs}
-          colorPickerContainerRef={colorPickerContainerRef}
+          colorPickerContainerRef={colorPickerContainerRef as React.RefObject<HTMLDivElement>}
         />
       )
     },
@@ -313,7 +313,7 @@ export function SettingsPanel({
           showColorPicker={showColorPicker || null}
           onColorPickerChange={onColorPickerChange || (() => {})}
           colorPickerRefs={effectiveColorPickerRefs}
-          colorPickerContainerRef={colorPickerContainerRef}
+          colorPickerContainerRef={colorPickerContainerRef as React.RefObject<HTMLDivElement>}
         />
       )
     },
