@@ -612,8 +612,6 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObje
   const handleDragStart = (e, item) => {
     setDraggedItem(item);
     
-    console.log('Starting drag for item:', item);
-    
     // Set custom data for canvas drop
     try {
       const itemData = {
@@ -631,7 +629,6 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObje
       // Stringify the data and set it in the dataTransfer
       const jsonData = JSON.stringify(itemData);
       e.dataTransfer.setData('application/json', jsonData);
-      console.log('Set drag data:', jsonData);
       
       // Also set text data as fallback
       e.dataTransfer.setData('text/plain', item.fileName);
@@ -666,17 +663,19 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObje
       document.body.removeChild(ghostImage);
     }, 100);
     
-    // Hide the "drop files" overlay when dragging from inventory
-    const dropOverlay = document.querySelector('.drop-overlay');
-    if (dropOverlay) {
-      dropOverlay.classList.add('internal-drag');
-    }
+    // Add dragging class to the source element
+    e.currentTarget.classList.add('dragging');
   };
   
   const handleDragEnd = (e) => {
     // Reset the dragged item and any visual indicators
     setDraggedItem(null);
     setDragOverSlot(null);
+    
+    // Remove dragging class from all elements
+    document.querySelectorAll('.dragging').forEach(el => {
+      el.classList.remove('dragging');
+    });
     
     // Remove any ghost elements
     const ghostElement = document.querySelector('.drag-ghost');
@@ -687,23 +686,51 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObje
   
   const handleDragOver = (e, index) => {
     e.preventDefault();
-    setDragOverSlot(index);
+    e.stopPropagation();
+    
+    // Only update if we're dragging over a different slot
+    if (dragOverSlot !== index) {
+      setDragOverSlot(index);
+      
+      // Add visual feedback to the target slot
+      const targetSlot = e.currentTarget;
+      targetSlot.classList.add('drag-over');
+      
+      // Remove drag-over class from other slots
+      document.querySelectorAll('.hotbar-slot').forEach(slot => {
+        if (slot !== targetSlot) {
+          slot.classList.remove('drag-over');
+        }
+      });
+    }
   };
   
   const handleDragLeave = (e, index) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // Only remove drag-over if we're leaving the current drag-over slot
     if (dragOverSlot === index) {
       setDragOverSlot(null);
+      e.currentTarget.classList.remove('drag-over');
     }
   };
   
   const handleDrop = (e, index) => {
     e.preventDefault();
-    setDragOverSlot(null);
+    e.stopPropagation();
+    
+    // Remove drag-over class from all slots
+    document.querySelectorAll('.hotbar-slot').forEach(slot => {
+      slot.classList.remove('drag-over');
+    });
     
     if (draggedItem) {
-      addItemToHotbarSlot(draggedItem, index);
-      setDraggedItem(null);
+      // Add a small delay before adding the item to allow for animation
+      setTimeout(() => {
+        addItemToHotbarSlot(draggedItem, index);
+        setDraggedItem(null);
+      }, 50);
     }
   };
   

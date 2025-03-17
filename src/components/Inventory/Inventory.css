@@ -631,19 +631,18 @@
 .drag-ghost {
   width: 60px;
   height: 60px;
-  background-color: rgba(0, 0, 0, 0.7);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  overflow: hidden;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #4a90e2;
+  border-radius: 4px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  z-index: 1000;
 }
 
 .drag-ghost img {
-  max-width: 90%;
-  max-height: 90%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 
@@ -672,4 +671,69 @@
 
 .drop-success {
   animation: dropSuccess 0.5s ease-out;
+}
+
+/* Drag and Drop Styles */
+.drag-ghost {
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #4a90e2;
+  border-radius: 4px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.drag-ghost img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.hotbar-slot.drag-over {
+  background-color: rgba(74, 144, 226, 0.2);
+  border: 2px dashed #4a90e2;
+  transform: scale(1.05);
+  transition: all 0.2s ease;
+}
+
+.inventory-item.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+  transition: all 0.2s ease;
+}
+
+.hotbar-slot {
+  transition: all 0.2s ease;
+}
+
+.hotbar-slot:hover {
+  transform: scale(1.05);
+}
+
+.hotbar-slot.empty {
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+}
+
+.hotbar-slot.empty:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Animation for adding items to hotbar */
+@keyframes itemAdded {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.hotbar-slot.item-added {
+  animation: itemAdded 0.3s ease;
 } 
