@@ -43,6 +43,7 @@ const Floor = ({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           position={[0, 0.01, 0]}
           infiniteGrid={isInfinite}
           opacity={gridOpacity / 100}
+          raycast={() => null}
         />
       )}
       
@@ -53,6 +54,7 @@ const Floor = ({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           rotation={[-Math.PI / 2, 0, 0]} 
           position={[0, 0, 0]}
           receiveShadow
+          raycast={() => null}
         >
           <meshStandardMaterial 
             color={parseColor(floorPlaneColor)}
@@ -69,6 +71,7 @@ const Floor = ({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           rotation={[-Math.PI / 2, 0, 0]} 
           position={[0, 0, 0]}
           receiveShadow
+          raycast={() => null}
         >
           <meshStandardMaterial 
             color={parseColor(floorPlaneColor)}
@@ -83,6 +86,7 @@ const Floor = ({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           rotation={[-Math.PI / 2, 0, 0]} 
           position={[0, 0, 0]}
           receiveShadow
+          raycast={() => null}
         >
           <meshStandardMaterial 
             color={parseColor(floorPlaneColor)}
@@ -96,6 +100,7 @@ const Floor = ({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           rotation={[-Math.PI / 2, 0, 0]} 
           position={[0, 0, 0]}
           receiveShadow
+          raycast={() => null}
         >
           <circleGeometry args={[size / 2, 6]} />
           <meshStandardMaterial 
@@ -110,6 +115,7 @@ const Floor = ({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           rotation={[-Math.PI / 2, 0, 0]} 
           position={[0, 0, 0]}
           receiveShadow
+          raycast={() => null}
         >
           <circleGeometry args={[size / 2, 3]} />
           <meshStandardMaterial 
@@ -138,6 +144,7 @@ const Floor = ({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = f
           rotation={[-Math.PI / 2, 0, 0]} 
           position={[0, 0, 0]}
           receiveShadow
+          raycast={() => null}
         >
           <circleGeometry args={[size / 2, 4, Math.PI/4]} />
           <meshStandardMaterial 
