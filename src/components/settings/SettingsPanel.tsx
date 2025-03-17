@@ -121,7 +121,7 @@ export function SettingsPanel({
   selectedTheme = 'dark',
   onThemeSelect,
   environmentSettings = {
-    skyVisible: true,
+    skyVisible: false,
     skyDistance: 450000,
     skyInclination: 0,
     skyAzimuth: 0.25,
