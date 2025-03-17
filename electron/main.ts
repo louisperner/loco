@@ -89,14 +89,14 @@ app.whenReady().then(() => {
           'Access-Control-Allow-Origin': ['*'],
           'Access-Control-Allow-Methods': ['GET, POST, OPTIONS'],
           'Access-Control-Allow-Headers': ['Content-Type, Authorization'],
-          'Content-Security-Policy': ['default-src \'self\' app-file: file: data: blob: \'unsafe-inline\' \'unsafe-eval\' https://* http://*; media-src \'self\' https://* http://* blob: app-file:; connect-src \'self\' https://* http://* ws://* wss://* blob: app-file:; img-src \'self\' data: blob: https://* http://* app-file:;']
+          'Content-Security-Policy': ['default-src \'self\' app-file: file: data: blob: \'unsafe-inline\' \'unsafe-eval\' https://* http://*; media-src \'self\' https://* http://* blob: app-file:; connect-src \'self\' https://* http://* ws://* wss://* blob: app-file: data:; img-src \'self\' data: blob: https://* http://* app-file:;']
         }
       });
     } else {
       callback({
         responseHeaders: {
           ...details.responseHeaders,
-          'Content-Security-Policy': ['default-src \'self\' app-file: file: data: blob: \'unsafe-inline\' https://* http://*; media-src \'self\' https://* http://* blob: app-file:; connect-src \'self\' https://* http://* ws://* wss://* blob: app-file:; img-src \'self\' data: blob: https://* http://* app-file:;']
+          'Content-Security-Policy': ['default-src \'self\' app-file: file: data: blob: \'unsafe-inline\' \'unsafe-eval\' https://* http://*; media-src \'self\' https://* http://* blob: app-file:; connect-src \'self\' https://* http://* ws://* wss://* blob: app-file: data:; img-src \'self\' data: blob: https://* http://* app-file:;']
         }
       });
     }
@@ -154,7 +154,7 @@ app.whenReady().then(() => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': ['default-src \'self\' app-file: file: data: blob: \'unsafe-inline\' \'unsafe-eval\' https://* http://*; media-src \'self\' https://* http://* blob: app-file:; connect-src \'self\' https://* http://* ws://* wss://* blob: app-file:; img-src \'self\' data: blob: https://* http://* app-file:;']
+        'Content-Security-Policy': ['default-src \'self\' app-file: file: data: blob: \'unsafe-inline\' \'unsafe-eval\' https://* http://*; media-src \'self\' https://* http://* blob: app-file:; connect-src \'self\' https://* http://* ws://* wss://* blob: app-file: data:; img-src \'self\' data: blob: https://* http://* app-file:;']
       }
     });
   });

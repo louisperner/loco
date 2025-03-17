@@ -600,7 +600,7 @@ const Player = () => {
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
       // Log all key presses for debugging
-      console.log(`Key pressed: ${e.key}, target: ${e.target.tagName}, focused: ${document.activeElement.tagName}`);
+      // console.log(`Key pressed: ${e.key}, target: ${e.target.tagName}, focused: ${document.activeElement.tagName}`);
       
       // Prevent opening inventory with E key if any input is focused
       if ((e.key === 'e' || e.key === 'E') && 

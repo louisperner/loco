@@ -52,7 +52,7 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
             allItems = [...allItems, ...imageItems];
           }
         } else {
-          console.warn('listImagesFromDisk function not available, using images from store instead');
+          // console.warn('listImagesFromDisk function not available, using images from store instead');
           // Use images from the store as a fallback
           const storeImageItems = storeImages.map(img => ({
             id: img.id,
@@ -84,7 +84,7 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
             allItems = [...allItems, ...modelItems];
           }
         } else {
-          console.warn('listModelsFromDisk function not available, using models from store instead');
+          // console.warn('listModelsFromDisk function not available, using models from store instead');
           // Use models from the store as a fallback
           const storeModelItems = storeModels.map(model => ({
             id: model.id,
@@ -416,10 +416,9 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
         const index = parseInt(e.key) - 1;
         setSelectedHotbarSlot(index);
         
-        // If there's an item in this slot, select it and add it to the canvas
+        // If there's an item in this slot, only select it but don't add it to the canvas
         if (hotbarItems[index]) {
           handleItemSelect(hotbarItems[index]);
-          handleAddToCanvas(hotbarItems[index]);
         } else {
           setSelectedItem(null);
         }
@@ -513,14 +512,13 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
     setSearchTerm(e.target.value);
   };
   
-  const handleHotbarSlotClick = (index) => {
+  const handleHotbarSlotClick = (index, e) => {
     const item = hotbarItems[index];
     setSelectedHotbarSlot(index);
     
-    // If there's an item in this slot, select it and add it to the canvas
+    // If there's an item in this slot, only select it but don't add it to the canvas
     if (item) {
       handleItemSelect(item);
-      handleAddToCanvas(item);
     } else {
       setSelectedItem(null);
     }
@@ -709,6 +707,29 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
     }
   };
   
+  // Add a click event listener to add the selected item to the canvas when clicking with the left mouse button
+  useEffect(() => {
+    const handleMouseClick = (e) => {
+      // Only handle left mouse button clicks (button code 0) on the canvas
+      if (e.button === 0 && selectedHotbarSlot !== null && hotbarItems[selectedHotbarSlot]) {
+        // Check if the click is on the canvas or a canvas-related element
+        const canvas = document.querySelector('canvas');
+        if (canvas && (e.target === canvas || canvas.contains(e.target))) {
+          // Add the selected item to the canvas
+          handleAddToCanvas(hotbarItems[selectedHotbarSlot]);
+        }
+      }
+    };
+    
+    // Add the event listener to the document
+    document.addEventListener('click', handleMouseClick);
+    
+    // Clean up the event listener when the component unmounts
+    return () => {
+      document.removeEventListener('click', handleMouseClick);
+    };
+  }, [selectedHotbarSlot, hotbarItems, handleAddToCanvas]);
+  
   // Expose the loadItemsFromDisk function to parent components
   React.useImperativeHandle(ref, () => ({
     reloadInventory: loadItemsFromDisk
@@ -724,7 +745,7 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
               <div 
                 key={index}
                 className={`hotbar-slot ${!item ? 'empty' : ''} ${selectedHotbarSlot === index ? 'selected' : ''} ${dragOverSlot === index ? 'drag-over' : ''}`}
-                onClick={() => handleHotbarSlotClick(index)}
+                onClick={(e) => handleHotbarSlotClick(index, e)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragLeave={(e) => handleDragLeave(e, index)}
                 onDrop={(e) => handleDrop(e, index)}
@@ -760,7 +781,9 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
                         )}
                       </div>
                     )}
-                    <div className="hotbar-item-number">{index + 1}</div>
+                    <div 
+                      className="hotbar-item-number"
+                    >{index + 1}</div>
                     <button 
                       className="hotbar-remove-button" 
                       onClick={(e) => handleRemoveFromHotbar(index, e)}
@@ -770,7 +793,9 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
                     </button>
                   </>
                 ) : (
-                  <div className="hotbar-item-number">{index + 1}</div>
+                  <div 
+                    className="hotbar-item-number"
+                  >{index + 1}</div>
                 )}
               </div>
             );
@@ -864,7 +889,7 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
                     <div 
                       key={item.id} 
                       className={`inventory-item ${selectedItem?.id === item.id ? 'selected' : ''} ${isInHotbar ? 'in-hotbar' : ''}`}
-                      onClick={() => handleItemSelect(item)}
+                      onClick={(e) => handleItemSelect(item)}
                       onDoubleClick={() => {
                         handleAddToCanvas(item);
                         onClose();
