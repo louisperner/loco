@@ -471,7 +471,7 @@ function FPSControls({
           // If we have an intersection, we can use that point to place a new object
           if (intersects.length > 0) {
             const hitPoint = intersects[0].point;
-            console.log('Hit point for new object:', hitPoint);
+            // console.log('Hit point for new object:', hitPoint);
             
             // Highlight the laser beam green briefly to indicate addition
             const originalColor = rayHelper.current.laser.material.color.clone();

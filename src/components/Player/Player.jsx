@@ -115,7 +115,7 @@ const Player = () => {
   
   // Environment settings
   const [environmentSettings, setEnvironmentSettings] = useState({
-    skyVisible: true,
+    skyVisible: false,
     skyDistance: 450000,
     skySunPosition: [0, 1, 0],
     skyInclination: 0,
@@ -567,32 +567,36 @@ const Player = () => {
   
   const handleSelectModelFromInventory = (model) => {
     // Add the selected model to the scene
-    if (model && model.url) {
-      const position = new THREE.Vector3();
+    if (!model?.url) return setShowInventory(false);
+    
+    // Calculate position in front of camera
+    const position = new THREE.Vector3();
+    
+    if (cameraRef.current) {
+      const camera = cameraRef.current;
+      const direction = new THREE.Vector3();
       
-      // If camera is available, place in front of camera
-      if (cameraRef.current) {
-        const camera = cameraRef.current;
-        const direction = new THREE.Vector3(0, 0, -1);
-        direction.applyQuaternion(camera.quaternion);
-        
-        position.copy(camera.position);
-        direction.multiplyScalar(3); // Place 3 units in front of camera
-        position.add(direction);
-      } else {
-        // Default position if camera not available
-        position.set(0, 1, 0);
-      }
+      // Get camera position and direction
+      position.copy(camera.position);
+      camera.getWorldDirection(direction);
       
-      // Add model to the store
-      addModel({
-        url: model.url,
-        fileName: model.fileName,
-        position: [position.x, position.y, position.z],
-        rotation: [0, 0, 0],
-        scale: 1,
-      });
+      // Place model at a comfortable distance in front of camera
+      direction.multiplyScalar(3);
+      position.add(direction);
+    } else {
+      // Default position if camera not available
+      position.set(0, 1, 0);
     }
+    
+    // Add model to the store with destructured position
+    const { addModel } = useModelStore.getState();
+    addModel({
+      url: model.url,
+      fileName: model.fileName,
+      position: [position.x, position.y, position.z],
+      rotation: [0, 0, 0],
+      scale: 1,
+    });
     
     // Close the inventory
     setShowInventory(false);
