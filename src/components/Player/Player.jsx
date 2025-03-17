@@ -165,8 +165,10 @@ const Player = () => {
     handleImageDrop
   } = useFileHandling(cameraRef);
 
+  const { images, removeImage } = useImageStore();
+  const { models, removeModel } = useModelStore();
+  const [selectedObject, setSelectedObject] = useState(null);
   const addImage = useImageStore(state => state.addImage);
-  const addModel = useModelStore(state => state.addModel);
 
   // Effects
   useEffect(() => {
@@ -596,6 +598,22 @@ const Player = () => {
     setShowInventory(false);
   };
 
+  const handleRemoveObject = (objectData) => {
+    if (objectData && objectData.type && objectData.id) {
+      if (objectData.type === 'image') {
+        removeImage(objectData.id);
+      } else if (objectData.type === 'model') {
+        removeModel(objectData.id);
+      }
+      setSelectedObject(null);
+    }
+  };
+
+  // Handle object selection
+  const handleObjectSelect = (object) => {
+    setSelectedObject(object);
+  };
+
   // Global keyboard event handler
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
@@ -716,8 +734,8 @@ const Player = () => {
             />
           )}
           
-          <ImageCloneManager />
-          <ModelManager />
+          <ImageCloneManager onSelect={handleObjectSelect} />
+          <ModelManager onSelect={handleObjectSelect} />
           
           <WebFrames
             frames={frames}
@@ -908,6 +926,7 @@ const Player = () => {
             onSelectModel={handleSelectModelFromInventory}
             onClose={handleCloseInventory}
             isOpen={showInventory}
+            onRemoveObject={handleRemoveObject}
           />
         )}
       </div>

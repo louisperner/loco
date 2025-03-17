@@ -222,8 +222,8 @@ export const useFileHandling = (cameraRef) => {
           position: [position.x, position.y, position.z],
           rotation: [0, 0, 0],
           scale: 1,
-          width: img.width,
-          height: img.height,
+          width: 300,
+          height: 200,
           aspectRatio,
         });
         

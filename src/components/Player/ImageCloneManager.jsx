@@ -10,7 +10,7 @@ import { BsArrowsMove } from 'react-icons/bs';
 import * as THREE from 'three';
 
 // Componente para renderizar uma imagem individual no espaço 3D
-const ImageInScene = ({ imageData, onRemove, onUpdate }) => {
+const ImageInScene = ({ imageData, onRemove, onUpdate, onSelect }) => {
   const { 
     src, 
     width = 300, 
@@ -218,6 +218,13 @@ const ImageInScene = ({ imageData, onRemove, onUpdate }) => {
       }
     }
   });
+
+  const handleClick = (e) => {
+    e.stopPropagation();
+    if (onSelect) {
+      onSelect({ ...imageData, type: 'image' });
+    }
+  };
 
   const ControlPanel = () => (
     <div
@@ -444,7 +451,7 @@ const ImageInScene = ({ imageData, onRemove, onUpdate }) => {
     <div 
       style={{ 
         position: 'relative',
-        paddingBottom: '45px',
+        paddingBottom: '5px',
         cursor: 'pointer',
       }}
       onMouseEnter={() => setIsHovered(true)}
@@ -481,9 +488,9 @@ const ImageInScene = ({ imageData, onRemove, onUpdate }) => {
     <>
       {showControls && (
         <TransformControls 
-          object={groupRef.current} 
+          object={groupRef.current}
           mode={transformMode}
-          size={0.75}
+          size={1}
           space="local"
           showX={true}
           showY={true}
@@ -514,24 +521,21 @@ const ImageInScene = ({ imageData, onRemove, onUpdate }) => {
         position={position} 
         rotation={rotation} 
         scale={scale}
-        onChange={() => {
-          if (groupRef.current) {
-            const newPosition = groupRef.current.position.toArray();
-            const newRotation = [
-              groupRef.current.rotation.x,
-              groupRef.current.rotation.y,
-              groupRef.current.rotation.z
-            ];
-            
-            onUpdate({
-              ...imageData,
-              position: newPosition,
-              rotation: newRotation,
-              scale: scale
-            });
-          }
-        }}
+        onClick={handleClick}
+        userData={{ type: 'image', id: imageData.id }}
+        name={`image-${imageData.id}`}
       >
+        {/* Add invisible mesh for raycasting */}
+        <mesh name={`image-collider-${imageData.id}`}>
+          <planeGeometry args={[1.2, 0.7]} />
+          <meshBasicMaterial 
+            visible={false} 
+            transparent={true} 
+            opacity={0} 
+            side={THREE.DoubleSide}
+            alphaTest={0.5}
+          />
+        </mesh>
         <Html
           transform
           distanceFactor={1.5}
@@ -540,7 +544,7 @@ const ImageInScene = ({ imageData, onRemove, onUpdate }) => {
             height: `${height}px`,
             pointerEvents: 'auto',
             userSelect: 'none',
-            transform: 'translate(-50%, -50%)'
+            marginTop: '30px',
           }}
         >
           <ImageContainer />
@@ -567,7 +571,7 @@ const iconButtonStyle = {
 };
 
 // Componente principal que gerencia imagens usando Zustand
-const ImageCloneManager = () => {
+const ImageCloneManager = ({ onSelect }) => {
   const { camera } = useThree();
   const images = useImageStore(state => state.images);
   const addImage = useImageStore(state => state.addImage);
@@ -579,6 +583,18 @@ const ImageCloneManager = () => {
   useEffect(() => {
     loadSavedImages();
   }, []); // Empty dependency array to run only once on mount
+
+  // Listen for removeObject events
+  useEffect(() => {
+    const handleRemoveObject = (event) => {
+      if (event.detail.type === 'image') {
+        removeImage(event.detail.id);
+      }
+    };
+
+    window.addEventListener('removeObject', handleRemoveObject);
+    return () => window.removeEventListener('removeObject', handleRemoveObject);
+  }, [removeImage]);
 
   // Exportar a função addImage para o escopo global para compatibilidade
   useEffect(() => {
@@ -607,6 +623,7 @@ const ImageCloneManager = () => {
           imageData={image}
           onRemove={() => removeImage(image.id)}
           onUpdate={(updatedData) => updateImage(image.id, updatedData)}
+          onSelect={onSelect}
         />
       ))}
     </>

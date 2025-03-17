@@ -386,7 +386,20 @@ function ModelInScene({
         onClick={handleClick}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
+        userData={{ type: 'model', id: id }}
+        name={`model-${id}`}
       >
+        {/* Add invisible mesh for raycasting */}
+        <mesh name={`model-collider-${id}`}>
+          <boxGeometry args={[5, 5, 5]} />
+          <meshBasicMaterial 
+            visible={false} 
+            transparent={true} 
+            opacity={0} 
+            side={THREE.DoubleSide}
+            alphaTest={0.5}
+          />
+        </mesh>
         {/* Use Suspense and ErrorBoundary for model loading */}
         <ModelErrorBoundary 
           fallback={<ModelFallback fileName={fileName} scale={scale} />}

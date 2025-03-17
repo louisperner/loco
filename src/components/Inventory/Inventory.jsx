@@ -6,7 +6,7 @@ import './Inventory.css';
 // Create a key for localStorage
 const HOTBAR_STORAGE_KEY = 'loco-hotbar-items';
 
-const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
+const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObject }, ref) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -710,25 +710,38 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen }, ref) => {
   // Add a click event listener to add the selected item to the canvas when clicking with the left mouse button
   useEffect(() => {
     const handleMouseClick = (e) => {
-      // Only handle left mouse button clicks (button code 0) on the canvas
-      if (e.button === 0 && selectedHotbarSlot !== null && hotbarItems[selectedHotbarSlot]) {
-        // Check if the click is on the canvas or a canvas-related element
-        const canvas = document.querySelector('canvas');
-        if (canvas && (e.target === canvas || canvas.contains(e.target))) {
-          // Add the selected item to the canvas
+      // Check if the click is on the canvas or a canvas-related element
+      const canvas = document.querySelector('canvas');
+      if (!canvas) return;
+
+      // Only process clicks if they're on or within the canvas
+      if (e.target === canvas || canvas.contains(e.target)) {
+        if (e.button === 0 && selectedHotbarSlot !== null && hotbarItems[selectedHotbarSlot]) { // Left click
           handleAddToCanvas(hotbarItems[selectedHotbarSlot]);
+        } else if (e.button === 2 && typeof onRemoveObject === 'function') { // Right click - delete object
+          console.log('Right click - deleting object');
+          onRemoveObject();
         }
       }
     };
-    
-    // Add the event listener to the document
-    document.addEventListener('click', handleMouseClick);
-    
-    // Clean up the event listener when the component unmounts
-    return () => {
-      document.removeEventListener('click', handleMouseClick);
+
+    const preventContextMenu = (e) => {
+      const canvas = document.querySelector('canvas');
+      if (canvas && (e.target === canvas || canvas.contains(e.target))) {
+        e.preventDefault();
+      }
     };
-  }, [selectedHotbarSlot, hotbarItems, handleAddToCanvas]);
+
+    // Add event listeners
+    document.addEventListener('mousedown', handleMouseClick);
+    document.addEventListener('contextmenu', preventContextMenu);
+
+    // Cleanup function
+    return () => {
+      document.removeEventListener('mousedown', handleMouseClick);
+      document.removeEventListener('contextmenu', preventContextMenu);
+    };
+  }, [selectedHotbarSlot, hotbarItems, handleAddToCanvas, onRemoveObject]);
   
   // Expose the loadItemsFromDisk function to parent components
   React.useImperativeHandle(ref, () => ({
