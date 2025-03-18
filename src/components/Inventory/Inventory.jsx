@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useImageStore } from '../../store/useImageStore';
 import { useModelStore } from '../../store/useModelStore';
 import './Inventory.css';
-
+import TopNavBar from '../ui/TopNavBar';
 // Create a key for localStorage
 const HOTBAR_STORAGE_KEY = 'loco-hotbar-items';
 
@@ -784,6 +784,7 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObje
     <>
       {/* Hotbar (always visible at bottom) */}
       <div className="hotbar-container">
+        <TopNavBar />
         <div className="hotbar">
           {hotbarItems.map((item, index) => {
             return (
