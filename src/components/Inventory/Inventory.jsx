@@ -411,6 +411,11 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObje
         }
 
         onClose();
+      } else if (e.key === 'q' || e.key === 'Q') {
+        e.preventDefault();
+        // Deselect current item and hotbar slot
+        setSelectedItem(null);
+        setSelectedHotbarSlot(null);
       } else if (e.key >= '1' && e.key <= '9') {
         // Select hotbar slot with number keys
         const index = parseInt(e.key) - 1;
@@ -876,30 +881,6 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObje
             ))}
           </div>
           
-          <div className={`inventory-mode-indicator ${isAddingToHotbar ? 'active' : ''}`}>
-            {isAddingToHotbar ? (
-              <>
-                <span>Adding to hotbar slot {selectedHotbarSlot !== null ? selectedHotbarSlot + 1 : '...'}</span>
-                <button 
-                  className="mode-toggle-button"
-                  onClick={() => setIsAddingToHotbar(false)}
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <span>Click items to select</span>
-                <button 
-                  className="mode-toggle-button"
-                  onClick={() => setIsAddingToHotbar(true)}
-                >
-                  Add to Hotbar
-                </button>
-              </>
-            )}
-          </div>
-          
           {loading && (
             <div className="inventory-loading">
               <p>Loading items...</p>
@@ -998,6 +979,7 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObje
                 })}
               </div>
               
+              {selectedItem && 
               <div className="inventory-actions">
                 <button 
                   className="select-button" 
@@ -1006,7 +988,7 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObje
                 >
                   Add to Canvas
                 </button>
-              </div>
+              </div>}
             </>
           )}
         </div>
