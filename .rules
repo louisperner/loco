@@ -1,0 +1,40 @@
+# Code Organization Rules
+
+## File Structure
+- All source code should be in the `src` directory
+- Components should be in `src/components`
+- Styles should be in `src/styles`
+- Types should be in `src/types`
+
+## Naming Conventions
+- Use PascalCase for component names (e.g., `PlayerComponent.tsx`)
+- Use camelCase for functions and variables
+- Use UPPER_SNAKE_CASE for constants
+
+## Code Style
+- Use TypeScript for all new files
+- Use functional components with hooks
+- Keep components small and focused
+- Use proper TypeScript types and interfaces
+- Use always tailwind CSS
+
+## Git Rules
+- Write meaningful commit messages
+- Keep commits focused and atomic
+- Follow conventional commits format
+
+## Performance Rules
+- Lazy load components when possible
+- Optimize images and assets
+- Use proper memoization techniques
+
+## Testing Rules
+- Write unit tests for critical components
+- Maintain good test coverage
+- Use meaningful test descriptions
+
+## Documentation
+- Document complex functions and components
+- Keep README up to date
+- Document API changes
+- only important comments
