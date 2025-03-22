@@ -10,16 +10,17 @@ function ModelManager({ onSelect }) {
   useEffect(() => {
     const handleRemoveObject = (event) => {
       if (event.detail.type === 'model') {
-        removeModel(event.detail.id);
+        // Update model to mark it as not in scene instead of removing it
+        updateModel(event.detail.id, { isInScene: false });
         if (selectedModelId === event.detail.id) {
           setSelectedModelId(null);
-        }
+        } 
       }
     };
 
     window.addEventListener('removeObject', handleRemoveObject);
     return () => window.removeEventListener('removeObject', handleRemoveObject);
-  }, [removeModel, selectedModelId]);
+  }, [updateModel, selectedModelId]);
 
   // Handle model selection
   const handleSelectModel = (id, modelData) => {
@@ -36,7 +37,8 @@ function ModelManager({ onSelect }) {
 
   // Handle model removal
   const handleRemoveModel = (id) => {
-    removeModel(id);
+    // Mark as not in scene instead of removing
+    updateModel(id, { isInScene: false });
     if (selectedModelId === id) {
       setSelectedModelId(null);
     }
@@ -44,7 +46,7 @@ function ModelManager({ onSelect }) {
 
   return (
     <>
-      {models.map((model) => (
+      {models.filter(model => model.isInScene !== false).map((model) => (
         <ModelInScene 
           key={model.id}
           modelData={model}

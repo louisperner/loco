@@ -532,23 +532,43 @@ const Player = () => {
   
   const handleSelectImageFromInventory = (image) => {
     // Add the selected image to the scene
-    if (image && image.url) {
-      const position = new THREE.Vector3();
+    if (!image?.url) return setShowInventory(false);
+    
+    // Calculate position in front of camera
+    const position = new THREE.Vector3();
+    
+    if (cameraRef.current) {
+      const camera = cameraRef.current;
+      const direction = new THREE.Vector3();
       
-      // If camera is available, place in front of camera
-      if (cameraRef.current) {
-        const camera = cameraRef.current;
-        const direction = new THREE.Vector3(0, 0, -1);
-        direction.applyQuaternion(camera.quaternion);
-        
-        position.copy(camera.position);
-        direction.multiplyScalar(3); // Place 3 units in front of camera
-        position.add(direction);
-      } else {
-        // Default position if camera not available
-        position.set(0, 1, 0);
-      }
+      // Get camera position and direction
+      position.copy(camera.position);
+      camera.getWorldDirection(direction);
       
+      // Place image at a comfortable distance in front of camera
+      const distance = 3; // 3 units away
+      direction.multiplyScalar(distance);
+      position.add(direction);
+    } else {
+      // Default position if camera not available
+      position.set(0, 1, -3);
+    }
+    
+    // Check if this image is already in the store
+    const existingImage = useImageStore.getState().images.find(img => img.id === image.id);
+    
+    if (existingImage) {
+      // If it exists, update it to be visible in the scene with the new position
+      addImage({
+        ...existingImage,
+        src: image.url,
+        fileName: image.fileName,
+        position: [position.x, position.y, position.z],
+        rotation: [0, 0, 0],
+        scale: 1,
+        isInScene: true
+      });
+    } else {
       // Add image to the store
       addImage({
         src: image.url,
@@ -556,6 +576,7 @@ const Player = () => {
         position: [position.x, position.y, position.z],
         rotation: [0, 0, 0],
         scale: 1,
+        isInScene: true
       });
     }
     
@@ -586,15 +607,29 @@ const Player = () => {
       position.set(0, 1, 0);
     }
     
-    // Add model to the store with destructured position
-    const { addModel } = useModelStore.getState();
-    addModel({
-      url: model.url,
-      fileName: model.fileName,
-      position: [position.x, position.y, position.z],
-      rotation: [0, 0, 0],
-      scale: 1,
-    });
+    // Check if this model is already in the store
+    const existingModel = useModelStore.getState().models.find(mdl => mdl.id === model.id);
+    
+    if (existingModel) {
+      // If it exists, update it to be visible in the scene with the new position
+      useModelStore.getState().updateModel(model.id, {
+        position: [position.x, position.y, position.z],
+        rotation: [0, 0, 0],
+        scale: 1,
+        isInScene: true
+      });
+    } else {
+      // Add model to the store with destructured position
+      const { addModel } = useModelStore.getState();
+      addModel({
+        url: model.url,
+        fileName: model.fileName,
+        position: [position.x, position.y, position.z],
+        rotation: [0, 0, 0],
+        scale: 1,
+        isInScene: true
+      });
+    }
     
     // Close the inventory
     setShowInventory(false);
@@ -602,10 +637,19 @@ const Player = () => {
 
   const handleRemoveObject = (objectData) => {
     if (objectData && objectData.type && objectData.id) {
+      // Only remove the object from the canvas (scene)
       if (objectData.type === 'image') {
-        removeImage(objectData.id);
+        // Find the image in the store
+        const image = useImageStore.getState().images.find(img => img.id === objectData.id);
+        
+        // Remove from the scene but keep the data in the inventory
+        useImageStore.getState().updateImage(objectData.id, { isInScene: false });
       } else if (objectData.type === 'model') {
-        removeModel(objectData.id);
+        // Find the model in the store
+        const model = useModelStore.getState().models.find(mdl => mdl.id === objectData.id);
+        
+        // Remove from the scene but keep the data in the inventory
+        useModelStore.getState().updateModel(objectData.id, { isInScene: false });
       }
       setSelectedObject(null);
     }
