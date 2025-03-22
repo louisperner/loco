@@ -12,7 +12,7 @@ import { useImageStore } from '../../store/useImageStore';
 import { useModelStore } from '../../store/useModelStore';
 import ModelManager from '../Models/ModelManager';
 import { Button, Switch, Slider } from '../ui/index';
-import { SettingsPanel } from '@/components/settings';
+import { SettingsPanel } from '@/components/Settings';
 import { useThemeStore } from '../../store/ThemeStore';
 import Inventory from '../Inventory/Inventory';
 
