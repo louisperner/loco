@@ -1,0 +1,31 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Code Organization Rules
+
+## File Structure
+- Styles should be always tailwind CSS or in last case `src/styles`
+
+## Naming Conventions
+- Use PascalCase for component names (e.g., `PlayerComponent.jsx`)
+- Use camelCase for functions and variables
+- Use UPPER_SNAKE_CASE for constants
+
+## Code Style
+- Keep components small and focused
+- Use always tailwind CSS
+
+## Git Rules
+- Write meaningful commit messages
+- Keep commits focused and atomic
+- Follow conventional commits format
+
+## Performance Rules
+- Lazy load components when possible
+- Optimize images and assets
+- Use proper memoization techniques
+
+## Documentation
+- only important comments

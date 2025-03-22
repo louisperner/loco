@@ -13,9 +13,9 @@ const TopNavBar: React.FC = () => {
                 <path
                   d='M4.904 14.563C4.95718 14.8019 5.08215 15.0189 5.26214 15.1847C5.44214 15.3506 5.66855 15.4574 5.91101 15.491C6.15347 15.5245 6.40037 15.4831 6.61862 15.3722C6.83686 15.2614 7.016 15.0865 7.132 14.871L9.222 11.778L14.129 16.685C14.2281 16.7841 14.3457 16.8627 14.4752 16.9163C14.6046 16.9699 14.7434 16.9975 14.8835 16.9975C15.0236 16.9975 15.1624 16.9699 15.2918 16.9163C15.4213 16.8627 15.5389 16.7841 15.638 16.685L16.685 15.638C16.7841 15.5389 16.8627 15.4213 16.9163 15.2918C16.9699 15.1624 16.9975 15.0236 16.9975 14.8835C16.9975 14.7434 16.9699 14.6046 16.9163 14.4752C16.8627 14.3457 16.7841 14.2281 16.685 14.129L11.778 9.222L14.891 7.132C15.1065 7.01592 15.2814 6.8367 15.3921 6.61839C15.5029 6.40008 15.5442 6.15312 15.5106 5.91064C15.477 5.66816 15.37 5.44177 15.204 5.26184C15.038 5.08191 14.821 4.95704 14.582 4.904L1 1L4.904 14.563Z'
                   stroke='white'
-                  stroke-width='2'
-                  stroke-linecap='round'
-                  stroke-linejoin='round'
+                  strokeWidth='2'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                 />
               </svg>
             </div>
@@ -27,16 +27,16 @@ const TopNavBar: React.FC = () => {
                 <path
                   d='M15.466 6.5C14.643 3.237 12.952 1 11 1C8.239 1 6 5.477 6 11C6 16.523 8.239 21 11 21C11.3427 20.9987 11.676 20.932 12 20.8M14.194 12.707L18.008 14.567L16.148 18.381'
                   stroke='white'
-                  stroke-width='2'
-                  stroke-linecap='round'
-                  stroke-linejoin='round'
+                  strokeWidth='2'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                 />
                 <path
                   d='M18 14.57C16.196 15.455 13.726 16 11 16C5.477 16 1 13.761 1 11C1 8.239 5.477 6 11 6C15.838 6 19.873 7.718 20.8 10'
                   stroke='white'
-                  stroke-width='2'
-                  stroke-linecap='round'
-                  stroke-linejoin='round'
+                  strokeWidth='2'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                 />
               </svg>
             </div>
@@ -59,16 +59,16 @@ const TopNavBar: React.FC = () => {
                 <path
                   d='M13 1H19M19 1V7M19 1L7.5 12.5M13.5 12.5H7.5M7.5 12.5V6.5'
                   stroke='white'
-                  stroke-width='2'
-                  stroke-linecap='round'
-                  stroke-linejoin='round'
+                  strokeWidth='2'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                 />
                 <path
                   d='M9 1H2C1.73478 1 1.48043 1.10536 1.29289 1.29289C1.10536 1.48043 1 1.73478 1 2V18C1 18.2652 1.10536 18.5196 1.29289 18.7071C1.48043 18.8946 1.73478 19 2 19H18C18.2652 19 18.5196 18.8946 18.7071 18.7071C18.8946 18.5196 19 18.2652 19 18V11'
                   stroke='white'
-                  stroke-width='2'
-                  stroke-linecap='round'
-                  stroke-linejoin='round'
+                  strokeWidth='2'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                 />
               </svg>
             </div>
@@ -128,16 +128,16 @@ const TopNavBar: React.FC = () => {
                 <path
                   d='M14.7537 8.20135L19.8029 11.5675C19.8756 11.6159 19.9602 11.6437 20.0475 11.6479C20.1349 11.6521 20.2217 11.6325 20.2988 11.5912C20.3759 11.5499 20.4403 11.4885 20.4852 11.4135C20.5302 11.3385 20.554 11.2528 20.554 11.1653V3.24206C20.554 3.15701 20.5316 3.07346 20.489 2.99985C20.4464 2.92623 20.3852 2.86516 20.3114 2.8228C20.2377 2.78043 20.154 2.75827 20.069 2.75856C19.9839 2.75885 19.9005 2.78158 19.827 2.82444L14.7537 5.78454'
                   stroke='white'
-                  stroke-width='2'
-                  stroke-linecap='round'
-                  stroke-linejoin='round'
+                  strokeWidth='2'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                 />
                 <path
                   d='M12.8204 1.43428H3.15317C2.08536 1.43428 1.21973 2.29991 1.21973 3.36772V11.1015C1.21973 12.1693 2.08536 13.0349 3.15317 13.0349H12.8204C13.8882 13.0349 14.7538 12.1693 14.7538 11.1015V3.36772C14.7538 2.29991 13.8882 1.43428 12.8204 1.43428Z'
                   stroke='white'
-                  stroke-width='2'
-                  stroke-linecap='round'
-                  stroke-linejoin='round'
+                  strokeWidth='2'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                 />
               </svg>
             </div>
@@ -151,15 +151,15 @@ const TopNavBar: React.FC = () => {
                     d='M17.7732 1.5341H3.27235C2.47149 1.5341 1.82227 2.18333 1.82227 2.98419V17.485C1.82227 18.2859 2.47149 18.9351 3.27235 18.9351H17.7732C18.574 18.9351 19.2233 18.2859 19.2233 17.485V2.98419C19.2233 2.18333 18.574 1.5341 17.7732 1.5341Z'
                     fill='white'
                     stroke='white'
-                    stroke-width='2'
-                    stroke-linejoin='round'
+                    strokeWidth='2'
+                    strokeLinejoin='round'
                   />
                   <path
                     d='M6.65601 7.8178V6.36772H14.3898V7.8178M9.55617 15.0682H11.4896M10.5229 7.33444V15.0682'
                     stroke='black'
-                    stroke-width='2'
-                    stroke-linecap='round'
-                    stroke-linejoin='round'
+                    strokeWidth='2'
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
                   />
                 </mask>
                 <g mask='url(#mask0_2037_195)'>
@@ -198,7 +198,7 @@ const TopNavBar: React.FC = () => {
             {/* Square icon placeholder */}
             <div className='w-[35px] h-[35px] bg-[#202020] rounded p-2 flex items-center justify-center '>
               <svg width='18' height='18' viewBox='0 0 18 18' fill='none' xmlns='http://www.w3.org/2000/svg'>
-                <rect x='1.19653' y='1.5341' width='15.401' height='15.401' stroke='white' stroke-width='2' />
+                <rect x='1.19653' y='1.5341' width='15.401' height='15.401' stroke='white' strokeWidth='2' />
               </svg>
             </div>
           </div>
@@ -209,9 +209,9 @@ const TopNavBar: React.FC = () => {
                 <path
                   d='M9.59926 18.9351L17.333 15.0199L9.59926 1.5341M9.59926 18.9351L1.86548 15.0199L9.59926 1.5341M9.59926 18.9351V1.5341'
                   stroke='white'
-                  stroke-width='2'
-                  stroke-linecap='round'
-                  stroke-linejoin='round'
+                  strokeWidth='2'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                 />
               </svg>
             </div>

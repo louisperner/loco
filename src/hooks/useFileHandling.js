@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import { useImageStore } from '../../../store/useImageStore';
-import { useModelStore } from '../../../store/useModelStore';
+import { useImageStore } from '../store/useImageStore';
+import { useModelStore } from '../store/useModelStore';
 import * as THREE from 'three';
-import { saveModelThumbnail } from '../../../utils/modelThumbnailGenerator';
+import { saveModelThumbnail } from '../utils/modelThumbnailGenerator';
 
 export const useFileHandling = (cameraRef) => {
   const [isDragging, setIsDragging] = useState(false);

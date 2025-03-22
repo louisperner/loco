@@ -6,17 +6,15 @@ import { useCodeStore } from '../../store/CodeStore';
 import WebFrames from './WebFrames';
 import Spotlight from './Spotlight';
 import FPSControls from './FPSControls';
-import ImageCloneManager from './ImageCloneManager';
+import ImageCloneManager from '../models/ImageCloneManager';
 import MessageManager from './MessageManager';
 import { useImageStore } from '../../store/useImageStore';
 import { useModelStore } from '../../store/useModelStore';
-import ModelManager from './ModelManager';
-import { Button, Switch, Slider } from '@/components/ui';
+import ModelManager from '../models/ModelManager';
+import { Button, Switch, Slider } from '../ui/index';
 import { SettingsPanel } from '@/components/settings';
-import { RgbaColorPicker } from 'react-colorful';
-import { FaTimes, FaUndo, FaPalette, FaSlidersH, FaChevronRight, FaMagic, FaLayerGroup, FaAdjust, FaEye, FaEyeSlash, FaExpand, FaInfinity, FaCube, FaCog, FaImages } from 'react-icons/fa';
 import { useThemeStore } from '../../store/ThemeStore';
-import Inventory from '../Inventory';
+import Inventory from '../inventory';
 
 // Import separated components
 import { 
@@ -25,7 +23,7 @@ import {
   PreviewFrame, 
   FrameRateLimiter,
   CameraExposer 
-} from './components';
+} from '../scene';
 
 // Import utilities
 import { 
@@ -33,10 +31,10 @@ import {
   rgbaToString, 
   stringToRgba, 
   getButtonColorStyle 
-} from './utils/colorUtils';
+} from '../../utils/colorUtils';
 
 // Import hooks
-import { useFileHandling } from './hooks/useFileHandling';
+import { useFileHandling } from '../../hooks/useFileHandling';
 
 // Create a context for the hotbar selection
 export const HotbarContext = React.createContext({

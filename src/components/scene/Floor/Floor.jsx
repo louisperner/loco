@@ -1,6 +1,6 @@
 import React from 'react';
 import { Grid, Plane, Circle } from '@react-three/drei';
-import { useThemeStore } from '../../../../store/ThemeStore';
+import { useThemeStore } from '../../../store/ThemeStore';
 import * as THREE from 'three';
 
 const Floor = ({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = false, groundShape = 'circle' }) => {
