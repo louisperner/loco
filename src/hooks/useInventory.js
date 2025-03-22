@@ -182,7 +182,10 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
   // Update showFullInventory when isOpen prop changes
   useEffect(() => {
     setShowFullInventory(isOpen);
-  }, [isOpen]);
+    if (isOpen) {
+      loadItemsFromDisk();
+    }
+  }, [isOpen, loadItemsFromDisk]);
 
   // Load hotbar items from localStorage on component mount
   useEffect(() => {
@@ -412,6 +415,18 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     ghostImage.style.position = 'absolute';
     ghostImage.style.left = '-1000px';
     ghostImage.style.top = '-1000px';
+    ghostImage.style.width = '60px';
+    ghostImage.style.height = '60px';
+    ghostImage.style.borderRadius = '4px';
+    ghostImage.style.overflow = 'hidden';
+    ghostImage.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    ghostImage.style.border = '2px solid rgba(255, 255, 255, 0.2)';
+    ghostImage.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+    
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+    
     document.body.appendChild(ghostImage);
     
     e.dataTransfer.setDragImage(ghostImage, 30, 30);

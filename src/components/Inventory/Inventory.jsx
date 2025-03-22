@@ -57,6 +57,10 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObje
 
   return (
     <>
+      {showFullInventory && (
+        <div className="fixed inset-0 z-40" onClick={onClose}></div>
+      )}
+      
       <Hotbar
         hotbarItems={hotbarItems}
         selectedHotbarSlot={selectedHotbarSlot}
@@ -71,9 +75,8 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObje
       />
       
       {showFullInventory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-          <div className="relative w-4/5 max-w-[900px] h-4/5 max-h-[700px] bg-black/95 rounded-xl shadow-2xl flex flex-col overflow-hidden text-white font-minecraft border border-white/10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="relative w-4/5 max-w-[900px] h-4/5 max-h-[700px] bg-black/95 rounded-xl shadow-2xl flex flex-col overflow-hidden text-white font-minecraft border border-white/10 pointer-events-auto">
             <InventoryHeader
               searchTerm={searchTerm}
               handleSearchChange={handleSearchChange}

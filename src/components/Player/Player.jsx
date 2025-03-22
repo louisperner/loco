@@ -471,7 +471,7 @@ const Player = () => {
         handleCancel();
       }
 
-      // Add 'E' key to open inventory, but only if no input is focused and spotlight is not open
+      // Handle inventory toggle with E key
       if ((e.key === 'e' || e.key === 'E') && !pendingWebsiteUrl && !showCatalog && !isSpotlightOpen) {
         e.preventDefault();
         setShowInventory(prev => !prev);
@@ -615,26 +615,6 @@ const Player = () => {
   const handleObjectSelect = (object) => {
     setSelectedObject(object);
   };
-
-  // Global keyboard event handler
-  useEffect(() => {
-    const handleGlobalKeyDown = (e) => {
-      // Log all key presses for debugging
-      // console.log(`Key pressed: ${e.key}, target: ${e.target.tagName}, focused: ${document.activeElement.tagName}`);
-      
-      // Prevent opening inventory with E key if any input is focused
-      if ((e.key === 'e' || e.key === 'E') && 
-          (document.activeElement.tagName === 'INPUT' || 
-           document.activeElement.tagName === 'TEXTAREA' ||
-           isSpotlightOpen)) {
-        e.stopPropagation(); // Prevent other handlers from processing this event
-      }
-    };
-    
-    // Use capture phase to intercept events before other handlers
-    window.addEventListener('keydown', handleGlobalKeyDown, true);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown, true);
-  }, [isSpotlightOpen]);
 
   return (
     <HotbarContext.Provider value={{ selectedHotbarItem, setSelectedHotbarItem: handleHotbarItemSelect }}>
