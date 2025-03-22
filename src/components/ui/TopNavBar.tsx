@@ -2,7 +2,7 @@ import React from 'react';
 
 const TopNavBar: React.FC = () => {
   return (
-    <div className='w-[590px] flex items-center justify-between mb-2 ml-2'>
+    <div className='w-[590px] flex items-center justify-between ml-2'>
       <div className='flex items-center space-x-2'>
         {/* Left side icons */}
         <div className='h-[45px] bg-[#202020] flex space-x-1 p-1 rounded-lg border border-[#353535]'>

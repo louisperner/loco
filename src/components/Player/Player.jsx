@@ -14,7 +14,7 @@ import ModelManager from '../models/ModelManager';
 import { Button, Switch, Slider } from '../ui/index';
 import { SettingsPanel } from '@/components/settings';
 import { useThemeStore } from '../../store/ThemeStore';
-import Inventory from '../inventory';
+import Inventory from '../inventory/Inventory';
 
 // Import separated components
 import { 
