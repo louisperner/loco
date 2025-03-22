@@ -6,15 +6,15 @@ import { useCodeStore } from '../../store/CodeStore';
 import WebFrames from './WebFrames';
 import Spotlight from './Spotlight';
 import FPSControls from './FPSControls';
-import ImageCloneManager from '../models/ImageCloneManager';
+import ImageCloneManager from '../Models/ImageCloneManager';
 import MessageManager from './MessageManager';
 import { useImageStore } from '../../store/useImageStore';
 import { useModelStore } from '../../store/useModelStore';
-import ModelManager from '../models/ModelManager';
+import ModelManager from '../Models/ModelManager';
 import { Button, Switch, Slider } from '../ui/index';
 import { SettingsPanel } from '@/components/settings';
 import { useThemeStore } from '../../store/ThemeStore';
-import Inventory from '../inventory/Inventory';
+import Inventory from '../Inventory/Inventory';
 
 // Import separated components
 import { 
@@ -23,7 +23,7 @@ import {
   PreviewFrame, 
   FrameRateLimiter,
   CameraExposer 
-} from '../scene';
+} from '../Scene';
 
 // Import utilities
 import { 
