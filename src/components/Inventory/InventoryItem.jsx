@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Eye } from 'lucide-react';
 
 const InventoryItem = ({
   item,
@@ -11,7 +11,8 @@ const InventoryItem = ({
   handleItemSelect,
   handleAddToHotbar,
   handleDragStart,
-  handleDragEnd
+  handleDragEnd,
+  handleRemoveItem
 }) => {
   return (
     <div
@@ -44,28 +45,45 @@ const InventoryItem = ({
       </div>
 
       {/* Botões de ação com posicionamento absoluto */}
-      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleAddToHotbar(item, e);
-          }}
-          className="p-1 bg-green-600/80 hover:bg-green-500 rounded-md backdrop-blur-sm"
-          title="Adicionar à hotbar"
-        >
-          <Plus className="w-4 h-4 text-white" />
-        </button>
+      <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex gap-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleAddToHotbar(item, e);
+            }}
+            className="p-1 bg-green-600/80 hover:bg-green-500 rounded-md backdrop-blur-sm"
+            title="Adicionar à hotbar"
+          >
+            <Plus className="w-3 h-3 text-white" />
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (typeof handleRemoveItem === 'function') {
+                handleRemoveItem(item.id);
+              }
+            }}
+            className="p-1 bg-red-600/80 hover:bg-red-500 rounded-md backdrop-blur-sm"
+            title="Remover item permanentemente"
+          >
+            <Trash2 className="w-3 h-3 text-white" />
+          </button>
+        </div>
         
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            // Implementar lógica de exclusão
-          }}
-          className="p-1 bg-red-600/80 hover:bg-red-500 rounded-md backdrop-blur-sm"
-          title="Remover item"
-        >
-          <Trash2 className="w-4 h-4 text-white" />
-        </button>
+        {item.type === 'image' && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(item.url, '_blank').focus();
+            }}
+            className="p-1 bg-blue-600/80 hover:bg-blue-500 rounded-md backdrop-blur-sm w-full flex justify-center"
+            title="Visualizar imagem"
+          >
+            <Eye className="w-3 h-3 text-white" />
+          </button>
+        )}
       </div>
 
       {/* Nome do item */}

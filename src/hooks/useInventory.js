@@ -499,6 +499,99 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     return true;
   });
 
+  const handleRemoveItem = useCallback(async (itemId) => {
+    const itemToDelete = items.find(item => item.id === itemId);
+    if (!itemToDelete) return;
+
+    const imageStore = useImageStore.getState();
+    const modelStore = useModelStore.getState();
+
+    // Encontrar todas as instâncias (originais e clones)
+    const canvasImages = imageStore.images.filter(img => 
+      img.inventoryId === itemId || 
+      img.src === itemToDelete.url || 
+      img.src === itemToDelete.filePath
+    );
+
+    const canvasModels = modelStore.models.filter(model => 
+      model.inventoryId === itemId ||
+      model.url === itemToDelete.url ||
+      model.url === itemToDelete.filePath
+    );
+
+    const totalInstances = canvasImages.length + canvasModels.length;
+
+    if (totalInstances > 0) {
+      const confirmMessage = `Este item tem ${totalInstances} instância(s) no canvas (incluindo clones).\nDeseja remover TODAS?`;
+      if (!window.confirm(confirmMessage)) return;
+    } else {
+      if (!window.confirm(`Deseja excluir permanentemente "${itemToDelete.fileName}"?`)) return;
+    }
+
+    // Remover do canvas
+    try {
+      // Remover imagens e clones
+      canvasImages.forEach(img => {
+        imageStore.removeImage(img.id);
+        if (onRemoveObject) onRemoveObject(img.id);
+      });
+
+      // Remover modelos e clones
+      canvasModels.forEach(model => {
+        modelStore.removeModel(model.id);
+        if (onRemoveObject) onRemoveObject(model.id);
+      });
+    } catch (error) {
+      console.error('Erro ao remover do canvas:', error);
+      return;
+    }
+
+    // Remover do inventário
+    setItems(prev => prev.filter(item => item.id !== itemId));
+    
+    // Remover da hotbar CORRETAMENTE
+    setHotbarItems(prev => {
+      const newHotbar = prev.map(slotItem => 
+        slotItem && slotItem.id === itemId ? null : slotItem
+      );
+      
+      localStorage.setItem(HOTBAR_STORAGE_KEY, JSON.stringify(
+        newHotbar.map(slot => slot?.id || null)
+      ));
+      
+      return newHotbar;
+    });
+
+    // Remover das stores globais
+    if (itemToDelete.type === 'image') {
+      useImageStore.getState().removeImage(itemId);
+    } else {
+      useModelStore.getState().removeModel(itemId);
+    }
+
+    // Remover arquivo físico (Electron)
+    if (window.electron?.deleteFile) {
+      try {
+        const paths = [
+          itemToDelete.filePath,
+          itemToDelete.url,
+          itemToDelete.thumbnailUrl
+        ].filter(Boolean);
+        
+        for (const path of paths) {
+          await window.electron.deleteFile(path);
+        }
+      } catch (error) {
+        console.error('Erro ao deletar arquivos:', error);
+      }
+    }
+
+    // Desselecionar se necessário
+    if (selectedItem?.id === itemId) {
+      setSelectedItem(null);
+    }
+  }, [items, selectedItem, onRemoveObject]);
+
   return {
     items: filteredItems,
     loading,
@@ -527,6 +620,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     handleDragOver,
     handleDragLeave,
     handleDrop,
-    loadItemsFromDisk
+    loadItemsFromDisk,
+    handleRemoveItem
   };
 }; 

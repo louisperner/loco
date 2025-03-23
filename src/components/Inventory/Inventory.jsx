@@ -36,7 +36,8 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObje
     handleDragOver,
     handleDragLeave,
     handleDrop,
-    loadItemsFromDisk
+    loadItemsFromDisk,
+    handleRemoveItem
   } = useInventory(onSelectImage, onSelectModel, onClose, isOpen, onRemoveObject);
 
   // Focus search input when inventory is opened
@@ -100,6 +101,7 @@ const Inventory = ({ onSelectImage, onSelectModel, onClose, isOpen, onRemoveObje
               handleDragStart={handleDragStart}
               handleDragEnd={handleDragEnd}
               handleConfirmSelection={handleConfirmSelection}
+              handleRemoveItem={handleRemoveItem}
             />
           </div>
         </div>

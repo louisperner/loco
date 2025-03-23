@@ -14,7 +14,8 @@ const InventoryGrid = ({
   handleAddToHotbar,
   handleDragStart,
   handleDragEnd,
-  handleConfirmSelection
+  handleConfirmSelection,
+  handleRemoveItem
 }) => {
   if (loading) {
     return (
@@ -60,6 +61,7 @@ const InventoryGrid = ({
               handleAddToHotbar={handleAddToHotbar}
               handleDragStart={handleDragStart}
               handleDragEnd={handleDragEnd}
+              handleRemoveItem={handleRemoveItem}
             />
           );
         })}
