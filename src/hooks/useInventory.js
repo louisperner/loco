@@ -25,70 +25,69 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     try {
       setLoading(true);
       
-      if (!window.electron) {
-        throw new Error('Electron API not available');
-      }
-      
       let allItems = [];
       
-      // Load images
-      try {
-        if (typeof window.electron.listImagesFromDisk === 'function') {
-          const result = await window.electron.listImagesFromDisk();
+      // First check if we're in a browser environment (not Electron)
+      const isElectronAvailable = window.electron && 
+        typeof window.electron.listImagesFromDisk === 'function' &&
+        typeof window.electron.listModelsFromDisk === 'function';
+      
+      if (isElectronAvailable) {
+        // Electron environment - load from disk
+        try {
+          const imageResult = await window.electron.listImagesFromDisk();
           
-          if (result.success) {
-            const imageItems = result.images.map(img => ({
+          if (imageResult.success) {
+            const imageItems = imageResult.images.map(img => ({
               ...img,
               type: 'image',
               category: getImageCategory(img.fileName)
             }));
             allItems = [...allItems, ...imageItems];
           }
-        } else {
-          const storeImageItems = storeImages.map(img => ({
-            id: img.id,
-            type: 'image',
-            fileName: img.fileName || 'Unknown',
-            url: img.src,
-            thumbnailUrl: img.src,
-            createdAt: new Date().toISOString(),
-            modifiedAt: new Date().toISOString(),
-            category: getImageCategory(img.fileName || 'Unknown')
-          }));
-          allItems = [...allItems, ...storeImageItems];
+        } catch (error) {
+          console.error('Error loading images from disk:', error);
         }
-      } catch (error) {
-        console.error('Error loading images:', error);
-      }
-      
-      // Load models
-      try {
-        if (typeof window.electron.listModelsFromDisk === 'function') {
-          const result = await window.electron.listModelsFromDisk();
+        
+        try {
+          const modelResult = await window.electron.listModelsFromDisk();
           
-          if (result.success) {
-            const modelItems = result.models.map(model => ({
+          if (modelResult.success) {
+            const modelItems = modelResult.models.map(model => ({
               ...model,
               type: 'model',
               category: getModelCategory(model.fileName)
             }));
             allItems = [...allItems, ...modelItems];
           }
-        } else {
-          const storeModelItems = storeModels.map(model => ({
-            id: model.id,
-            type: 'model',
-            fileName: model.fileName || 'Unknown',
-            url: model.url,
-            thumbnailUrl: model.thumbnailUrl,
-            createdAt: new Date().toISOString(),
-            modifiedAt: new Date().toISOString(),
-            category: getModelCategory(model.fileName || 'Unknown')
-          }));
-          allItems = [...allItems, ...storeModelItems];
+        } catch (error) {
+          console.error('Error loading models from disk:', error);
         }
-      } catch (error) {
-        console.error('Error loading models:', error);
+      } else {
+        // Browser environment - use store data instead
+        console.info('Running in browser environment, using store and localStorage for inventory');
+        const storeImageItems = storeImages.map(img => ({
+          id: img.id,
+          type: 'image',
+          fileName: img.fileName || 'Unknown',
+          url: img.src,
+          thumbnailUrl: img.src,
+          createdAt: new Date().toISOString(),
+          modifiedAt: new Date().toISOString(),
+          category: getImageCategory(img.fileName || 'Unknown')
+        }));
+        allItems = [...allItems, ...storeImageItems];
+        const storeModelItems = storeModels.map(model => ({
+          id: model.id,
+          type: 'model',
+          fileName: model.fileName || 'Unknown',
+          url: model.url,
+          thumbnailUrl: model.thumbnailUrl,
+          createdAt: new Date().toISOString(),
+          modifiedAt: new Date().toISOString(),
+          category: getModelCategory(model.fileName || 'Unknown')
+        }));
+        allItems = [...allItems, ...storeModelItems];
       }
       
       // Extract unique categories
@@ -182,22 +181,9 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
   // Update showFullInventory when isOpen prop changes
   useEffect(() => {
     setShowFullInventory(isOpen);
-    if (isOpen) {
-      loadItemsFromDisk();
-    }
+    // Carregar itens sempre que o componente montar
+    loadItemsFromDisk();
   }, [isOpen, loadItemsFromDisk]);
-
-  // Load hotbar items from localStorage on component mount
-  useEffect(() => {
-    try {
-      const savedHotbar = localStorage.getItem(HOTBAR_STORAGE_KEY);
-      if (savedHotbar) {
-        setHotbarItems(Array(9).fill(null));
-      }
-    } catch (error) {
-      console.error('Error loading hotbar from localStorage:', error);
-    }
-  }, []);
 
   // Save hotbar to localStorage whenever it changes
   useEffect(() => {

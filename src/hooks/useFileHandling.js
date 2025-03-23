@@ -89,7 +89,7 @@ export const useFileHandling = (cameraRef) => {
             alert(`Error saving model file: ${error.message}`);
           });
         } else {
-          console.warn('Electron saveModelFile API not available');
+          console.info('Running in browser environment, using blob URL for model storage');
         }
         
         return;
@@ -147,7 +147,7 @@ export const useFileHandling = (cameraRef) => {
           alert(`Error saving model file: ${error.message}`);
         });
       } else {
-        console.warn('Electron saveModelFile API not available');
+        console.info('Running in browser environment, using blob URL for model storage');
       }
     } catch (error) {
       console.error('Error handling model drop:', error);
@@ -190,7 +190,7 @@ export const useFileHandling = (cameraRef) => {
             alert(`Error saving image file: ${error.message}`);
           });
         } else {
-          console.warn('Electron saveImageFile API not available');
+          console.info('Running in browser environment, using blob URL for image storage');
         }
         
         return;
@@ -241,7 +241,7 @@ export const useFileHandling = (cameraRef) => {
             alert(`Error saving image file: ${error.message}`);
           });
         } else {
-          console.warn('Electron saveImageFile API not available');
+          console.info('Running in browser environment, using blob URL for image storage');
         }
       };
       
@@ -271,7 +271,7 @@ export const useFileHandling = (cameraRef) => {
             alert(`Error saving image file: ${error.message}`);
           });
         } else {
-          console.warn('Electron saveImageFile API not available');
+          console.info('Running in browser environment, using blob URL for image storage');
         }
       };
       

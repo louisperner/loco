@@ -42,7 +42,9 @@ const InventoryGrid = ({
 
   return (
     <>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4 p-5 overflow-y-auto flex-1">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 p-5 overflow-y-auto flex-1 
+        [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full 
+        [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-black/30">
         {items.map((item) => {
           const isInHotbar = hotbarItems.some(hotbarItem => hotbarItem && hotbarItem.id === item.id);
           

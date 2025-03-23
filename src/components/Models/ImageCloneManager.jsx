@@ -588,13 +588,14 @@ const ImageCloneManager = ({ onSelect }) => {
   useEffect(() => {
     const handleRemoveObject = (event) => {
       if (event.detail.type === 'image') {
-        removeImage(event.detail.id);
+        // Instead of removing the image, just update it to mark as not in scene
+        updateImage(event.detail.id, { isInScene: false });
       }
     };
 
     window.addEventListener('removeObject', handleRemoveObject);
     return () => window.removeEventListener('removeObject', handleRemoveObject);
-  }, [removeImage]);
+  }, [updateImage]);
 
   // Exportar a função addImage para o escopo global para compatibilidade
   useEffect(() => {
@@ -617,7 +618,9 @@ const ImageCloneManager = ({ onSelect }) => {
   // Renderizar cada imagem do store
   return (
     <>
-      {images.map((image, index) => (
+      {images
+        .filter(image => image.isInScene !== false) // Only render images that are in scene
+        .map((image, index) => (
         <ImageInScene 
           key={`image-${image.id || index}`} 
           imageData={image}

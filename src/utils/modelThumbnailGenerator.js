@@ -35,22 +35,28 @@ export const generateModelThumbnail = async (modelUrl, width = 300, height = 300
       // Load the model
       const loader = new GLTFLoader();
       
-      // If the URL is an app-file:// URL, we need to convert it to a blob URL
+      // Handle app-file:// URLs with electron APIs
       if (modelUrl.startsWith('app-file://') && window.electron && window.electron.loadFileAsBlob) {
         window.electron.loadFileAsBlob(modelUrl)
           .then(result => {
             if (result.success) {
-              loadModel(result.blobUrl);
+              resolve(renderThumbnail(result.blobUrl, modelId));
             } else {
-              reject(new Error(result.error || 'Failed to load model'));
+              console.error('Failed to load model file:', result.error);
+              resolve(null);
             }
           })
-          .catch(error => {
-            reject(error);
+          .catch(err => {
+            console.error('Error loading model file:', err);
+            resolve(null);
           });
+      } else if (modelUrl.startsWith('file://') || modelUrl.startsWith('app-file://')) {
+        // Browser environment with file:// or app-file:// URLs
+        console.info('Browser environment detected, cannot generate thumbnail for file URLs');
+        resolve(null);
       } else {
-        // If it's already a blob URL or regular URL, use it directly
-        loadModel(modelUrl);
+        // Regular URL, try to render it directly
+        resolve(renderThumbnail(modelUrl, modelId));
       }
       
       function loadModel(url) {

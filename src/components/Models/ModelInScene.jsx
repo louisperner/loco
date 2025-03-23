@@ -37,8 +37,16 @@ function Model({ url, scale }) {
               setModelUrl(url);
             }
           } else {
-            console.warn('API Electron não disponível, usando URL original:', url);
-            setModelUrl(url);
+            console.info('Browser environment detected, using alternative model URL');
+            // In browser environment, handle file URLs appropriately
+            if (url.startsWith('file://')) {
+              // Use a placeholder model in browser mode
+              setModelUrl('/placeholder-model.glb');
+              setError(new Error('File system access not available in browser'));
+            } else {
+              // Try to use the URL directly
+              setModelUrl(url);
+            }
           }
         } else if (url && url.startsWith('blob:')) {
           // For blob URLs, ensure they're cached to prevent garbage collection

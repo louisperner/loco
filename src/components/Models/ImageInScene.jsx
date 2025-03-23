@@ -282,42 +282,30 @@ function InternalImage({ src, onLoad, onError }) {
     const loadImage = async () => {
       setIsLoading(true);
       try {
-        // Se o URL começar com file:// ou app-file://, tente carregá-lo com o Electron
-        if ((src && src.startsWith('file://')) || (src && src.startsWith('app-file://'))) {
-          console.log('Carregando imagem com Electron:', src);
-          
-          if (window.electron && window.electron.loadFileAsBlob) {
-            const result = await window.electron.loadFileAsBlob(src);
-            if (result.success) {
-              console.log('Imagem carregada com sucesso, usando blob URL:', result.blobUrl);
-              setImageSrc(result.blobUrl);
-              
-              // Pré-carregar a imagem para garantir que as dimensões estejam disponíveis
-              const img = new Image();
-              img.onload = () => {
-                setIsLoading(false);
-                if (onLoad) onLoad(img);
-              };
-              img.onerror = (error) => {
-                console.error('Erro ao carregar imagem:', error);
-                setIsLoading(false);
-                if (onError) onError(error);
-              };
-              img.src = result.blobUrl;
+        // Handle app-file URLs
+        if (src && (src.startsWith('app-file://') || src.startsWith('file://'))) {
+          try {
+            if (window.electron && window.electron.loadImageFromAppFile) {
+              // console.log('Loading image from app-file URL:', src);
+              const result = await window.electron.loadImageFromAppFile(src);
+              if (result.success) {
+                // console.log('Successfully loaded image as blob URL:', result.url);
+                setImageSrc(result.url);
+              } else {
+                console.error('Failed to load image from app-file URL:', result.error);
+                setImageSrc(src); // Fallback to original source
+              }
             } else {
-              console.error('Erro ao carregar imagem com Electron:', result.error);
-              setIsLoading(false);
-              if (onError) onError(new Error(`Erro ao carregar imagem: ${result.error}`));
+              // In browser environment, just use the source directly or fallback to a placeholder
+              console.info('Browser environment detected, using original image source');
+              setImageSrc(src.startsWith('file://') ? 'https://via.placeholder.com/300x200?text=Image' : src);
             }
-          } else {
-            console.warn('API Electron não disponível, usando URL original:', src);
+          } catch (error) {
+            console.error('Error loading image from app-file URL:', error);
             setImageSrc(src);
-            setIsLoading(false);
           }
         } else {
-          // URL normal, manter como está
           setImageSrc(src);
-          setIsLoading(false);
         }
       } catch (error) {
         console.error('Erro ao processar URL da imagem:', error);
