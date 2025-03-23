@@ -16,7 +16,7 @@ const Hotbar = ({
 }) => {
   return (
     <div className="fixed bottom-5 left-1/2 -translate-x-1/2 flex flex-col items-center z-50 pointer-events-none">
-      <TopNavBar />
+      {/* <TopNavBar /> */}
       <div className="flex gap-1 bg-black/80 rounded-lg p-1.5 shadow-lg pointer-events-auto border border-white/10">
         {hotbarItems.map((item, index) => (
           <div 

@@ -5,9 +5,9 @@ const STORAGE_KEY = 'theme-colors';
 
 // Valores padrão em formato rgba
 const defaultTheme = {
-  gridColor: "rgba(129, 140, 248, 1)", 
+  gridColor: "rgba(0, 0, 0, 1)", 
   backgroundColor: "rgba(0, 0, 0, 1)",
-  floorPlaneColor: "rgba(25, 31, 42, 0.5)",
+  floorPlaneColor: "rgba(50, 0, 77, 1)",
   gridOpacity: 40,
   backgroundOpacity: 100,
   floorPlaneOpacity: 50,
