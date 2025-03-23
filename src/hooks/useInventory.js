@@ -65,7 +65,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
         }
       } else {
         // Browser environment - use store data instead
-        console.info('Running in browser environment, using store and localStorage for inventory');
+        // console.info('Running in browser environment, using store and localStorage for inventory');
         const storeImageItems = storeImages.map(img => ({
           id: img.id,
           type: 'image',
