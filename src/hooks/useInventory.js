@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useImageStore } from '../store/useImageStore';
 import { useModelStore } from '../store/useModelStore';
-import { HOTBAR_STORAGE_KEY, getImageCategory, getModelCategory } from '../utils/inventoryUtils';
+import { HOTBAR_STORAGE_KEY, getImageCategory, getModelCategory, showAddedToCanvasIndicator } from '../utils/inventoryUtils';
 
 export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRemoveObject) => {
   const [items, setItems] = useState([]);

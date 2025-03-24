@@ -1,5 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+// Add type declaration for window._imageBlobCache
+declare global {
+  interface Window {
+    _imageBlobCache: Record<string, string>;
+  }
+}
+
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', withPrototype(ipcRenderer));
 
