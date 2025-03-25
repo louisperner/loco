@@ -1,9 +1,8 @@
-import React, { useRef, useEffect, forwardRef, ForwardRefRenderFunction, MouseEvent, DragEvent, useMemo } from 'react';
-import { useInventory, InventoryItem, InventoryHookResult } from '../../hooks/useInventory';
+import React, { useRef, useEffect, forwardRef, ForwardRefRenderFunction, MouseEvent, useMemo } from 'react';
+import { useInventory, InventoryItem } from '../../hooks/useInventory';
 import Hotbar from './Hotbar';
 import InventoryGrid from './InventoryGrid';
 import InventoryHeader from './InventoryHeader';
-import { showAddedToCanvasIndicator } from '../../utils/inventoryUtils';
 
 interface InventoryProps {
   onSelectImage: (imageData: InventoryItem) => void;
@@ -16,9 +15,6 @@ interface InventoryProps {
 interface InventoryRefHandle {
   reloadInventory: () => void;
 }
-
-// Define a wrapper type for handleAddToHotbar to allow MouseEvent to be optional
-type AddToHotbarFn = (item: InventoryItem, e?: MouseEvent) => void;
 
 const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = (
   { onSelectImage, onSelectModel, onClose, isOpen, onRemoveObject },
@@ -41,11 +37,8 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
     selectedHotbarSlot,
     categories,
     isAddingToHotbar,
-    draggedItem,
     dragOverSlot,
-    setShowFullInventory,
     handleItemSelect,
-    handleAddToCanvas,
     handleConfirmSelection,
     handleTabChange,
     handleSearchChange,

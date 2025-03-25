@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
-import { auth, googleProvider } from '../../utils/firebase';
+import { auth } from '../../utils/firebase';
 import { 
-  createUserWithEmailAndPassword, 
-  signInWithPopup, 
-  signOut, 
-  signInWithEmailAndPassword, 
-  AuthError 
+  signInWithEmailAndPassword
 } from 'firebase/auth';
 
 const Login: React.FC = () => {
@@ -20,6 +16,8 @@ const Login: React.FC = () => {
     }
   };
 
+  // Keeping these functions commented for future use
+  /*
   const signInWithGoogle = async (): Promise<void> => {
     try {
       await signInWithPopup(auth, googleProvider);
@@ -35,6 +33,7 @@ const Login: React.FC = () => {
       console.error(err);
     }
   };
+  */
 
   return (
     <div className='bg-[#222222] flex flex-row'>

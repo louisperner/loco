@@ -1,5 +1,4 @@
 import React, { useState, useEffect, FormEvent, KeyboardEvent } from 'react';
-import { useCodeStore } from '../../store/CodeStore';
 
 interface SpotlightProps {
   onAddFrame: (url: string) => void;
@@ -8,7 +7,6 @@ interface SpotlightProps {
 }
 
 const Spotlight: React.FC<SpotlightProps> = ({ onAddFrame, onVisibilityChange, showInput }) => {
-  const { updateCode } = useCodeStore();
   const [showSpotlight, setShowSpotlight] = useState<boolean>(false);
   const [inputUrl, setInputUrl] = useState<string>('');
 

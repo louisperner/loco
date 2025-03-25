@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+// @ts-ignore
 import TopNavBar from '../ui/TopNavBar';
 
 // Define the item interface based on what's used in the component

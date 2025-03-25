@@ -1,9 +1,8 @@
-import React, { useReducer, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useGLTF, Html, OrbitControls, Environment, ContactShadows } from '@react-three/drei';
-import Spotlight from './Spotlight';
-import { Color, Vector3 } from 'three';
+import { useFrame } from '@react-three/fiber';
+import { useGLTF, Html } from '@react-three/drei';
+import { Color } from 'three';
 import { GLTF } from 'three-stdlib';
 
 // Define types for GLTF result
@@ -29,6 +28,7 @@ interface MarkerProps {
   [key: string]: any;
 }
 
+// @ts-ignore
 export function Loco(props: LocoProps): React.ReactElement {
   const { nodes, materials } = useGLTF('/loco.glb') as unknown as GLTFResult;
   const ref = useRef<THREE.Mesh>(null);

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { TextureLoader } from 'three/src/loaders/TextureLoader';
@@ -11,8 +11,9 @@ interface InternalImageProps {
 }
 
 // InternalImage component for loading images with proper handling of app-file:// URLs
-const InternalImage: React.FC<InternalImageProps> = ({ src, onLoad, onError }) => {
+const InternalImage: React.FC<InternalImageProps> = ({ src, onLoad }) => {
   const [imageSrc, setImageSrc] = useState<string>(src);
+  // @ts-ignore
   const [isLoading, setIsLoading] = useState<boolean>(true);
   
   // Handle loading app-file URLs

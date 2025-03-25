@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
-import { PointerLockControls, Html } from '@react-three/drei';
-import { Vector3, Scene, Camera, WebGLRenderer } from 'three';
+import { PointerLockControls } from '@react-three/drei';
+import { Vector3 } from 'three';
 
 interface FPSControlsProps {
   speed?: number;
@@ -316,6 +316,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     };
   }, [enabled, gravityEnabled]);
 
+  // @ts-ignore
   useFrame((state, delta) => {
     if (!enabled) return;
     
@@ -567,6 +568,8 @@ const FPSControls: React.FC<FPSControlsProps> = ({
         document.removeEventListener('keydown', handleKeyPress);
       };
     }
+    
+    return undefined; // Return undefined when controls.current is falsy
   }, [enabled, isLocked, scene, camera]);
 
   return (

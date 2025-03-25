@@ -14,7 +14,7 @@ interface RemoveObjectEvent extends CustomEvent {
 }
 
 const ModelManager: React.FC<ModelManagerProps> = ({ onSelect }) => {
-  const { models, updateModel, removeModel } = useModelStore();
+  const { models, updateModel } = useModelStore();
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
 
   // Listen for removeObject events
