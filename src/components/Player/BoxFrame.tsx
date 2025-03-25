@@ -5,8 +5,29 @@ import WebViewControls from './WebViewControls';
 import { useImageStore } from '../../store/useImageStore';
 import * as THREE from 'three';
 
+// Define interfaces
+interface BoxFrameProps {
+  url: string;
+  frameId: string;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  onMediaDragStart?: (data: any) => void;
+  onClose?: (frameId: string) => void;
+  onRestorePosition?: () => void;
+  hasCustomPosition?: boolean;
+  onUrlChange?: (frameId: string, newUrl: string) => void;
+}
+
+interface WebViewElement extends HTMLElement {
+  addEventListener: (event: string, callback: (e: any) => void) => void;
+  removeEventListener: (event: string, callback: (e: any) => void) => void;
+  executeJavaScript: (script: string) => Promise<any>;
+  getWebContentsId?: () => number;
+  src: string;
+}
+
 // BoxFrame agora é compatível com o componente original, mas utiliza Zustand
-function BoxFrame({ 
+const BoxFrame: React.FC<BoxFrameProps> = ({ 
   url, 
   frameId, 
   position,
@@ -14,14 +35,14 @@ function BoxFrame({
   onMediaDragStart, 
   onClose, 
   onRestorePosition, 
-  hasCustomPosition, 
+  hasCustomPosition = false, 
   onUrlChange
-}) {
-  const webviewRef = useRef();
-  const [currentUrl, setCurrentUrl] = useState(url);
-  const [loadError, setLoadError] = useState(null);
-  const [toast, setToast] = useState(null);
-  const [showControls, setShowControls] = useState(true);
+}) => {
+  const webviewRef = useRef<WebViewElement>(null);
+  const [currentUrl, setCurrentUrl] = useState<string>(url);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [showControls, setShowControls] = useState<boolean>(true);
   
   // Removemos o useThree e usaremos o camera que vier como prop ou através do event handler
   const addImage = useImageStore(state => state.addImage);
@@ -32,7 +53,7 @@ function BoxFrame({
     if (!webview) return;
     
     // Handle console messages from webview
-    const handleConsoleMessage = (e) => {
+    const handleConsoleMessage = (e: any) => {
       try {
         // Try to parse as JSON first
         const parsedMessage = JSON.parse(e.message);
@@ -70,7 +91,7 @@ function BoxFrame({
         }, 300);
       } catch (error) {
         console.error('General error in dom-ready handler:', error);
-        setLoadError(`Error: ${error.message}`);
+        setLoadError(`Error: ${(error as Error).message}`);
       }
     };
 
@@ -91,14 +112,14 @@ function BoxFrame({
     }
   }, [currentUrl, url, onUrlChange, frameId]);
 
-  const handleCloseWebview = () => {
+  const handleCloseWebview = (): void => {
     if (onClose) {
       onClose(frameId);
     }
   };
 
   // Handle URL changes from WebViewControls
-  const handleUrlChange = (newUrl) => {
+  const handleUrlChange = (newUrl: string): void => {
     setCurrentUrl(newUrl);
     
     // Save to localStorage with frame ID for direct access
@@ -129,7 +150,7 @@ function BoxFrame({
       )}
       
       <webview
-        ref={webviewRef}
+        ref={webviewRef as React.RefObject<HTMLElement>}
         className='w-screen h-screen'
         src={`${url.includes('https://') ? '' : 'https://'}${url}`}
         allowpopups="true"
@@ -138,6 +159,6 @@ function BoxFrame({
       ></webview>
     </div>
   );
-}
+};
 
-export default BoxFrame;
+export default BoxFrame; 

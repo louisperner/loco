@@ -3,14 +3,28 @@ import { Grid, Plane, Circle } from '@react-three/drei';
 import { useThemeStore } from '../../../store/ThemeStore';
 import * as THREE from 'three';
 
-const Floor = ({ gridVisible, floorPlaneVisible, groundSize = 30, isInfinite = false, groundShape = 'circle' }) => {
+interface FloorProps {
+  gridVisible?: boolean;
+  floorPlaneVisible?: boolean;
+  groundSize?: number;
+  isInfinite?: boolean;
+  groundShape?: 'circle' | 'square' | 'hexagon' | 'triangle' | 'octagon' | 'diamond';
+}
+
+const Floor: React.FC<FloorProps> = ({ 
+  gridVisible, 
+  floorPlaneVisible, 
+  groundSize = 30, 
+  isInfinite = false, 
+  groundShape = 'circle' 
+}) => {
   const gridColor = useThemeStore(state => state.gridColor);
   const floorPlaneColor = useThemeStore(state => state.floorPlaneColor);
   const gridOpacity = useThemeStore(state => state.gridOpacity);
   const floorPlaneOpacity = useThemeStore(state => state.floorPlaneOpacity);
   
   // Extract RGB values from the rgba strings
-  const parseColor = (rgba) => {
+  const parseColor = (rgba: string): THREE.Color => {
     const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
     if (match) {
       return new THREE.Color(

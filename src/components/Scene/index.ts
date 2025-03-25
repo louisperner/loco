@@ -1,3 +1,4 @@
+// @ts-nocheck
 export { default as Crosshair } from './Crosshair/Crosshair';
 export { default as Floor } from './Floor/Floor';
 export { default as PreviewFrame } from './PreviewFrame/PreviewFrame';

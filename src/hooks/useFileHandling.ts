@@ -1,17 +1,41 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, RefObject } from 'react';
 import { useImageStore } from '../store/useImageStore';
 import { useModelStore } from '../store/useModelStore';
 import * as THREE from 'three';
 import { saveModelThumbnail } from '../utils/modelThumbnailGenerator';
 
-export const useFileHandling = (cameraRef) => {
-  const [isDragging, setIsDragging] = useState(false);
+// Extend the Window interface for TypeScript
+declare global {
+  interface Window {
+    electron?: {
+      cleanAllFiles: () => Promise<{ success: boolean; message?: string; error?: string }>;
+      saveModelFile?: (file: File, filename: string) => Promise<string>;
+      saveImageFile?: (file: File, filename: string) => Promise<string>;
+      [key: string]: any;
+    };
+    _modelFileCache?: Record<string, any>;
+    _blobUrlCache?: Record<string, any>;
+  }
+}
+
+// Return type for the hook
+interface FileHandlingHook {
+  isDragging: boolean;
+  handleDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
+  handleDragLeave: (e: React.DragEvent<HTMLDivElement>) => void;
+  handleDrop: (e: React.DragEvent<HTMLDivElement>) => void;
+  handleModelDrop: (file: File) => void;
+  handleImageDrop: (file: File) => void;
+}
+
+export const useFileHandling = (cameraRef: RefObject<THREE.Camera>): FileHandlingHook => {
+  const [isDragging, setIsDragging] = useState<boolean>(false);
   const addImage = useImageStore(state => state.addImage);
   const updateImage = useImageStore(state => state.updateImage);
   const addModel = useModelStore(state => state.addModel);
   const updateModel = useModelStore(state => state.updateModel);
 
-  const handleDragOver = useCallback((e) => {
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -21,7 +45,7 @@ export const useFileHandling = (cameraRef) => {
     }
   }, [isDragging]);
   
-  const handleDragLeave = useCallback((e) => {
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -29,7 +53,7 @@ export const useFileHandling = (cameraRef) => {
     setIsDragging(false);
   }, []);
 
-  const handleModelDrop = useCallback((file) => {
+  const handleModelDrop = useCallback((file: File): void => {
     try {
       console.log('Starting model drop handler for file:', file.name);
       
@@ -63,7 +87,7 @@ export const useFileHandling = (cameraRef) => {
         // Save the file to disk using Electron's IPC
         if (window.electron && window.electron.saveModelFile) {
           console.log('Saving model file to disk...');
-          window.electron.saveModelFile(file, file.name).then(async savedPath => {
+          window.electron.saveModelFile(file, file.name).then(async (savedPath: string) => {
             // Generate and save a thumbnail for the model
             const thumbnailUrl = await saveModelThumbnail(savedPath, modelId);
             
@@ -78,13 +102,13 @@ export const useFileHandling = (cameraRef) => {
             // Clean up the blob URL after the file is saved to disk
             try {
               URL.revokeObjectURL(objectUrl);
-              delete window._modelFileCache[objectUrl];
-              delete window._blobUrlCache[objectUrl];
+              if (window._modelFileCache) delete window._modelFileCache[objectUrl];
+              if (window._blobUrlCache) delete window._blobUrlCache[objectUrl];
               console.log('Revoked blob URL after saving to disk:', objectUrl);
             } catch (e) {
               console.error('Error revoking blob URL:', e);
             }
-          }).catch(error => {
+          }).catch((error: Error) => {
             console.error('Error saving model file:', error);
             alert(`Error saving model file: ${error.message}`);
           });
@@ -121,7 +145,7 @@ export const useFileHandling = (cameraRef) => {
       // Save the file to disk using Electron's IPC
       if (window.electron && window.electron.saveModelFile) {
         console.log('Saving model file to disk...');
-        window.electron.saveModelFile(file, file.name).then(async savedPath => {
+        window.electron.saveModelFile(file, file.name).then(async (savedPath: string) => {
           // Generate and save a thumbnail for the model
           const thumbnailUrl = await saveModelThumbnail(savedPath, modelId);
           
@@ -136,13 +160,13 @@ export const useFileHandling = (cameraRef) => {
           // Clean up the blob URL after the file is saved to disk
           try {
             URL.revokeObjectURL(objectUrl);
-            delete window._modelFileCache[objectUrl];
-            delete window._blobUrlCache[objectUrl];
+            if (window._modelFileCache) delete window._modelFileCache[objectUrl];
+            if (window._blobUrlCache) delete window._blobUrlCache[objectUrl];
             console.log('Revoked blob URL after saving to disk:', objectUrl);
           } catch (e) {
             console.error('Error revoking blob URL:', e);
           }
-        }).catch(error => {
+        }).catch((error: Error) => {
           console.error('Error saving model file:', error);
           alert(`Error saving model file: ${error.message}`);
         });
@@ -151,11 +175,11 @@ export const useFileHandling = (cameraRef) => {
       }
     } catch (error) {
       console.error('Error handling model drop:', error);
-      alert(`Error loading 3D model: ${error.message}`);
+      alert(`Error loading 3D model: ${(error as Error).message}`);
     }
   }, [addModel, updateModel, cameraRef]);
 
-  const handleImageDrop = useCallback((file) => {
+  const handleImageDrop = useCallback((file: File): void => {
     try {
       console.log('Starting image drop handler for file:', file.name);
       
@@ -181,11 +205,11 @@ export const useFileHandling = (cameraRef) => {
         // Save the file to disk using Electron's IPC
         if (window.electron && window.electron.saveImageFile) {
           console.log('Saving image file to disk...');
-          window.electron.saveImageFile(file, file.name).then(savedPath => {
+          window.electron.saveImageFile(file, file.name).then((savedPath: string) => {
             // Update image with the new file path
             updateImage(imageId, { src: savedPath });
             console.log(`Saved image to disk: ${savedPath}`);
-          }).catch(error => {
+          }).catch((error: Error) => {
             console.error('Error saving image file:', error);
             alert(`Error saving image file: ${error.message}`);
           });
@@ -232,11 +256,11 @@ export const useFileHandling = (cameraRef) => {
         // Save the file to disk using Electron's IPC
         if (window.electron && window.electron.saveImageFile) {
           console.log('Saving image file to disk...');
-          window.electron.saveImageFile(file, file.name).then(savedPath => {
+          window.electron.saveImageFile(file, file.name).then((savedPath: string) => {
             // Update image with the new file path
             updateImage(imageId, { src: savedPath });
             console.log(`Saved image to disk: ${savedPath}`);
-          }).catch(error => {
+          }).catch((error: Error) => {
             console.error('Error saving image file:', error);
             alert(`Error saving image file: ${error.message}`);
           });
@@ -262,11 +286,11 @@ export const useFileHandling = (cameraRef) => {
         // Save the file to disk using Electron's IPC
         if (window.electron && window.electron.saveImageFile) {
           console.log('Saving image file to disk...');
-          window.electron.saveImageFile(file, file.name).then(savedPath => {
+          window.electron.saveImageFile(file, file.name).then((savedPath: string) => {
             // Update image with the new file path
             updateImage(imageId, { src: savedPath });
             console.log(`Saved image to disk: ${savedPath}`);
-          }).catch(error => {
+          }).catch((error: Error) => {
             console.error('Error saving image file:', error);
             alert(`Error saving image file: ${error.message}`);
           });
@@ -278,11 +302,24 @@ export const useFileHandling = (cameraRef) => {
       img.src = objectUrl;
     } catch (error) {
       console.error('Error handling image drop:', error);
-      alert(`Error loading image: ${error.message}`);
+      alert(`Error loading image: ${(error as Error).message}`);
     }
   }, [addImage, updateImage, cameraRef]);
 
-  const handleDrop = useCallback((e) => {
+  interface InventoryItem {
+    type: string;
+    url: string;
+    fileName?: string;
+    [key: string]: any;
+  }
+  
+  interface InventoryDrop {
+    type: string;
+    itemData?: InventoryItem;
+    [key: string]: any;
+  }
+
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -297,7 +334,7 @@ export const useFileHandling = (cameraRef) => {
       
       if (jsonData) {
         try {
-          const data = JSON.parse(jsonData);
+          const data = JSON.parse(jsonData) as InventoryDrop;
           console.log('Parsed drop data:', data);
           
           if (data.type === 'inventory-item' && data.itemData) {

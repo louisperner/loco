@@ -1,7 +1,19 @@
-import { useEffect } from 'react';
+import React, { useEffect, RefObject } from 'react';
 import { useThree } from '@react-three/fiber';
+import * as THREE from 'three';
 
-const CameraExposer = ({ cameraRef }) => {
+// Extend Window interface to include our camera property
+declare global {
+  interface Window {
+    mainCamera?: THREE.Camera;
+  }
+}
+
+interface CameraExposerProps {
+  cameraRef: RefObject<THREE.Camera>;
+}
+
+const CameraExposer: React.FC<CameraExposerProps> = ({ cameraRef }) => {
   const { camera } = useThree();
   
   useEffect(() => {

@@ -1,31 +1,105 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, MouseEvent, KeyboardEvent, DragEvent } from 'react';
 import { useImageStore } from '../store/useImageStore';
 import { useModelStore } from '../store/useModelStore';
 import { HOTBAR_STORAGE_KEY, getImageCategory, getModelCategory, showAddedToCanvasIndicator } from '../utils/inventoryUtils';
 
-export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRemoveObject) => {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [activeTab, setActiveTab] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showFullInventory, setShowFullInventory] = useState(isOpen || false);
-  const [hotbarItems, setHotbarItems] = useState(Array(9).fill(null));
-  const [selectedHotbarSlot, setSelectedHotbarSlot] = useState(null);
-  const [categories, setCategories] = useState([]);
-  const [isAddingToHotbar, setIsAddingToHotbar] = useState(false);
-  const [draggedItem, setDraggedItem] = useState(null);
-  const [dragOverSlot, setDragOverSlot] = useState(null);
+// Extend the Window interface for TypeScript
+declare global {
+  interface Window {
+    electron?: {
+      listImagesFromDisk?: () => Promise<{ success: boolean; images: InventoryItem[]; error?: string }>;
+      listModelsFromDisk?: () => Promise<{ success: boolean; models: InventoryItem[]; error?: string }>;
+      deleteFile?: (path: string) => Promise<{ success: boolean; error?: string }>;
+      cleanAllFiles: () => Promise<{ success: boolean; message?: string; error?: string }>;
+      [key: string]: any;
+    };
+  }
+}
+
+export interface InventoryItem {
+  id: string;
+  type: 'image' | 'model';
+  fileName: string;
+  url: string;
+  thumbnailUrl?: string;
+  filePath?: string;
+  fileSize?: number;
+  createdAt?: string;
+  modifiedAt?: string;
+  category?: string;
+  inventoryId?: string;
+  [key: string]: any;
+}
+
+export interface InventoryHookProps {
+  onSelectImage?: (item: InventoryItem) => void;
+  onSelectModel?: (item: InventoryItem) => void;
+  onClose?: () => void;
+  isOpen?: boolean;
+  onRemoveObject?: (id?: string) => void;
+}
+
+export interface InventoryHookResult {
+  items: InventoryItem[];
+  loading: boolean;
+  error: string | null;
+  selectedItem: InventoryItem | null;
+  activeTab: string;
+  searchTerm: string;
+  showFullInventory: boolean;
+  hotbarItems: (InventoryItem | null)[];
+  selectedHotbarSlot: number | null;
+  categories: string[];
+  isAddingToHotbar: boolean;
+  draggedItem: InventoryItem | null;
+  dragOverSlot: number | null;
+  setShowFullInventory: (show: boolean) => void;
+  handleItemSelect: (item: InventoryItem) => void;
+  handleAddToCanvas: (item: InventoryItem) => void;
+  handleConfirmSelection: () => void;
+  handleTabChange: (tab: string) => void;
+  handleSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleHotbarSlotClick: (index: number, e: MouseEvent) => void;
+  handleAddToHotbar: (item: InventoryItem, e: MouseEvent) => void;
+  handleRemoveFromHotbar: (index: number, e: MouseEvent) => void;
+  handleDragStart: (e: DragEvent<HTMLDivElement>, item: InventoryItem) => void;
+  handleDragEnd: (e: DragEvent<HTMLDivElement>) => void;
+  handleDragOver: (e: DragEvent<HTMLDivElement>, index: number) => void;
+  handleDragLeave: (e: DragEvent<HTMLDivElement>, index: number) => void;
+  handleDrop: (e: DragEvent<HTMLDivElement>, index: number) => void;
+  loadItemsFromDisk: () => Promise<void>;
+  handleRemoveItem: (itemId: string) => Promise<void>;
+}
+
+export const useInventory = (
+  onSelectImage?: (item: InventoryItem) => void,
+  onSelectModel?: (item: InventoryItem) => void,
+  onClose?: () => void,
+  isOpen?: boolean,
+  onRemoveObject?: (id?: string) => void
+): InventoryHookResult => {
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [showFullInventory, setShowFullInventory] = useState<boolean>(isOpen || false);
+  const [hotbarItems, setHotbarItems] = useState<(InventoryItem | null)[]>(Array(9).fill(null));
+  const [selectedHotbarSlot, setSelectedHotbarSlot] = useState<number | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [isAddingToHotbar, setIsAddingToHotbar] = useState<boolean>(false);
+  const [draggedItem, setDraggedItem] = useState<InventoryItem | null>(null);
+  const [dragOverSlot, setDragOverSlot] = useState<number | null>(null);
 
   const storeImages = useImageStore(state => state.images);
   const storeModels = useModelStore(state => state.models);
 
-  const loadItemsFromDisk = useCallback(async () => {
+  const loadItemsFromDisk = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
       
-      let allItems = [];
+      let allItems: InventoryItem[] = [];
       
       // First check if we're in a browser environment (not Electron)
       const isElectronAvailable = window.electron && 
@@ -35,12 +109,12 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
       if (isElectronAvailable) {
         // Electron environment - load from disk
         try {
-          const imageResult = await window.electron.listImagesFromDisk();
+          const imageResult = await window.electron.listImagesFromDisk!();
           
           if (imageResult.success) {
             const imageItems = imageResult.images.map(img => ({
               ...img,
-              type: 'image',
+              type: 'image' as const,
               category: getImageCategory(img.fileName)
             }));
             allItems = [...allItems, ...imageItems];
@@ -50,12 +124,12 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
         }
         
         try {
-          const modelResult = await window.electron.listModelsFromDisk();
+          const modelResult = await window.electron.listModelsFromDisk!();
           
           if (modelResult.success) {
             const modelItems = modelResult.models.map(model => ({
               ...model,
-              type: 'model',
+              type: 'model' as const,
               category: getModelCategory(model.fileName)
             }));
             allItems = [...allItems, ...modelItems];
@@ -68,7 +142,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
         // console.info('Running in browser environment, using store and localStorage for inventory');
         const storeImageItems = storeImages.map(img => ({
           id: img.id,
-          type: 'image',
+          type: 'image' as const,
           fileName: img.fileName || 'Unknown',
           url: img.src,
           thumbnailUrl: img.src,
@@ -79,7 +153,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
         allItems = [...allItems, ...storeImageItems];
         const storeModelItems = storeModels.map(model => ({
           id: model.id,
-          type: 'model',
+          type: 'model' as const,
           fileName: model.fileName || 'Unknown',
           url: model.url,
           thumbnailUrl: model.thumbnailUrl,
@@ -91,21 +165,21 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
       }
       
       // Extract unique categories
-      const uniqueCategories = [...new Set(allItems.map(item => item.category))].filter(Boolean);
+      const uniqueCategories = [...new Set(allItems.map(item => item.category))].filter(Boolean) as string[];
       setCategories(['all', 'images', 'models', ...uniqueCategories.filter(cat => cat !== 'images' && cat !== 'models')]);
       
       // Deduplication logic
-      const uniqueItems = [];
-      const seenUrls = new Map();
-      const seenPaths = new Map();
-      const seenIds = new Set();
+      const uniqueItems: InventoryItem[] = [];
+      const seenUrls = new Map<string, number>();
+      const seenPaths = new Map<string, number>();
+      const seenIds = new Set<string>();
       
       allItems.forEach(item => {
         if (seenIds.has(item.id)) return;
         
         const normalizedUrl = item.url ? item.url.replace(/\\/g, '/').toLowerCase() : null;
         if (normalizedUrl && seenUrls.has(normalizedUrl)) {
-          const existingItemIndex = seenUrls.get(normalizedUrl);
+          const existingItemIndex = seenUrls.get(normalizedUrl)!;
           if (!uniqueItems[existingItemIndex].thumbnailUrl && item.thumbnailUrl) {
             uniqueItems[existingItemIndex].thumbnailUrl = item.thumbnailUrl;
           }
@@ -115,7 +189,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
         
         const filePath = item.filePath ? item.filePath.replace(/\\/g, '/').toLowerCase() : null;
         if (filePath && seenPaths.has(filePath)) {
-          const existingItemIndex = seenPaths.get(filePath);
+          const existingItemIndex = seenPaths.get(filePath)!;
           if (!uniqueItems[existingItemIndex].thumbnailUrl && item.thumbnailUrl) {
             uniqueItems[existingItemIndex].thumbnailUrl = item.thumbnailUrl;
           }
@@ -151,8 +225,8 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
       try {
         const savedHotbar = localStorage.getItem(HOTBAR_STORAGE_KEY);
         if (savedHotbar) {
-          const savedHotbarIds = JSON.parse(savedHotbar);
-          const newHotbarItems = Array(9).fill(null);
+          const savedHotbarIds = JSON.parse(savedHotbar) as (string | null)[];
+          const newHotbarItems: (InventoryItem | null)[] = Array(9).fill(null);
           
           savedHotbarIds.forEach((id, index) => {
             if (id) {
@@ -173,15 +247,15 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
       setLoading(false);
     } catch (error) {
       console.error(`Error loading items from disk:`, error);
-      setError(error.message);
+      setError((error as Error).message);
       setLoading(false);
     }
   }, [storeImages, storeModels]);
 
   // Update showFullInventory when isOpen prop changes
   useEffect(() => {
-    setShowFullInventory(isOpen);
-    // Carregar itens sempre que o componente montar
+    setShowFullInventory(isOpen || false);
+    // Load items whenever the component mounts
     loadItemsFromDisk();
   }, [isOpen, loadItemsFromDisk]);
 
@@ -197,8 +271,8 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
 
   // Keyboard event handlers
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
       
       if (e.key === 'e' || e.key === 'E' || e.key === 'Escape') {
         e.preventDefault();
@@ -215,7 +289,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
           }
         }
 
-        onClose();
+        if (onClose) onClose();
       } else if (e.key === 'q' || e.key === 'Q') {
         e.preventDefault();
         setSelectedItem(null);
@@ -225,7 +299,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
         setSelectedHotbarSlot(index);
         
         if (hotbarItems[index]) {
-          handleItemSelect(hotbarItems[index]);
+          handleItemSelect(hotbarItems[index]!);
         } else {
           setSelectedItem(null);
         }
@@ -235,42 +309,42 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
       }
     };
     
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown as any);
+    return () => window.removeEventListener('keydown', handleKeyDown as any);
   }, [onClose, hotbarItems]);
 
   // Mouse click handlers
   useEffect(() => {
-    const handleMouseClick = (e) => {
+    const handleMouseClick = (e: MouseEvent) => {
       const canvas = document.querySelector('canvas');
       if (!canvas) return;
 
-      if (e.target === canvas || canvas.contains(e.target)) {
+      if (e.target === canvas || canvas.contains(e.target as Node)) {
         if (e.button === 0 && selectedHotbarSlot !== null && hotbarItems[selectedHotbarSlot]) {
-          handleAddToCanvas(hotbarItems[selectedHotbarSlot]);
+          handleAddToCanvas(hotbarItems[selectedHotbarSlot]!);
         } else if (e.button === 2 && typeof onRemoveObject === 'function') {
           onRemoveObject();
         }
       }
     };
 
-    const preventContextMenu = (e) => {
+    const preventContextMenu = (e: MouseEvent) => {
       const canvas = document.querySelector('canvas');
-      if (canvas && (e.target === canvas || canvas.contains(e.target))) {
+      if (canvas && (e.target === canvas || canvas.contains(e.target as Node))) {
         e.preventDefault();
       }
     };
 
-    document.addEventListener('mousedown', handleMouseClick);
-    document.addEventListener('contextmenu', preventContextMenu);
+    document.addEventListener('mousedown', handleMouseClick as any);
+    document.addEventListener('contextmenu', preventContextMenu as any);
 
     return () => {
-      document.removeEventListener('mousedown', handleMouseClick);
-      document.removeEventListener('contextmenu', preventContextMenu);
+      document.removeEventListener('mousedown', handleMouseClick as any);
+      document.removeEventListener('contextmenu', preventContextMenu as any);
     };
   }, [selectedHotbarSlot, hotbarItems, onRemoveObject]);
 
-  const handleItemSelect = (item) => {
+  const handleItemSelect = (item: InventoryItem): void => {
     setSelectedItem(item);
     
     if (isAddingToHotbar && selectedHotbarSlot !== null) {
@@ -278,7 +352,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     }
   };
 
-  const handleAddToCanvas = (item) => {
+  const handleAddToCanvas = (item: InventoryItem): void => {
     if (!item) return;
     
     if (item.type === 'image' && onSelectImage) {
@@ -290,7 +364,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     }
   };
 
-  const handleConfirmSelection = () => {
+  const handleConfirmSelection = (): void => {
     if (!selectedItem) return;
     
     if (selectedItem.type === 'image' && onSelectImage) {
@@ -299,21 +373,21 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
       onSelectModel(selectedItem);
     }
     
-    onClose();
+    if (onClose) onClose();
   };
 
-  const handleTabChange = (tab) => {
+  const handleTabChange = (tab: string): void => {
     if (tab !== activeTab) {
       setActiveTab(tab);
       setSelectedItem(null);
     }
   };
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setSearchTerm(e.target.value);
   };
 
-  const handleHotbarSlotClick = (index, e) => {
+  const handleHotbarSlotClick = (index: number, e: MouseEvent): void => {
     const item = hotbarItems[index];
     setSelectedHotbarSlot(index);
     
@@ -324,7 +398,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     }
   };
 
-  const addItemToHotbarSlot = (item, slotIndex) => {
+  const addItemToHotbarSlot = (item: InventoryItem, slotIndex: number): void => {
     if (slotIndex >= 0 && slotIndex < 9) {
       const existingIndex = hotbarItems.findIndex(hotbarItem => 
         hotbarItem && hotbarItem.id === item.id
@@ -343,7 +417,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     }
   };
 
-  const handleAddToHotbar = (item, e) => {
+  const handleAddToHotbar = (item: InventoryItem, e: MouseEvent): void => {
     e.stopPropagation();
     
     if (selectedHotbarSlot !== null) {
@@ -358,14 +432,14 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     }
   };
 
-  const handleRemoveFromHotbar = (index, e) => {
+  const handleRemoveFromHotbar = (index: number, e: MouseEvent): void => {
     e.stopPropagation();
     const newHotbarItems = [...hotbarItems];
     newHotbarItems[index] = null;
     setHotbarItems(newHotbarItems);
   };
 
-  const handleDragStart = (e, item) => {
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, item: InventoryItem): void => {
     setDraggedItem(item);
     
     try {
@@ -425,7 +499,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     e.currentTarget.classList.add('dragging');
   };
 
-  const handleDragEnd = (e) => {
+  const handleDragEnd = (e: DragEvent<HTMLDivElement>): void => {
     setDraggedItem(null);
     setDragOverSlot(null);
     
@@ -439,7 +513,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     }
   };
 
-  const handleDragOver = (e, index) => {
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, index: number): void => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -457,7 +531,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     }
   };
 
-  const handleDragLeave = (e, index) => {
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>, index: number): void => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -467,7 +541,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     }
   };
 
-  const handleDrop = (e, index) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>, index: number): void => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -499,14 +573,14 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
     return true;
   });
 
-  const handleRemoveItem = useCallback(async (itemId) => {
+  const handleRemoveItem = useCallback(async (itemId: string): Promise<void> => {
     const itemToDelete = items.find(item => item.id === itemId);
     if (!itemToDelete) return;
 
     const imageStore = useImageStore.getState();
     const modelStore = useModelStore.getState();
 
-    // Encontrar todas as instâncias (originais e clones)
+    // Find all instances (originals and clones)
     const canvasImages = imageStore.images.filter(img => 
       img.inventoryId === itemId || 
       img.src === itemToDelete.url || 
@@ -528,15 +602,15 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
       if (!window.confirm(`Deseja excluir permanentemente "${itemToDelete.fileName}"?`)) return;
     }
 
-    // Remover do canvas
+    // Remove from canvas
     try {
-      // Remover imagens e clones
+      // Remove images and clones
       canvasImages.forEach(img => {
         imageStore.removeImage(img.id);
         if (onRemoveObject) onRemoveObject(img.id);
       });
 
-      // Remover modelos e clones
+      // Remove models and clones
       canvasModels.forEach(model => {
         modelStore.removeModel(model.id);
         if (onRemoveObject) onRemoveObject(model.id);
@@ -546,10 +620,10 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
       return;
     }
 
-    // Remover do inventário
+    // Remove from inventory
     setItems(prev => prev.filter(item => item.id !== itemId));
     
-    // Remover da hotbar CORRETAMENTE
+    // Remove from hotbar correctly
     setHotbarItems(prev => {
       const newHotbar = prev.map(slotItem => 
         slotItem && slotItem.id === itemId ? null : slotItem
@@ -562,21 +636,21 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
       return newHotbar;
     });
 
-    // Remover das stores globais
+    // Remove from global stores
     if (itemToDelete.type === 'image') {
       useImageStore.getState().removeImage(itemId);
     } else {
       useModelStore.getState().removeModel(itemId);
     }
 
-    // Remover arquivo físico (Electron)
+    // Remove physical file (Electron)
     if (window.electron?.deleteFile) {
       try {
         const paths = [
           itemToDelete.filePath,
           itemToDelete.url,
           itemToDelete.thumbnailUrl
-        ].filter(Boolean);
+        ].filter(Boolean) as string[];
         
         for (const path of paths) {
           await window.electron.deleteFile(path);
@@ -586,7 +660,7 @@ export const useInventory = (onSelectImage, onSelectModel, onClose, isOpen, onRe
       }
     }
 
-    // Desselecionar se necessário
+    // Deselect if necessary
     if (selectedItem?.id === itemId) {
       setSelectedItem(null);
     }

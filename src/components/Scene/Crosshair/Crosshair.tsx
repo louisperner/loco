@@ -1,11 +1,25 @@
 import React from 'react';
 
-const Crosshair = ({ visible = true, size = 5, color = 'white', thickness = 1, style = 'circle' }) => {
+interface CrosshairProps {
+  visible?: boolean;
+  size?: number;
+  color?: string;
+  thickness?: number;
+  style?: 'circle' | 'dot' | 'cross' | 'plus' | 'classic';
+}
+
+const Crosshair: React.FC<CrosshairProps> = ({ 
+  visible = true, 
+  size = 5, 
+  color = 'white', 
+  thickness = 1, 
+  style = 'circle' 
+}) => {
   if (!visible) return null;
   
-  // Estilos de mira diferentes
+  // Different crosshair styles
   switch (style) {
-    case 'circle': // Mira circular
+    case 'circle': // Circular crosshair
       return (
         <div
           className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border pointer-events-none z-[1000] bg-transparent`}
@@ -18,7 +32,7 @@ const Crosshair = ({ visible = true, size = 5, color = 'white', thickness = 1, s
         />
       );
     
-    case 'dot': // Ponto central
+    case 'dot': // Center dot
       return (
         <div
           className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none z-[1000]`}
@@ -30,7 +44,7 @@ const Crosshair = ({ visible = true, size = 5, color = 'white', thickness = 1, s
         />
       );
     
-    case 'cross': // Cruz simples
+    case 'cross': // Simple cross
       return (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[1000]">
           <div 
@@ -56,11 +70,11 @@ const Crosshair = ({ visible = true, size = 5, color = 'white', thickness = 1, s
         </div>
       );
     
-    case 'plus': // Cruz com espaço no centro
+    case 'plus': // Cross with space in center
       const gap = size / 4;
       return (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[1000]">
-          {/* Linha horizontal esquerda */}
+          {/* Left horizontal line */}
           <div 
             style={{
               position: 'absolute',
@@ -71,7 +85,7 @@ const Crosshair = ({ visible = true, size = 5, color = 'white', thickness = 1, s
               top: `${-thickness/2}px`
             }}
           />
-          {/* Linha horizontal direita */}
+          {/* Right horizontal line */}
           <div 
             style={{
               position: 'absolute',
@@ -82,7 +96,7 @@ const Crosshair = ({ visible = true, size = 5, color = 'white', thickness = 1, s
               top: `${-thickness/2}px`
             }}
           />
-          {/* Linha vertical superior */}
+          {/* Top vertical line */}
           <div 
             style={{
               position: 'absolute',
@@ -93,7 +107,7 @@ const Crosshair = ({ visible = true, size = 5, color = 'white', thickness = 1, s
               bottom: `${gap + thickness/2}px`
             }}
           />
-          {/* Linha vertical inferior */}
+          {/* Bottom vertical line */}
           <div 
             style={{
               position: 'absolute',

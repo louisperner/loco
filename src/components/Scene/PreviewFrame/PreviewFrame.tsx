@@ -1,9 +1,21 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 
-const getFramePositionAndRotation = (camera) => {
+interface PositionRotation {
+  position: [number, number, number];
+  rotation: [number, number, number];
+}
+
+interface PreviewFrameProps {
+  isVisible: boolean;
+  onPositionConfirm: (position: [number, number, number], rotation: [number, number, number]) => void;
+  isPositionConfirmed: boolean;
+  hasPendingWebsite?: boolean;
+}
+
+const getFramePositionAndRotation = (camera: THREE.Camera): PositionRotation => {
   const direction = new THREE.Vector3(0, 0, -1);
   direction.applyQuaternion(camera.quaternion);
   
@@ -23,11 +35,16 @@ const getFramePositionAndRotation = (camera) => {
   };
 };
 
-const PreviewFrame = ({ isVisible, onPositionConfirm, isPositionConfirmed, hasPendingWebsite }) => {
+const PreviewFrame: React.FC<PreviewFrameProps> = ({ 
+  isVisible, 
+  onPositionConfirm, 
+  isPositionConfirmed, 
+  hasPendingWebsite 
+}) => {
   const { camera } = useThree();
-  const groupRef = useRef();
-  const [position, setPosition] = useState([0, 0, 0]);
-  const [rotation, setRotation] = useState([0, 0, 0]);
+  const groupRef = useRef<THREE.Group>(null);
+  const [position, setPosition] = useState<[number, number, number]>([0, 0, 0]);
+  const [rotation, setRotation] = useState<[number, number, number]>([0, 0, 0]);
 
   useFrame(() => {
     if (!isVisible || !groupRef.current || isPositionConfirmed) return;
@@ -36,7 +53,7 @@ const PreviewFrame = ({ isVisible, onPositionConfirm, isPositionConfirmed, hasPe
     setRotation(newRotation);
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isVisible) return;
 
     const handleClick = () => {

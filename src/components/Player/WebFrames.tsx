@@ -2,22 +2,52 @@ import React, { useEffect } from 'react';
 import { Html } from '@react-three/drei';
 import BoxFrame from './BoxFrame';
 
-function WebFrames({ 
+// Define types for frames
+interface Frame {
+  id: string;
+  url: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  active?: boolean;
+  hasCustomPosition?: boolean;
+}
+
+interface MediaData {
+  [key: string]: any;
+}
+
+interface WebFramesProps {
+  frames?: Frame[];
+  onMediaDragStart?: (mediaData: MediaData) => void;
+  onCloseFrame?: (frameId: string) => void;
+  onRestorePosition?: (frameId: string) => void;
+  onUpdateFrameUrl?: (frameId: string, newUrl: string) => void;
+  onLoadSavedFrames?: (frames: Frame[]) => void;
+}
+
+// Define safe storage interface
+interface SafeStorage {
+  get<T>(key: string, defaultValue?: T | null): T | null;
+  set(key: string, value: any): boolean;
+  remove(key: string): boolean;
+}
+
+const WebFrames: React.FC<WebFramesProps> = ({ 
   frames = [], 
   onMediaDragStart, 
   onCloseFrame, 
   onRestorePosition, 
   onUpdateFrameUrl, 
   onLoadSavedFrames
-}) {
+}) => {
   // Constants for localStorage keys
   const STORAGE_KEYS = {
     FRAMES: 'webview-frames', // Use this as the single source of truth
   };
 
   // Create safe localStorage wrapper
-  const safeStorage = {
-    get: (key, defaultValue = null) => {
+  const safeStorage: SafeStorage = {
+    get<T>(key: string, defaultValue: T | null = null): T | null {
       try {
         const value = localStorage.getItem(key);
         return value ? JSON.parse(value) : defaultValue;
@@ -26,7 +56,7 @@ function WebFrames({
         return defaultValue;
       }
     },
-    set: (key, value) => {
+    set(key: string, value: any): boolean {
       try {
         localStorage.setItem(key, JSON.stringify(value));
         return true;
@@ -35,7 +65,7 @@ function WebFrames({
         return false;
       }
     },
-    remove: (key) => {
+    remove(key: string): boolean {
       try {
         localStorage.removeItem(key);
         return true;
@@ -47,14 +77,14 @@ function WebFrames({
   };
 
   // Cleanup old/duplicate keys
-  const cleanupDuplicateKeys = () => {
+  const cleanupDuplicateKeys = (): void => {
     try {
       // Handle transition from old keys to new standardized keys
       const oldKeys = ['webFrames'];
       
       // Migrate data from old keys if needed
       oldKeys.forEach(oldKey => {
-        const oldData = safeStorage.get(oldKey);
+        const oldData = safeStorage.get<Frame[]>(oldKey);
         if (oldData && oldData.length > 0) {
           console.log(`🔄 Migrating data from ${oldKey} to ${STORAGE_KEYS.FRAMES}`);
           safeStorage.set(STORAGE_KEYS.FRAMES, oldData);
@@ -73,10 +103,10 @@ function WebFrames({
       cleanupDuplicateKeys();
       
       // Then load from our standardized key
-      const savedFrames = safeStorage.get(STORAGE_KEYS.FRAMES, []);
+      const savedFrames = safeStorage.get<Frame[]>(STORAGE_KEYS.FRAMES, []);
       
       // Only restore if we have saved frames and current frames are empty
-      if (savedFrames.length > 0 && frames.length === 0 && onLoadSavedFrames) {
+      if (savedFrames && savedFrames.length > 0 && frames.length === 0 && onLoadSavedFrames) {
         console.log(`📋 Loading ${savedFrames.length} saved frames from localStorage`);
         onLoadSavedFrames(savedFrames);
       }
@@ -120,13 +150,15 @@ function WebFrames({
               url={frame.url} 
               frameId={frame.id}
               onMediaDragStart={(mediaData) => {
-                // Add the frame information to the media data
-                onMediaDragStart({
-                  ...mediaData,
-                  frameId: frame.id,
-                  framePosition: frame.position,
-                  frameRotation: frame.rotation
-                });
+                if (onMediaDragStart) {
+                  // Add the frame information to the media data
+                  onMediaDragStart({
+                    ...mediaData,
+                    frameId: frame.id,
+                    framePosition: frame.position,
+                    frameRotation: frame.rotation
+                  });
+                }
               }}
               onClose={() => {
                 if (onCloseFrame) {
@@ -154,6 +186,6 @@ function WebFrames({
       ))}
     </>
   );
-}
+};
 
 export default WebFrames; 

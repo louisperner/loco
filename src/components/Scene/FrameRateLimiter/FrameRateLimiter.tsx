@@ -1,11 +1,11 @@
-import { useRef } from 'react';
+import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 
-const FrameRateLimiter = () => {
+const FrameRateLimiter: React.FC = () => {
   const frameInterval = 1000 / 60; // 60 fps
-  const lastUpdate = useRef(0);
+  const lastUpdate = useRef<number>(0);
   
-  useFrame(({ gl, scene, camera }) => {
+  useFrame(() => {
     const now = performance.now();
     const delta = now - lastUpdate.current;
     
