@@ -1,5 +1,5 @@
 // Helper function to determine image category based on filename
-export const getImageCategory = (fileName) => {
+export const getImageCategory = (fileName: string): string => {
   const lowerFileName = fileName.toLowerCase();
   if (lowerFileName.includes('texture') || lowerFileName.includes('pattern')) return 'textures';
   if (lowerFileName.includes('background') || lowerFileName.includes('bg')) return 'backgrounds';
@@ -8,7 +8,7 @@ export const getImageCategory = (fileName) => {
 };
 
 // Helper function to determine model category based on filename
-export const getModelCategory = (fileName) => {
+export const getModelCategory = (fileName: string): string => {
   const lowerFileName = fileName.toLowerCase();
   if (lowerFileName.includes('character') || lowerFileName.includes('person')) return 'characters';
   if (lowerFileName.includes('furniture') || lowerFileName.includes('chair') || lowerFileName.includes('table')) return 'furniture';
@@ -19,8 +19,14 @@ export const getModelCategory = (fileName) => {
 // Create a key for localStorage
 export const HOTBAR_STORAGE_KEY = 'loco-hotbar-items';
 
+// Interface for inventory item
+export interface InventoryItem {
+  fileName: string;
+  [key: string]: any;
+}
+
 // Function to show visual feedback when item is added to canvas
-export const showAddedToCanvasIndicator = (item) => {
+export const showAddedToCanvasIndicator = (item: InventoryItem): void => {
   const indicator = document.createElement('div');
   indicator.className = 'canvas-add-indicator';
   indicator.textContent = `Added ${item.fileName} to canvas`;

@@ -1,5 +1,13 @@
+// RGBA color object interface
+export interface RgbaColor {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
 // Convert colors to RGBA format
-export const hexToRgba = (hex, alpha = 1) => {
+export const hexToRgba = (hex: string, alpha: number = 1): RgbaColor => {
   if (!hex || hex === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
   
   // Remove # if it exists
@@ -19,13 +27,13 @@ export const hexToRgba = (hex, alpha = 1) => {
 };
 
 // Convert RGBA object to string
-export const rgbaToString = ({ r, g, b, a }) => {
+export const rgbaToString = ({ r, g, b, a }: RgbaColor): string => {
   if (a === 0) return 'transparent';
   return `rgba(${r}, ${g}, ${b}, ${a})`;
 };
 
 // Convert string RGBA to object
-export const stringToRgba = (rgbaStr) => {
+export const stringToRgba = (rgbaStr: string): RgbaColor => {
   if (!rgbaStr || rgbaStr === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
   
   // Handle rgba format
@@ -44,20 +52,28 @@ export const stringToRgba = (rgbaStr) => {
 };
 
 // Parse any color format to RGBA object
-export const parseColor = (color) => {
+export const parseColor = (color: string | RgbaColor | undefined): RgbaColor => {
   if (!color) return { r: 0, g: 0, b: 0, a: 1 };
   if (typeof color === 'object') return color;
   return stringToRgba(color);
 };
 
 // Get color with opacity
-export const getColorWithOpacity = (color, opacity) => {
+export const getColorWithOpacity = (color: string | RgbaColor, opacity: number): string => {
   const rgba = parseColor(color);
   return rgbaToString({ ...rgba, a: opacity });
 };
 
+// Button color style interface
+export interface ButtonColorStyle {
+  backgroundColor?: string;
+  backgroundImage?: string;
+  backgroundSize?: string;
+  backgroundPosition?: string;
+}
+
 // Generate button color style with transparency check
-export const getButtonColorStyle = (color) => {
+export const getButtonColorStyle = (color: string | RgbaColor): ButtonColorStyle => {
   const rgba = parseColor(color);
   if (rgba.a === 0) {
     return {

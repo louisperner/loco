@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from 'react';
-
+import React, { useState, useEffect, FormEvent, KeyboardEvent } from 'react';
 import { useCodeStore } from '../../store/CodeStore';
 
-function Spotlight({ onAddFrame, onVisibilityChange, showInput }) {
-  const { code, updateCode } = useCodeStore();
-  const [showSpotlight, setShowSpotlight] = useState(false);
-  const [inputUrl, setInputUrl] = useState('');
+interface SpotlightProps {
+  onAddFrame: (url: string) => void;
+  onVisibilityChange: (visible: boolean) => void;
+  showInput: boolean;
+}
+
+const Spotlight: React.FC<SpotlightProps> = ({ onAddFrame, onVisibilityChange, showInput }) => {
+  const { updateCode } = useCodeStore();
+  const [showSpotlight, setShowSpotlight] = useState<boolean>(false);
+  const [inputUrl, setInputUrl] = useState<string>('');
 
   useEffect(() => {
-    const handleKeyPress = (event) => {
+    const handleKeyPress = (event: KeyboardEvent): void => {
       // Check for Command (Meta) + T
       if ((event.metaKey && event.key === 't') || (event.ctrlKey && event.key === 'T')) {
         event.preventDefault(); // Prevent default browser behavior
@@ -23,11 +28,11 @@ function Spotlight({ onAddFrame, onVisibilityChange, showInput }) {
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+    window.addEventListener('keydown', handleKeyPress as unknown as EventListener);
+    return () => window.removeEventListener('keydown', handleKeyPress as unknown as EventListener);
   }, [onVisibilityChange, showSpotlight]);
 
-  const handleUrlSubmit = (e) => {
+  const handleUrlSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     if (inputUrl.trim()) {
       onAddFrame(inputUrl);
@@ -55,6 +60,6 @@ function Spotlight({ onAddFrame, onVisibilityChange, showInput }) {
       </div>
     </div>
   );
-}
+};
 
-export default Spotlight;
+export default Spotlight; 

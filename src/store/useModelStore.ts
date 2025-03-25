@@ -6,8 +6,47 @@ import * as THREE from 'three';
  */
 const STORAGE_KEY = 'scene-models';
 
+// Model interface
+export interface Model {
+  id: string;
+  url: string;
+  fileName?: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: number | [number, number, number];
+  added: string;
+  [key: string]: any;
+}
+
+// ModelData interface (for adding new models)
+export interface ModelData {
+  url: string;
+  fileName?: string;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number | [number, number, number];
+  [key: string]: any;
+}
+
+// Store interface
+interface ModelStore {
+  models: Model[];
+  addModel: (modelData: ModelData) => string;
+  updateModel: (id: string, updates: Partial<Model>) => void;
+  removeModel: (id: string) => void;
+  clearAllModels: () => void;
+}
+
+// Declare window extensions
+declare global {
+  interface Window {
+    _modelFileCache?: Record<string, any>;
+    _blobUrlCache?: Record<string, any>;
+  }
+}
+
 // Helper function to clean up blob URLs
-const cleanupBlobUrl = (url) => {
+const cleanupBlobUrl = (url: string): void => {
   if (url && url.startsWith('blob:')) {
     try {
       // Remove from caches
@@ -29,12 +68,12 @@ const cleanupBlobUrl = (url) => {
 };
 
 // Manter um cache de blobs para modelos
-const modelBlobCache = new Map();
+const modelBlobCache = new Map<string, string>();
 
-const loadModelsFromStorage = () => {
+const loadModelsFromStorage = (): Model[] => {
   try {
     const savedModels = localStorage.getItem(STORAGE_KEY);
-    const parsedModels = savedModels ? JSON.parse(savedModels) : [];
+    const parsedModels: Model[] = savedModels ? JSON.parse(savedModels) : [];
     
     // Processar URLs dos modelos para converter file:// para app-file://
     // e também pré-carregar quando possível
@@ -54,21 +93,21 @@ const loadModelsFromStorage = () => {
   }
 };
 
-export const useModelStore = create((set, get) => ({
+export const useModelStore = create<ModelStore>((set, get) => ({
   models: loadModelsFromStorage(),
   
   /**
    * Adiciona um novo modelo 3D na cena
    */
-  addModel: (modelData) => {
+  addModel: (modelData: ModelData): string => {
     const id = Date.now().toString();
     
     // Calculate position in front of camera if not provided
-    const position = modelData.position || [0, 0, -3];
-    const rotation = modelData.rotation || [0, 0, 0];
+    const position = modelData.position || [0, 0, -3] as [number, number, number];
+    const rotation = modelData.rotation || [0, 0, 0] as [number, number, number];
     const scale = modelData.scale || 1;
     
-    const newModel = {
+    const newModel: Model = {
       ...modelData,
       id,
       position,
@@ -107,7 +146,7 @@ export const useModelStore = create((set, get) => ({
   /**
    * Atualiza um modelo existente
    */
-  updateModel: (id, updates) => {
+  updateModel: (id: string, updates: Partial<Model>): void => {
     set(state => {
       const updatedModels = state.models.map(model => 
         model.id === id ? { ...model, ...updates } : model
@@ -138,7 +177,7 @@ export const useModelStore = create((set, get) => ({
   /**
    * Remove um modelo da cena
    */
-  removeModel: (id) => {
+  removeModel: (id: string): void => {
     set(state => {
       // Find the model to remove
       const modelToRemove = state.models.find(model => model.id === id);
@@ -174,7 +213,7 @@ export const useModelStore = create((set, get) => ({
   /**
    * Remove todos os modelos
    */
-  clearAllModels: () => {
+  clearAllModels: (): void => {
     // Clean up all blob URLs before clearing
     get().models.forEach(model => {
       if (model.url) {

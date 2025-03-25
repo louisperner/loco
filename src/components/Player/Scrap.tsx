@@ -2,19 +2,21 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import cheerio from 'cheerio';
 
-function Scrap() {
-  const [titles, setTitles] = useState([]);
-  const [error, setError] = useState(null);
+interface ScrapProps {}
 
-  const scrapeWebsite = async () => {
+const Scrap: React.FC<ScrapProps> = () => {
+  const [titles, setTitles] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const scrapeWebsite = async (): Promise<void> => {
     try {
       // Example URL; replace with the actual URL you want to scrape
       const response = await axios.get('https://nodejs.org');
       const html = response.data;
       const $ = cheerio.load(html);
-      let scrapedTitles = [];
+      let scrapedTitles: string[] = [];
 
-      $('h1').each((index, element) => {
+      $('h1').each((index: number, element: any) => {
         scrapedTitles.push($(element).text());
       });
 
@@ -37,6 +39,6 @@ function Scrap() {
       </ul>
     </div>
   );
-}
+};
 
-export default Scrap;
+export default Scrap; 

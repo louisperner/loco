@@ -1,11 +1,30 @@
-function Box(props) {
+import React, { useRef, useState } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
+import * as THREE from 'three';
+
+// Import react-live with any type since we don't have type definitions
+// @ts-ignore
+import { LiveProvider, LiveComponent } from 'react-live';
+
+interface BoxProps {
+  finalCode: string;
+  position?: [number, number, number];
+  [key: string]: any;
+}
+
+const Box: React.FC<BoxProps> = (props) => {
   // This reference gives us direct access to the THREE.Mesh object
-  const ref = useRef();
+  const ref = useRef<THREE.Mesh>(null);
   // Hold state for hovered and clicked events
-  const [hovered, hover] = useState(false);
-  const [clicked, click] = useState(false);
+  const [hovered, hover] = useState<boolean>(false);
+  const [clicked, click] = useState<boolean>(false);
   // Subscribe this component to the render-loop, rotate the mesh every frame
-  useFrame((state, delta) => (ref.current.rotation.x += delta));
+  useFrame((state, delta) => {
+    if (ref.current) {
+      ref.current.rotation.x += delta;
+    }
+  });
   // Return the view, these are regular Threejs elements expressed in JSX
   return (
     <mesh
@@ -30,6 +49,6 @@ function Box(props) {
       </Html>
     </mesh>
   );
-}
+};
 
-export default Box;
+export default Box; 

@@ -6,10 +6,56 @@ import * as THREE from 'three';
  */
 const STORAGE_KEY = 'scene-images';
 
-const loadImagesFromStorage = () => {
+// Image interface
+export interface Image {
+  id: string;
+  src: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number | [number, number, number];
+  fileName?: string;
+  fromUrl?: string;
+  [key: string]: any;
+}
+
+// Image data interface for adding new images
+export interface ImageData {
+  src: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number | [number, number, number];
+  fileName?: string;
+  fromUrl?: string;
+  [key: string]: any;
+}
+
+// Store interface
+interface ImageStore {
+  images: Image[];
+  addImage: (imageData: ImageData) => string;
+  removeImage: (imageId: string) => void;
+  updateImage: (imageId: string, updatedData: Partial<Image>) => void;
+  loadSavedImages: () => void;
+  clearImages: () => void;
+}
+
+// Declare window extensions
+declare global {
+  interface Window {
+    _imageBlobCache?: Record<string, string>;
+  }
+}
+
+const loadImagesFromStorage = (): Image[] => {
   try {
     const savedImages = localStorage.getItem(STORAGE_KEY);
-    const parsedImages = savedImages ? JSON.parse(savedImages) : [];
+    const parsedImages: Image[] = savedImages ? JSON.parse(savedImages) : [];
     
     // Processar URLs das imagens para converter file:// para app-file://
     return parsedImages.map(image => {
@@ -29,19 +75,21 @@ const loadImagesFromStorage = () => {
 };
 
 // Helper function to clean up blob URLs
-const cleanupBlobUrl = (url) => {
+const cleanupBlobUrl = (url: string): void => {
   if (url && url.startsWith('blob:')) {
     try {
       // Check if this blob URL is in the cache before revoking
       if (window._imageBlobCache) {
         // Find all app-file URLs that map to this blob URL
         const appFileUrls = Object.keys(window._imageBlobCache).filter(
-          key => window._imageBlobCache[key] === url
+          key => window._imageBlobCache && window._imageBlobCache[key] === url
         );
         
         // Remove from cache
         appFileUrls.forEach(appFileUrl => {
-          delete window._imageBlobCache[appFileUrl];
+          if (window._imageBlobCache) {
+            delete window._imageBlobCache[appFileUrl];
+          }
         });
       }
       
@@ -54,11 +102,11 @@ const cleanupBlobUrl = (url) => {
   }
 };
 
-const useImageStore = create((set, get) => ({
+const useImageStore = create<ImageStore>((set, get) => ({
   images: loadImagesFromStorage(), // Carrega imagens diretamente na inicialização
   
-  addImage: (imageData) => {
-    const newImage = {
+  addImage: (imageData: ImageData): string => {
+    const newImage: Image = {
       ...imageData,
       id: Date.now().toString(),
     };
@@ -72,7 +120,7 @@ const useImageStore = create((set, get) => ({
     return newImage.id;
   },
   
-  removeImage: (imageId) => {
+  removeImage: (imageId: string): void => {
     set(state => {
       // Find the image to remove
       const imageToRemove = state.images.find(img => img.id === imageId);
@@ -99,7 +147,7 @@ const useImageStore = create((set, get) => ({
     });
   },
 
-  updateImage: (imageId, updatedData) => {
+  updateImage: (imageId: string, updatedData: Partial<Image>): void => {
     set(state => {
       const newImages = state.images.map(img => 
         img.id === imageId 
@@ -111,12 +159,12 @@ const useImageStore = create((set, get) => ({
     });
   },
   
-  loadSavedImages: () => {
+  loadSavedImages: (): void => {
     const images = loadImagesFromStorage();
     set({ images });
   },
 
-  clearImages: () => {
+  clearImages: (): void => {
     // Clean up all blob URLs before clearing
     const images = get().images;
     images.forEach(image => {

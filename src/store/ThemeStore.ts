@@ -1,10 +1,56 @@
 import { create } from 'zustand';
 
+// Theme interface
+export interface Theme {
+  gridColor: string;
+  backgroundColor: string;
+  floorPlaneColor: string;
+  gridOpacity: number;
+  backgroundOpacity: number;
+  floorPlaneOpacity: number;
+  groundSize: number;
+  isGroundInfinite: boolean;
+  
+  // Sky settings
+  skyVisible: boolean;
+  skyDistance: number;
+  skySunPosition: [number, number, number];
+  skyInclination: number;
+  skyAzimuth: number;
+  skyTurbidity: number;
+  skyRayleigh: number;
+  skyOpacity: number;
+  
+  // Stars settings
+  starsVisible: boolean;
+  starsRadius: number;
+  starsDepth: number;
+  starsCount: number;
+  starsFactor: number;
+  starsSaturation: number;
+  starsFade: boolean;
+}
+
+// ThemeStore interface
+interface ThemeStore extends Theme {
+  setGridColor: (color: string) => void;
+  setBackgroundColor: (color: string) => void;
+  setFloorPlaneColor: (color: string) => void;
+  setGridOpacity: (opacity: number) => void;
+  setBackgroundOpacity: (opacity: number) => void;
+  setFloorPlaneOpacity: (opacity: number) => void;
+  setGroundSize: (size: number) => void;
+  setGroundInfinite: (isInfinite: boolean) => void;
+  resetColors: () => void;
+  setTheme: (themeUpdate: Partial<Theme>) => void;
+  getColorWithOpacity: (color: string, opacity: number) => string;
+}
+
 // Chave para armazenar no localStorage
 const STORAGE_KEY = 'theme-colors';
 
 // Valores padrão em formato rgba
-const defaultTheme = {
+const defaultTheme: Theme = {
   gridColor: "rgba(0, 0, 0, 1)", 
   backgroundColor: "rgba(0, 0, 0, 1)",
   floorPlaneColor: "rgba(50, 0, 77, 1)",
@@ -35,12 +81,12 @@ const defaultTheme = {
 };
 
 // Carregar cores salvas do localStorage ou usar valores padrão
-const loadSavedTheme = () => {
+const loadSavedTheme = (): Theme => {
   try {
     const savedTheme = localStorage.getItem(STORAGE_KEY);
     if (!savedTheme) return defaultTheme;
     
-    const parsedTheme = JSON.parse(savedTheme);
+    const parsedTheme = JSON.parse(savedTheme) as Partial<Theme>;
     // Merge com defaultTheme para garantir que todas as propriedades existam
     return { ...defaultTheme, ...parsedTheme };
   } catch (error) {
@@ -52,56 +98,56 @@ const loadSavedTheme = () => {
 // Carrega o tema salvo ou usa o padrão
 const initialState = loadSavedTheme();
 
-export const useThemeStore = create((set) => ({
+export const useThemeStore = create<ThemeStore>((set) => ({
   // Inicializa com o tema salvo ou o padrão
   ...initialState,
   
   // Funções para atualizar cores com persistência
-  setGridColor: (color) => set(state => {
+  setGridColor: (color: string) => set(state => {
     const newState = { ...state, gridColor: color };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
     return newState;
   }),
 
-  setBackgroundColor: (color) => set(state => {
+  setBackgroundColor: (color: string) => set(state => {
     const newState = { ...state, backgroundColor: color };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
     return newState;
   }),
 
-  setFloorPlaneColor: (color) => set(state => {
+  setFloorPlaneColor: (color: string) => set(state => {
     const newState = { ...state, floorPlaneColor: color };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
     return newState;
   }),
   
   // Funções para atualizar opacidades com persistência
-  setGridOpacity: (opacity) => set(state => {
+  setGridOpacity: (opacity: number) => set(state => {
     const newState = { ...state, gridOpacity: opacity };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
     return newState;
   }),
 
-  setBackgroundOpacity: (opacity) => set(state => {
+  setBackgroundOpacity: (opacity: number) => set(state => {
     const newState = { ...state, backgroundOpacity: opacity };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
     return newState;
   }),
 
-  setFloorPlaneOpacity: (opacity) => set(state => {
+  setFloorPlaneOpacity: (opacity: number) => set(state => {
     const newState = { ...state, floorPlaneOpacity: opacity };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
     return newState;
   }),
   
   // Funções para ajustar o tamanho do ground e modo infinito
-  setGroundSize: (size) => set(state => {
+  setGroundSize: (size: number) => set(state => {
     const newState = { ...state, groundSize: size };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
     return newState;
   }),
   
-  setGroundInfinite: (isInfinite) => set(state => {
+  setGroundInfinite: (isInfinite: boolean) => set(state => {
     const newState = { ...state, isGroundInfinite: isInfinite };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
     return newState;
@@ -115,14 +161,14 @@ export const useThemeStore = create((set) => ({
   }),
   
   // Generic function to update any theme property
-  setTheme: (themeUpdate) => set(state => {
+  setTheme: (themeUpdate: Partial<Theme>) => set(state => {
     const newState = { ...state, ...themeUpdate };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
     return newState;
   }),
   
   // Funções para aplicar cor com opacidade
-  getColorWithOpacity: (color, opacity) => {
+  getColorWithOpacity: (color: string, opacity: number): string => {
     if (!color) return 'rgba(0, 0, 0, 0)';
     
     // Se for transparente, retorna com a opacidade desejada

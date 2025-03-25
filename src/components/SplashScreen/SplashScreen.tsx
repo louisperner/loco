@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 
-const SplashScreen = () => {
-  const [fadeOut, setFadeOut] = useState(false);
+interface SplashScreenProps {}
+
+const SplashScreen: React.FC<SplashScreenProps> = () => {
+  const [fadeOut, setFadeOut] = useState<boolean>(false);
 
   useEffect(() => {
     // Start fade out animation shortly before the component is unmounted

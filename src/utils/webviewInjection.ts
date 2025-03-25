@@ -1,4 +1,4 @@
-export const elementClickTrackerScript = `
+export const elementClickTrackerScript: string = `
 // Estilos básicos para visualização
 const style = document.createElement('style');
 style.textContent = \`
@@ -88,4 +88,4 @@ document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
   }
 });
-`;
+`; 

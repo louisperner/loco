@@ -1,7 +1,9 @@
 import React from 'react';
 import { Circle } from '@react-three/drei';
 
-const Floor = () => {
+interface FloorProps {}
+
+const Floor: React.FC<FloorProps> = () => {
   return (
     <Circle
       receiveShadow

@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import Player, { HotbarContext } from './components/Player/Player';
 import SplashScreen from './components/SplashScreen/SplashScreen';
 
-const App = () => {
-  const [isLoading, setIsLoading] = useState(true);
+const App: React.FC = () => {
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const initializeApp = async () => {
+    const initializeApp = async (): Promise<void> => {
       try {
         await new Promise(resolve => setTimeout(resolve, 2000));
         setIsLoading(false);
@@ -31,4 +31,4 @@ const App = () => {
   );
 };
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<App />); 

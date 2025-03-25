@@ -1,16 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { Html } from '@react-three/drei';
 
+// Define the message interface
+interface Message {
+  id: number;
+  text: string;
+  position: [number, number, number];
+}
+
+// Add to window interface for TypeScript
+declare global {
+  interface Window {
+    addMessage?: (text: string, position?: [number, number, number]) => void;
+  }
+}
+
 /**
  * MessageManager - Componente para gerenciar mensagens no ambiente 3D
  * Este é um componente básico que será expandido conforme necessário
  */
-function MessageManager() {
-  const [messages, setMessages] = useState([]);
+const MessageManager: React.FC = () => {
+  const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
     // Função para adicionar uma nova mensagem
-    window.addMessage = (text, position) => {
+    window.addMessage = (text: string, position?: [number, number, number]) => {
       setMessages(prev => [...prev, {
         id: Date.now(),
         text,
@@ -43,6 +57,6 @@ function MessageManager() {
       ))}
     </>
   );
-}
+};
 
 export default MessageManager; 

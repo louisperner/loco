@@ -1,6 +1,29 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
+// Add Electron API interface for TypeScript
+interface ElectronAPI {
+  loadFileAsBlob: (url: string) => Promise<{
+    success: boolean;
+    blobUrl?: string;
+    error?: string;
+  }>;
+  saveImageFile: (file: File, filename: string) => Promise<string | null>;
+  cleanAllFiles: () => Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }>;
+  [key: string]: any;
+}
+
+// Extend the Window interface for TypeScript
+declare global {
+  interface Window {
+    electron?: ElectronAPI;
+  }
+}
+
 /**
  * Generates a thumbnail for a 3D model
  * @param {string} modelUrl - URL of the 3D model
@@ -8,7 +31,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
  * @param {number} height - Height of the thumbnail
  * @returns {Promise<string>} - Promise that resolves to the thumbnail URL
  */
-export const generateModelThumbnail = async (modelUrl, width = 300, height = 300) => {
+export const generateModelThumbnail = async (modelUrl: string, width: number = 300, height: number = 300): Promise<string | null> => {
   return new Promise((resolve, reject) => {
     try {
       // Create a scene
@@ -22,7 +45,7 @@ export const generateModelThumbnail = async (modelUrl, width = 300, height = 300
       // Create a renderer
       const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(width, height);
-      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
       
       // Add lights
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -38,15 +61,17 @@ export const generateModelThumbnail = async (modelUrl, width = 300, height = 300
       // Handle app-file:// URLs with electron APIs
       if (modelUrl.startsWith('app-file://') && window.electron && window.electron.loadFileAsBlob) {
         window.electron.loadFileAsBlob(modelUrl)
-          .then(result => {
-            if (result.success) {
+          .then((result: { success: boolean; blobUrl?: string; error?: string }) => {
+            if (result.success && result.blobUrl) {
+              // Missing modelId parameter in original code, assuming it should be derived from modelUrl
+              const modelId = modelUrl.split('/').pop()?.split('.')[0] || 'model';
               resolve(renderThumbnail(result.blobUrl, modelId));
             } else {
               console.error('Failed to load model file:', result.error);
               resolve(null);
             }
           })
-          .catch(err => {
+          .catch((err: Error) => {
             console.error('Error loading model file:', err);
             resolve(null);
           });
@@ -56,45 +81,60 @@ export const generateModelThumbnail = async (modelUrl, width = 300, height = 300
         resolve(null);
       } else {
         // Regular URL, try to render it directly
+        // Missing modelId parameter in original code, assuming it should be derived from modelUrl
+        const modelId = modelUrl.split('/').pop()?.split('.')[0] || 'model';
         resolve(renderThumbnail(modelUrl, modelId));
       }
       
-      function loadModel(url) {
-        loader.load(
-          url,
-          (gltf) => {
-            // Add the model to the scene
-            scene.add(gltf.scene);
-            
-            // Center the model
-            const box = new THREE.Box3().setFromObject(gltf.scene);
-            const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z);
-            const scale = 2 / maxDim;
-            
-            gltf.scene.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
-            gltf.scene.scale.set(scale, scale, scale);
-            
-            // Render the scene
-            renderer.render(scene, camera);
-            
-            // Get the thumbnail URL
-            const thumbnailUrl = renderer.domElement.toDataURL('image/png');
-            
-            // Clean up
-            if (url.startsWith('blob:') && url !== modelUrl) {
-              URL.revokeObjectURL(url);
+      function renderThumbnail(url: string, modelId: string): Promise<string | null> {
+        return new Promise((resolve) => {
+          loadModel(url)
+            .then(thumbnailUrl => resolve(thumbnailUrl))
+            .catch(error => {
+              console.error('Error rendering thumbnail:', error);
+              resolve(null);
+            });
+        });
+      }
+      
+      function loadModel(url: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+          loader.load(
+            url,
+            (gltf) => {
+              // Add the model to the scene
+              scene.add(gltf.scene);
+              
+              // Center the model
+              const box = new THREE.Box3().setFromObject(gltf.scene);
+              const center = box.getCenter(new THREE.Vector3());
+              const size = box.getSize(new THREE.Vector3());
+              const maxDim = Math.max(size.x, size.y, size.z);
+              const scale = 2 / maxDim;
+              
+              gltf.scene.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+              gltf.scene.scale.set(scale, scale, scale);
+              
+              // Render the scene
+              renderer.render(scene, camera);
+              
+              // Get the thumbnail URL
+              const thumbnailUrl = renderer.domElement.toDataURL('image/png');
+              
+              // Clean up
+              if (url.startsWith('blob:') && url !== modelUrl) {
+                URL.revokeObjectURL(url);
+              }
+              
+              // Resolve with the thumbnail URL
+              resolve(thumbnailUrl);
+            },
+            undefined,
+            (error) => {
+              reject(error);
             }
-            
-            // Resolve with the thumbnail URL
-            resolve(thumbnailUrl);
-          },
-          undefined,
-          (error) => {
-            reject(error);
-          }
-        );
+          );
+        });
       }
     } catch (error) {
       reject(error);
@@ -108,10 +148,14 @@ export const generateModelThumbnail = async (modelUrl, width = 300, height = 300
  * @param {string} modelId - ID of the model
  * @returns {Promise<string>} - Promise that resolves to the thumbnail URL
  */
-export const saveModelThumbnail = async (modelUrl, modelId) => {
+export const saveModelThumbnail = async (modelUrl: string, modelId: string): Promise<string | null> => {
   try {
     // Generate the thumbnail
     const thumbnailDataUrl = await generateModelThumbnail(modelUrl);
+    
+    if (!thumbnailDataUrl) {
+      throw new Error('Failed to generate thumbnail');
+    }
     
     // Convert data URL to blob
     const response = await fetch(thumbnailDataUrl);
