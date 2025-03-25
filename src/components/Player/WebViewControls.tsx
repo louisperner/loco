@@ -76,7 +76,7 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
 
   // Create safe localStorage wrapper
   const safeStorage: SafeStorage = {
-    get: <T>(key: string, defaultValue: T | null = null): T | null => {
+    get<T>(key: string, defaultValue: T | null = null): T | null {
       try {
         const value = localStorage.getItem(key);
         return value ? JSON.parse(value) : defaultValue;
@@ -85,7 +85,7 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
         return defaultValue;
       }
     },
-    set: (key: string, value: any): boolean => {
+    set(key: string, value: any): boolean {
       try {
         localStorage.setItem(key, JSON.stringify(value));
         return true;
@@ -94,7 +94,7 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
         return false;
       }
     },
-    remove: (key: string): boolean => {
+    remove(key: string): boolean {
       try {
         localStorage.removeItem(key);
         return true;

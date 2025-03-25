@@ -1,18 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useModelStore } from '../../store/useModelStore';
-import ModelInScene from './ModelInScene';
+import ModelInScene, { ModelDataType } from './ModelInScene';
 
-function ModelManager({ onSelect }) {
+interface ModelManagerProps {
+  onSelect?: (model: ModelDataType & { type: string }) => void;
+}
+
+interface RemoveObjectEvent extends CustomEvent {
+  detail: {
+    type: string;
+    id: string;
+  };
+}
+
+const ModelManager: React.FC<ModelManagerProps> = ({ onSelect }) => {
   const { models, updateModel, removeModel } = useModelStore();
-  const [selectedModelId, setSelectedModelId] = useState(null);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
 
   // Listen for removeObject events
   useEffect(() => {
-    const handleRemoveObject = (event) => {
-      if (event.detail.type === 'model') {
+    const handleRemoveObject = (event: Event) => {
+      const customEvent = event as RemoveObjectEvent;
+      if (customEvent.detail && customEvent.detail.type === 'model') {
         // Update model to mark it as not in scene instead of removing it
-        updateModel(event.detail.id, { isInScene: false });
-        if (selectedModelId === event.detail.id) {
+        updateModel(customEvent.detail.id, { isInScene: false });
+        if (selectedModelId === customEvent.detail.id) {
           setSelectedModelId(null);
         } 
       }
@@ -23,7 +35,7 @@ function ModelManager({ onSelect }) {
   }, [updateModel, selectedModelId]);
 
   // Handle model selection
-  const handleSelectModel = (id, modelData) => {
+  const handleSelectModel = (id: string, modelData: ModelDataType): void => {
     setSelectedModelId(id === selectedModelId ? null : id);
     if (onSelect && modelData) {
       onSelect({ ...modelData, type: 'model' });
@@ -31,12 +43,12 @@ function ModelManager({ onSelect }) {
   };
 
   // Handle model update
-  const handleUpdateModel = (modelData) => {
+  const handleUpdateModel = (modelData: ModelDataType): void => {
     updateModel(modelData.id, modelData);
   };
 
   // Handle model removal
-  const handleRemoveModel = (id) => {
+  const handleRemoveModel = (id: string): void => {
     // Mark as not in scene instead of removing
     updateModel(id, { isInScene: false });
     if (selectedModelId === id) {
@@ -49,15 +61,15 @@ function ModelManager({ onSelect }) {
       {models.filter(model => model.isInScene !== false).map((model) => (
         <ModelInScene 
           key={model.id}
-          modelData={model}
+          modelData={model as ModelDataType}
           onUpdate={handleUpdateModel}
-          onRemove={() => handleRemoveModel(model.id)}
+          onRemove={handleRemoveModel}
           selected={model.id === selectedModelId}
-          onSelect={(id) => handleSelectModel(id, model)}
+          onSelect={(id) => handleSelectModel(id, model as ModelDataType)}
         />
       ))}
     </>
   );
-}
+};
 
 export default ModelManager; 

@@ -1,29 +1,69 @@
-import React, { useRef, useState, useEffect, Suspense } from 'react';
+import React, { useRef, useState, useEffect, Suspense, ReactElement } from 'react';
 import { Html, useGLTF, TransformControls, Box } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useModelStore } from '../../store/useModelStore';
 import { Lock, Unlock, Move, RotateCw, Plus, Minus, MapPin, Trash2 } from 'lucide-react';
 
+// Define types for props and data
+export interface ModelDataType {
+  id: string;
+  url: string;
+  fileName?: string;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number;
+  [key: string]: any; // For any additional properties
+}
+
+interface ModelProps {
+  url: string;
+  scale: number;
+}
+
+interface ModelFallbackProps {
+  fileName?: string;
+  scale: number;
+  errorDetails?: string;
+}
+
+interface ModelInSceneProps {
+  modelData: ModelDataType;
+  onRemove: (id: string) => void;
+  onUpdate: (data: ModelDataType) => void;
+  selected?: boolean;
+  onSelect?: (id: string) => void;
+}
+
+interface ModelErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback: ReactElement;
+}
+
+interface ModelErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
 // Separate model component to use with Suspense and ErrorBoundary
-function Model({ url, scale }) {
-  const [modelUrl, setModelUrl] = useState(url);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+const Model: React.FC<ModelProps> = ({ url, scale }) => {
+  const [modelUrl, setModelUrl] = useState<string>(url);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
   
-  // Processar URL conforme necessário
+  // Process URL as needed
   useEffect(() => {
     const loadModel = async () => {
       setIsLoading(true);
       try {
-        // Se o URL começar com file:// ou app-file://, tente carregá-lo com o Electron
+        // If URL starts with file:// or app-file://, try to load it with Electron
         if ((url && url.startsWith('file://')) || (url && url.startsWith('app-file://'))) {
-          // console.log('Carregando modelo com Electron:', url);
+          // console.log('Loading model with Electron:', url);
           
           if (window.electron && window.electron.loadFileAsBlob) {
             const result = await window.electron.loadFileAsBlob(url);
             if (result.success) {
-              // console.log('Modelo carregado com sucesso, usando blob URL:', result.blobUrl);
+              // console.log('Model loaded successfully, using blob URL:', result.blobUrl);
               
               // Store the blob URL in a global cache to prevent garbage collection
               window._blobUrlCache = window._blobUrlCache || {};
@@ -31,9 +71,9 @@ function Model({ url, scale }) {
               
               setModelUrl(result.blobUrl);
             } else {
-              console.error('Erro ao carregar modelo com Electron:', result.error);
-              setError(new Error(`Erro ao carregar modelo: ${result.error}`));
-              // Manter URL original como fallback
+              console.error('Error loading model with Electron:', result.error);
+              setError(new Error(`Error loading model: ${result.error}`));
+              // Keep original URL as fallback
               setModelUrl(url);
             }
           } else {
@@ -55,12 +95,16 @@ function Model({ url, scale }) {
           window._blobUrlCache[url] = true;
           setModelUrl(url);
         } else {
-          // URL normal, manter como está
+          // Normal URL, keep as is
           setModelUrl(url);
         }
       } catch (error) {
-        console.error('Erro ao processar URL do modelo:', error);
-        setError(error);
+        console.error('Error processing model URL:', error);
+        if (error instanceof Error) {
+          setError(error);
+        } else {
+          setError(new Error('Unknown error loading model'));
+        }
       } finally {
         setIsLoading(false);
       }
@@ -85,19 +129,19 @@ function Model({ url, scale }) {
     };
   }, [url]);
   
-  // Se estiver carregando ou houver erro, não tente carregar o modelo com THREE
+  // If loading or there's an error, don't try to load the model with THREE
   if (isLoading) {
     return null;
   }
   
   if (error) {
-    throw error; // Deixe o ErrorBoundary lidar com isso
+    throw error; // Let the ErrorBoundary handle it
   }
   
-  // Este componente suspenderá até que o modelo seja carregado
-  const { scene } = useGLTF(modelUrl, undefined, (error) => {
-    console.error('Erro ao carregar modelo com Three.js:', error, modelUrl);
-    throw error; // Propagar o erro para o ErrorBoundary
+  // This component will suspend until the model is loaded
+  const { scene } = useGLTF(modelUrl, undefined, undefined, (error: any) => {
+    console.error('Error loading model with Three.js:', error, modelUrl);
+    throw error; // Propagate the error to the ErrorBoundary
   });
   
   const clonedScene = scene.clone();
@@ -109,10 +153,10 @@ function Model({ url, scale }) {
       scale={scale}
     />
   );
-}
+};
 
 // Fallback component for when model loading fails
-function ModelFallback({ fileName, scale, errorDetails }) {
+const ModelFallback: React.FC<ModelFallbackProps> = ({ fileName, scale, errorDetails }) => {
   return (
     <Box args={[1, 1, 1]} scale={scale}>
       <meshStandardMaterial color="#ff4d4d" />
@@ -133,64 +177,64 @@ function ModelFallback({ fileName, scale, errorDetails }) {
       </Html>
     </Box>
   );
-}
+};
 
 // Custom error boundary for model loading
-class ModelErrorBoundary extends React.Component {
-  constructor(props) {
+class ModelErrorBoundary extends React.Component<ModelErrorBoundaryProps, ModelErrorBoundaryState> {
+  constructor(props: ModelErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: Error): ModelErrorBoundaryState {
     // Update state so the next render will show the fallback UI
     return { hasError: true, error };
   }
 
-  componentDidCatch(error, errorInfo) {
-    // Registre o erro com detalhes adicionais para diagnóstico
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    // Log the error with additional details for diagnosis
     console.error(`Error loading model: ${error.message}`, errorInfo);
     
-    // Se o erro for relacionado ao protocolo file://, forneça uma dica útil
+    // If the error is related to file:// protocol, provide a helpful hint
     if (error.message && error.message.includes('file://')) {
-      console.info('DICA: O erro pode estar relacionado a permissões de arquivo local. Verifique se você está usando o protocolo app-file:// ou configurou corretamente as permissões de segurança no Electron.');
+      console.info('HINT: The error may be related to local file permissions. Check if you are using the app-file:// protocol or have properly configured security permissions in Electron.');
     }
     
-    // Se o erro for sobre CORS, forneça dicas específicas
+    // If the error is about CORS, provide specific hints
     if (error.message && error.message.includes('CORS')) {
-      console.info('DICA: O erro pode estar relacionado a restrições de CORS. No Electron, você pode configurar webSecurity: false nas webPreferences ou usar um protocolo personalizado.');
+      console.info('HINT: The error may be related to CORS restrictions. In Electron, you can configure webSecurity: false in webPreferences or use a custom protocol.');
     }
     
     // If the error is about Content Security Policy
     if (error.message && (error.message.includes('Content Security Policy') || error.message.includes('CSP'))) {
-      console.info('DICA: O erro está relacionado à Política de Segurança de Conteúdo (CSP). Verifique se sua CSP permite blob: URLs no connect-src. Adicione "blob:" à diretiva connect-src na sua CSP.');
+      console.info('HINT: The error is related to Content Security Policy (CSP). Check if your CSP allows blob: URLs in connect-src. Add "blob:" to the connect-src directive in your CSP.');
     }
     
     // If the error is about Failed to fetch
     if (error.message && error.message.includes('Failed to fetch')) {
-      console.info('DICA: O erro "Failed to fetch" pode estar relacionado a problemas de rede, CORS ou CSP. Verifique se o URL é acessível e se sua CSP permite o acesso a esse recurso.');
+      console.info('HINT: The "Failed to fetch" error may be related to network issues, CORS, or CSP. Check if the URL is accessible and if your CSP allows access to this resource.');
     }
   }
 
-  render() {
+  render(): React.ReactNode {
     if (this.state.hasError) {
-      // Exibir informações detalhadas no fallback
+      // Display detailed information in the fallback
       return React.cloneElement(this.props.fallback, { 
         errorDetails: this.state.error ? this.state.error.message : 'Unknown error'
-      });
+      } as any);
     }
 
     return this.props.children;
   }
 }
 
-function ModelInScene({ 
+const ModelInScene: React.FC<ModelInSceneProps> = ({ 
   modelData, 
   onRemove, 
   onUpdate,
   selected = false,
   onSelect,
-}) {
+}) => {
   const { 
     id, 
     url,
@@ -200,11 +244,11 @@ function ModelInScene({
     scale: initialScale = 1 
   } = modelData;
 
-  const [hovered, setHovered] = useState(false);
-  const [showControls, setShowControls] = useState(false);
-  const [transformMode, setTransformMode] = useState('translate');
-  const [scale, setScale] = useState(initialScale);
-  const groupRef = useRef();
+  const [hovered, setHovered] = useState<boolean>(false);
+  const [showControls, setShowControls] = useState<boolean>(false);
+  const [transformMode, setTransformMode] = useState<'translate' | 'rotate'>('translate');
+  const [scale, setScale] = useState<number>(initialScale);
+  const groupRef = useRef<THREE.Group>(null);
   
   // Get camera for positioning
   const { camera } = useThree();
@@ -217,21 +261,21 @@ function ModelInScene({
   }, [scale]);
 
   // Handles when pointer hovers over the model
-  const handlePointerOver = (e) => {
+  const handlePointerOver = (e: any): void => {
     e.stopPropagation();
     setHovered(true);
     document.body.style.cursor = 'pointer';
   };
 
   // Handles when pointer leaves the model
-  const handlePointerOut = (e) => {
+  const handlePointerOut = (e: any): void => {
     e.stopPropagation();
     setHovered(false);
     document.body.style.cursor = 'auto';
   };
 
   // Handle click to select this model
-  const handleClick = (e) => {
+  const handleClick = (e: any): void => {
     e.stopPropagation();
     if (onSelect) {
       onSelect(id);
@@ -239,7 +283,7 @@ function ModelInScene({
   };
 
   // Control Panel component for the model
-  const ControlPanel = () => (
+  const ControlPanel: React.FC = () => (
     <Html
       transform
       distanceFactor={8}
@@ -258,7 +302,7 @@ function ModelInScene({
       }}
     >
       <button
-        onClick={(e) => {
+        onClick={(e: React.MouseEvent) => {
           e.stopPropagation();
           setShowControls(!showControls);
         }}
@@ -268,7 +312,7 @@ function ModelInScene({
       </button>
 
       <button
-        onClick={(e) => {
+        onClick={(e: React.MouseEvent) => {
           e.stopPropagation();
           if (showControls) {
             setTransformMode(transformMode === 'translate' ? 'rotate' : 'translate');
@@ -284,12 +328,13 @@ function ModelInScene({
       </button>
 
       <button
-        onClick={(e) => {
+        onClick={(e: React.MouseEvent) => {
           e.stopPropagation();
-          setScale(Math.min(scale + 0.1, 5));
+          const newScale = Math.min(scale + 0.1, 5);
+          setScale(newScale);
           onUpdate({
             ...modelData,
-            scale: Math.min(scale + 0.1, 5)
+            scale: newScale
           });
         }}
         style={controlButtonStyle}
@@ -298,12 +343,13 @@ function ModelInScene({
       </button>
 
       <button
-        onClick={(e) => {
+        onClick={(e: React.MouseEvent) => {
           e.stopPropagation();
-          setScale(Math.max(scale - 0.1, 0.1));
+          const newScale = Math.max(scale - 0.1, 0.1);
+          setScale(newScale);
           onUpdate({
             ...modelData,
-            scale: Math.max(scale - 0.1, 0.1)
+            scale: newScale
           });
         }}
         style={controlButtonStyle}
@@ -312,7 +358,7 @@ function ModelInScene({
       </button>
 
       <button
-        onClick={(e) => {
+        onClick={(e: React.MouseEvent) => {
           e.stopPropagation();
           
           // Position in front of camera
@@ -323,22 +369,24 @@ function ModelInScene({
             direction.multiplyScalar(3)
           );
           
-          groupRef.current.position.copy(newPosition);
-          
-          // Look at camera
-          const lookAtPosition = camera.position.clone();
-          groupRef.current.lookAt(lookAtPosition);
-          
-          // Update model data
-          onUpdate({
-            ...modelData,
-            position: [newPosition.x, newPosition.y, newPosition.z],
-            rotation: [
-              groupRef.current.rotation.x,
-              groupRef.current.rotation.y,
-              groupRef.current.rotation.z
-            ]
-          });
+          if (groupRef.current) {
+            groupRef.current.position.copy(newPosition);
+            
+            // Look at camera
+            const lookAtPosition = camera.position.clone();
+            groupRef.current.lookAt(lookAtPosition);
+            
+            // Update model data
+            onUpdate({
+              ...modelData,
+              position: [newPosition.x, newPosition.y, newPosition.z] as [number, number, number],
+              rotation: [
+                groupRef.current.rotation.x,
+                groupRef.current.rotation.y,
+                groupRef.current.rotation.z
+              ] as [number, number, number]
+            });
+          }
         }}
         style={controlButtonStyle}
       >
@@ -346,9 +394,9 @@ function ModelInScene({
       </button>
 
       <button
-        onClick={(e) => {
+        onClick={(e: React.MouseEvent) => {
           e.stopPropagation();
-          if (onRemove) onRemove(id);
+          onRemove(id);
         }}
         style={{...controlButtonStyle, color: '#ff4d4d'}}
       >
@@ -360,7 +408,7 @@ function ModelInScene({
   return (
     <>
       {/* Transform controls */}
-      {showControls && selected && (
+      {showControls && selected && groupRef.current && (
         <TransformControls
           object={groupRef.current}
           mode={transformMode}
@@ -374,12 +422,12 @@ function ModelInScene({
                   groupRef.current.position.x,
                   groupRef.current.position.y,
                   groupRef.current.position.z
-                ],
+                ] as [number, number, number],
                 rotation: [
                   groupRef.current.rotation.x,
                   groupRef.current.rotation.y,
                   groupRef.current.rotation.z
-                ]
+                ] as [number, number, number]
               });
             }
           }}
@@ -435,7 +483,7 @@ function ModelInScene({
   );
 }
 
-const controlButtonStyle = {
+const controlButtonStyle: React.CSSProperties = {
   background: 'transparent',
   border: '1px solid white',
   borderRadius: '4px',

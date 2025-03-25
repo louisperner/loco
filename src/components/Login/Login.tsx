@@ -1,27 +1,34 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { auth, googleProvider } from '../../utils/firebase';
-import { createUserWithEmailAndPassword, signInWithPopup, signOut, signInWithEmailAndPassword } from 'firebase/auth';
-import { useState } from 'react';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithPopup, 
+  signOut, 
+  signInWithEmailAndPassword, 
+  AuthError 
+} from 'firebase/auth';
 
-function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+const Login: React.FC = () => {
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
 
-  const signIn = async () => {
+  const signIn = async (): Promise<void> => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {
       console.error(err);
     }
   };
-  const signInWithGoogle = async () => {
+
+  const signInWithGoogle = async (): Promise<void> => {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
       console.error(err);
     }
   };
-  const logOut = async () => {
+
+  const logOut = async (): Promise<void> => {
     try {
       await signOut(auth);
     } catch (err) {
@@ -45,12 +52,12 @@ function Login() {
                 <input
                   id='email'
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                   name='email'
                   type='email'
                   autoComplete='email'
                   required
-                  className='block w-full rounded-md border-0 py-1.5 text-white shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset  sm:text-sm sm:leading-6 p-2'
+                  className='block w-full rounded-md border-0 py-1.5 text-white shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 p-2'
                 />
               </div>
             </div>
@@ -65,12 +72,12 @@ function Login() {
                 <input
                   id='password'
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                   name='password'
                   type='password'
                   autoComplete='current-password'
                   required
-                  className='block w-full rounded-md border-0 py-1.5 text-white shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset  sm:text-sm sm:leading-6 p-2'
+                  className='block w-full rounded-md border-0 py-1.5 text-white shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 p-2'
                 />
               </div>
             </div>
@@ -99,6 +106,6 @@ function Login() {
       <div className='bg-black md:w-1/2 h-screen bg-[url("/loco-bg.jpg")] bg-cover invisible md:visible bg-center'></div>
     </div>
   );
-}
+};
 
-export default Login;
+export default Login; 

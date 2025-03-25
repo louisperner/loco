@@ -36,37 +36,92 @@ import {
 // Import hooks
 import { useFileHandling } from '../../hooks/useFileHandling';
 
+// Define types
+export interface WebFrame {
+  id: number;
+  url: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  originalPosition: [number, number, number];
+  originalRotation: [number, number, number];
+}
+
+export interface CrosshairSettings {
+  visible: boolean;
+  size: number;
+  color: string;
+  thickness: number;
+  style: string;
+}
+
+export interface VisibilitySettings {
+  floorVisible: boolean;
+  gridVisible: boolean;
+  floorPlaneVisible: boolean;
+  backgroundVisible: boolean;
+}
+
+export interface EnvironmentSettings {
+  skyVisible: boolean;
+  skyDistance: number;
+  skySunPosition: [number, number, number];
+  skyInclination: number;
+  skyAzimuth: number;
+  skyTurbidity: number;
+  skyRayleigh: number;
+  skyOpacity: number;
+  starsVisible: boolean;
+  starsRadius: number;
+  starsDepth: number;
+  starsCount: number;
+  starsFactor: number;
+  starsSaturation: number;
+  starsFade: boolean;
+}
+
+export interface HotbarItem {
+  id: string;
+  name: string;
+  type: string;
+  [key: string]: any;
+}
+
+export interface HotbarContextType {
+  selectedHotbarItem: HotbarItem | null;
+  setSelectedHotbarItem: (item: HotbarItem | null) => void;
+}
+
 // Create a context for the hotbar selection
-export const HotbarContext = React.createContext({
+export const HotbarContext = React.createContext<HotbarContextType>({
   selectedHotbarItem: null,
   setSelectedHotbarItem: () => {},
 });
 
-const Player = () => {
-  const iframeRef = useRef();
-  const canvasContainerRef = useRef();
-  const cameraRef = useRef();
-  const fileInputRef = useRef();
-  const settingsPanelRef = useRef(null);
-  const colorPickerRefs = useRef({});
-  const inventoryRef = useRef(null);
+const Player: React.FC = () => {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const cameraRef = useRef<THREE.Camera>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const settingsPanelRef = useRef<HTMLDivElement>(null);
+  const colorPickerRefs = useRef<Record<string, HTMLElement | null>>({});
+  const inventoryRef = useRef<HTMLDivElement>(null);
   
   // UI visibility state
-  const [uiVisible, setUiVisible] = useState(true);
+  const [uiVisible, setUiVisible] = useState<boolean>(true);
   
   // Hotbar state
-  const [selectedHotbarItem, setSelectedHotbarItem] = useState(null);
+  const [selectedHotbarItem, setSelectedHotbarItem] = useState<HotbarItem | null>(null);
   
   // Code Store
   const { updateCode, updateTranspiledCode, updateComponents } = useCodeStore();
   const { code } = useCodeStore();
   
   // States
-  const [frames, setFrames] = useState([]);
-  const [showPreview, setShowPreview] = useState(false);
-  const [confirmedPosition, setConfirmedPosition] = useState(null);
-  const [confirmedRotation, setConfirmedRotation] = useState(null);
-  const [finalCode, setFinalCode] = useState(`function Application() {
+  const [frames, setFrames] = useState<WebFrame[]>([]);
+  const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [confirmedPosition, setConfirmedPosition] = useState<[number, number, number] | null>(null);
+  const [confirmedRotation, setConfirmedRotation] = useState<[number, number, number] | null>(null);
+  const [finalCode, setFinalCode] = useState<string>(`function Application() {
     return (
       <div>
         <h1>Teste 1</h1>
@@ -75,44 +130,44 @@ const Player = () => {
   }
   render(<Application />);`);
   
-  const [currentMode, setCurrentMode] = useState('live');
-  const [showCatalog, setShowCatalog] = useState(false);
-  const [movementEnabled, setMovementEnabled] = useState(true);
-  const [showHelp, setShowHelp] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showInventory, setShowInventory] = useState(false);
+  const [currentMode, setCurrentMode] = useState<string>('live');
+  const [showCatalog, setShowCatalog] = useState<boolean>(false);
+  const [movementEnabled, setMovementEnabled] = useState<boolean>(true);
+  const [showHelp, setShowHelp] = useState<boolean>(false);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [showInventory, setShowInventory] = useState<boolean>(false);
   
-  const [pendingWebsiteUrl, setPendingWebsiteUrl] = useState(null);
-  const [showFrameControls, setShowFrameControls] = useState(true);
-  const [selectedFrame, setSelectedFrame] = useState(null);
-  const [activeTab, setActiveTab] = useState('cores');
-  const [isResetAnimating, setIsResetAnimating] = useState(false);
-  const [colorChanged, setColorChanged] = useState(null);
-  const [canvasInteractive, setCanvasInteractive] = useState(true);
-  const [showColorPicker, setShowColorPicker] = useState(null);
-  const [selectedTheme, setSelectedTheme] = useState(null);
-  const [mouseOverSettings, setMouseOverSettings] = useState(false);
-  const [isSpotlightOpen, setIsSpotlightOpen] = useState(false);
+  const [pendingWebsiteUrl, setPendingWebsiteUrl] = useState<string | null>(null);
+  const [showFrameControls, setShowFrameControls] = useState<boolean>(true);
+  const [selectedFrame, setSelectedFrame] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('cores');
+  const [isResetAnimating, setIsResetAnimating] = useState<boolean>(false);
+  const [colorChanged, setColorChanged] = useState<string | null>(null);
+  const [canvasInteractive, setCanvasInteractive] = useState<boolean>(true);
+  const [showColorPicker, setShowColorPicker] = useState<string | null>(null);
+  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
+  const [mouseOverSettings, setMouseOverSettings] = useState<boolean>(false);
+  const [isSpotlightOpen, setIsSpotlightOpen] = useState<boolean>(false);
   
   // Visibility states
-  const [floorVisible, setFloorVisible] = useState(true);
-  const [gridVisible, setGridVisible] = useState(true);
-  const [floorPlaneVisible, setFloorPlaneVisible] = useState(true);
-  const [backgroundVisible, setBackgroundVisible] = useState(true);
+  const [floorVisible, setFloorVisible] = useState<boolean>(true);
+  const [gridVisible, setGridVisible] = useState<boolean>(true);
+  const [floorPlaneVisible, setFloorPlaneVisible] = useState<boolean>(true);
+  const [backgroundVisible, setBackgroundVisible] = useState<boolean>(true);
   
   // Crosshair states
-  const [showCrosshair, setShowCrosshair] = useState(true);
-  const [crosshairSize, setCrosshairSize] = useState(10);
-  const [crosshairColor, setCrosshairColor] = useState('white');
-  const [crosshairThickness, setCrosshairThickness] = useState(2);
-  const [crosshairStyle, setCrosshairStyle] = useState('circle');
+  const [showCrosshair, setShowCrosshair] = useState<boolean>(true);
+  const [crosshairSize, setCrosshairSize] = useState<number>(10);
+  const [crosshairColor, setCrosshairColor] = useState<string>('white');
+  const [crosshairThickness, setCrosshairThickness] = useState<number>(2);
+  const [crosshairStyle, setCrosshairStyle] = useState<string>('circle');
   
   // Ground states
-  const [gravityEnabled, setGravityEnabled] = useState(false);
-  const [groundShape, setGroundShape] = useState('circle');
+  const [gravityEnabled, setGravityEnabled] = useState<boolean>(false);
+  const [groundShape, setGroundShape] = useState<string>('circle');
   
   // Environment settings
-  const [environmentSettings, setEnvironmentSettings] = useState({
+  const [environmentSettings, setEnvironmentSettings] = useState<EnvironmentSettings>({
     skyVisible: false,
     skyDistance: 450000,
     skySunPosition: [0, 1, 0],
@@ -165,7 +220,7 @@ const Player = () => {
 
   const { images, removeImage } = useImageStore();
   const { models, removeModel } = useModelStore();
-  const [selectedObject, setSelectedObject] = useState(null);
+  const [selectedObject, setSelectedObject] = useState<any | null>(null);
   const addImage = useImageStore(state => state.addImage);
 
   // Effects
@@ -250,7 +305,7 @@ const Player = () => {
   }, [gravityEnabled]);
 
   useEffect(() => {
-    const crosshairSettings = {
+    const crosshairSettings: CrosshairSettings = {
       visible: showCrosshair,
       size: crosshairSize,
       color: crosshairColor,
@@ -261,7 +316,7 @@ const Player = () => {
   }, [showCrosshair, crosshairSize, crosshairColor, crosshairThickness, crosshairStyle]);
 
   useEffect(() => {
-    const visibilitySettings = {
+    const visibilitySettings: VisibilitySettings = {
       floorVisible,
       gridVisible,
       floorPlaneVisible,
@@ -271,7 +326,7 @@ const Player = () => {
   }, [floorVisible, gridVisible, floorPlaneVisible, backgroundVisible]);
 
   // Handlers
-  const handleAddFrame = (url, pos, rot) => {
+  const handleAddFrame = (url: string, pos?: [number, number, number], rot?: [number, number, number]): void => {
     const position = pos || confirmedPosition;
     const rotation = rot || confirmedRotation;
     
@@ -292,7 +347,7 @@ const Player = () => {
     setPendingWebsiteUrl(null);
   };
 
-  const handleSpotlightVisibility = (isVisible) => {
+  const handleSpotlightVisibility = (isVisible: boolean): void => {
     setShowPreview(isVisible);
     setIsSpotlightOpen(isVisible);
     if (!isVisible) {
@@ -301,7 +356,7 @@ const Player = () => {
     }
   };
 
-  const handlePositionConfirm = (position, rotation) => {
+  const handlePositionConfirm = (position: [number, number, number], rotation: [number, number, number]): void => {
     setConfirmedPosition(position);
     setConfirmedRotation(rotation);
     
@@ -312,7 +367,7 @@ const Player = () => {
     }
   };
 
-  const handleModeChange = (mode) => {
+  const handleModeChange = (mode: string): void => {
     setCurrentMode(mode);
     setMovementEnabled(mode === 'live');
     
@@ -330,22 +385,22 @@ const Player = () => {
     }
   };
 
-  const handleOpenCatalog = () => {
+  const handleOpenCatalog = (): void => {
     setShowCatalog(true);
     setMovementEnabled(false);
   };
 
-  const handleCloseCatalog = () => {
+  const handleCloseCatalog = (): void => {
     setShowCatalog(false);
     setMovementEnabled(true);
   };
 
-  const handleToggleHelp = () => {
+  const handleToggleHelp = (): void => {
     setShowHelp(!showHelp);
     setMovementEnabled(showHelp);
   };
 
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     if (currentMode === 'build') {
       if (pendingWebsiteUrl) {
         setPendingWebsiteUrl(null);
@@ -357,15 +412,15 @@ const Player = () => {
     }
   };
 
-  const handleCloseFrame = (frameId) => {
+  const handleCloseFrame = (frameId: number): void => {
     setFrames(prevFrames => prevFrames.filter(frame => frame.id !== frameId));
   };
 
-  const handleClearAllFrames = () => {
+  const handleClearAllFrames = (): void => {
     setFrames([]);
   };
 
-  const handleRestoreFramePosition = (frameId) => {
+  const handleRestoreFramePosition = (frameId: number): void => {
     setFrames(prevFrames => prevFrames.map(frame => {
       if (frame.id === frameId && frame.originalPosition && frame.originalRotation) {
         return {
@@ -378,13 +433,13 @@ const Player = () => {
     }));
   };
 
-  const handleFrameMove = (frameId, newPosition, newRotation) => {
+  const handleFrameMove = (frameId: number, newPosition: [number, number, number], newRotation: [number, number, number]): void => {
     setFrames(prevFrames => prevFrames.map(frame =>
       frame.id === frameId ? { ...frame, position: newPosition, rotation: newRotation } : frame
     ));
   };
 
-  const handleColorChange = (type, color) => {
+  const handleColorChange = (type: string, color: any): void => {
     // If color is an RgbaColor object, convert it to string
     const colorValue = typeof color === 'object' ? rgbaToString(color) : color;
     const opacity = typeof color === 'object' ? color.a : 1;
@@ -406,7 +461,7 @@ const Player = () => {
     setTimeout(() => setColorChanged(null), 500);
   };
 
-  const handleResetColors = () => {
+  const handleResetColors = (): void => {
     resetColors();
     setIsResetAnimating(true);
     setColorChanged('all');
@@ -416,11 +471,11 @@ const Player = () => {
     }, 1000);
   };
 
-  const handleGroundSizeChange = (value) => {
+  const handleGroundSizeChange = (value: number): void => {
     setGroundSize(value);
   };
 
-  const handleGroundInfiniteToggle = (value) => {
+  const handleGroundInfiniteToggle = (value: boolean): void => {
     setGroundInfinite(value);
     if (value && !isGroundInfinite) {
       localStorage.setItem('previous-ground-size', groundSize.toString());
@@ -432,7 +487,7 @@ const Player = () => {
     }
   };
 
-  const handleEnvironmentSettingChange = (setting, value) => {
+  const handleEnvironmentSettingChange = (setting: keyof EnvironmentSettings, value: any): void => {
     setEnvironmentSettings(prev => ({
       ...prev,
       [setting]: value
@@ -441,9 +496,9 @@ const Player = () => {
 
   // Keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       // Skip if the target is an input field
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') {
         return;
       }
       
@@ -483,185 +538,24 @@ const Player = () => {
   }, [showCatalog, showHelp, currentMode, pendingWebsiteUrl, isSpotlightOpen]);
 
   // Add toggleSettings function
-  const toggleSettings = () => {
+  const toggleSettings = (): void => {
     const newState = !showSettings;
     setShowSettings(newState);
     setCanvasInteractive(!newState);
   };
 
   // Handle hotbar item selection
-  const handleHotbarItemSelect = (item) => {
+  const handleHotbarItemSelect = (item: HotbarItem | null): void => {
     setSelectedHotbarItem(item);
     
     // You can add logic here to handle different item types
     console.log(`Selected hotbar item: ${item?.name}`);
     
     // Example: Switch tools based on item type
-    if (item) {
-      switch (item.id) {
-        case 'sword':
-          // Activate attack mode or weapon
-          console.log('Sword selected - activating attack mode');
-          break;
-        case 'pickaxe':
-          // Activate mining/editing mode
-          console.log('Pickaxe selected - activating edit mode');
-          break;
-        case 'axe':
-          // Activate cutting/removing mode
-          console.log('Axe selected - activating remove mode');
-          break;
-        case 'shovel':
-          // Activate digging/terrain editing mode
-          console.log('Shovel selected - activating terrain edit mode');
-          break;
-        default:
-          // Handle other items or blocks
-          console.log(`Selected ${item.name}`);
-      }
-    }
-  };
-
-  const handleOpenInventory = () => {
-    setShowInventory(true);
-  };
-  
-  const handleCloseInventory = () => {
-    setShowInventory(false);
-  };
-  
-  const handleSelectImageFromInventory = (image) => {
-    // Add the selected image to the scene
-    if (!image?.url) return setShowInventory(false);
-    
-    // Calculate position in front of camera
-    const position = new THREE.Vector3();
-    
-    if (cameraRef.current) {
-      const camera = cameraRef.current;
-      const direction = new THREE.Vector3();
-      
-      // Get camera position and direction
-      position.copy(camera.position);
-      camera.getWorldDirection(direction);
-      
-      // Place image at a comfortable distance in front of camera
-      const distance = 3; // 3 units away
-      direction.multiplyScalar(distance);
-      position.add(direction);
-    } else {
-      // Default position if camera not available
-      position.set(0, 1, -3);
-    }
-    
-    // Check if this image is already in the store
-    const existingImage = useImageStore.getState().images.find(img => img.id === image.id);
-    
-    if (existingImage) {
-      // If it exists, update it to be visible in the scene with the new position
-      addImage({
-        ...existingImage,
-        src: image.url,
-        fileName: image.fileName,
-        position: [position.x, position.y, position.z],
-        rotation: [0, 0, 0],
-        scale: 1,
-        isInScene: true
-      });
-    } else {
-      // Add image to the store
-      addImage({
-        src: image.url,
-        fileName: image.fileName,
-        position: [position.x, position.y, position.z],
-        rotation: [0, 0, 0],
-        scale: 1,
-        isInScene: true
-      });
-    }
-    
-    // Close the inventory
-    setShowInventory(false);
-  };
-  
-  const handleSelectModelFromInventory = (model) => {
-    // Add the selected model to the scene
-    if (!model?.url) return setShowInventory(false);
-    
-    // Calculate position in front of camera
-    const position = new THREE.Vector3();
-    
-    if (cameraRef.current) {
-      const camera = cameraRef.current;
-      const direction = new THREE.Vector3();
-      
-      // Get camera position and direction
-      position.copy(camera.position);
-      camera.getWorldDirection(direction);
-      
-      // Place model at a comfortable distance in front of camera
-      direction.multiplyScalar(3);
-      position.add(direction);
-    } else {
-      // Default position if camera not available
-      position.set(0, 1, 0);
-    }
-    
-    // Check if this model is already in the store
-    const existingModel = useModelStore.getState().models.find(mdl => mdl.id === model.id);
-    
-    if (existingModel) {
-      // If it exists, update it to be visible in the scene with the new position
-      useModelStore.getState().updateModel(model.id, {
-        position: [position.x, position.y, position.z],
-        rotation: [0, 0, 0],
-        scale: 1,
-        isInScene: true
-      });
-    } else {
-      // Add model to the store with destructured position
-      const { addModel } = useModelStore.getState();
-      addModel({
-        url: model.url,
-        fileName: model.fileName,
-        position: [position.x, position.y, position.z],
-        rotation: [0, 0, 0],
-        scale: 1,
-        isInScene: true
-      });
-    }
-    
-    // Close the inventory
-    setShowInventory(false);
-  };
-
-  const handleRemoveObject = (objectData) => {
-    if (objectData && objectData.type && objectData.id) {
-      // Only remove the object from the canvas (scene)
-      if (objectData.type === 'image') {
-        // Find the image in the store
-        const image = useImageStore.getState().images.find(img => img.id === objectData.id);
-        
-        // Remove from the scene but keep the data in the inventory
-        useImageStore.getState().updateImage(objectData.id, { isInScene: false });
-      } else if (objectData.type === 'model') {
-        // Find the model in the store
-        const model = useModelStore.getState().models.find(mdl => mdl.id === objectData.id);
-        
-        // Remove from the scene but keep the data in the inventory
-        useModelStore.getState().updateModel(objectData.id, { isInScene: false });
-      }
-      setSelectedObject(null);
-    }
-  };
-
-  // Handle object selection
-  const handleObjectSelect = (object) => {
-    setSelectedObject(object);
   };
 
   return (
-    <HotbarContext.Provider value={{ selectedHotbarItem, setSelectedHotbarItem: handleHotbarItemSelect }}>
+    <HotbarContext.Provider value={{ selectedHotbarItem, setSelectedHotbarItem }}>
       <div 
         ref={canvasContainerRef}
         className="w-screen h-screen relative"
@@ -685,9 +579,9 @@ const Player = () => {
         <input 
           type="file" 
           ref={fileInputRef} 
-          onChange={(e) => {
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
             const files = e.target.files;
-            if (files.length === 0) return;
+            if (!files || files.length === 0) return;
             
             const file = files[0];
             const fileName = file.name.toLowerCase();
@@ -695,14 +589,14 @@ const Player = () => {
             if (fileName.endsWith('.glb') || fileName.endsWith('.gltf')) {
               handleModelDrop(file);
             } else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || 
-                       fileName.endsWith('.png') || fileName.endsWith('.webp') || 
-                       fileName.endsWith('.gif')) {
+                      fileName.endsWith('.png') || fileName.endsWith('.webp') || 
+                      fileName.endsWith('.gif')) {
               handleImageDrop(file);
             } else {
               alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, PNG, WEBP, GIF`);
             }
             
-            e.target.value = null;
+            e.target.value = '';
           }} 
           accept=".glb,.gltf,.jpg,.jpeg,.png,.webp,.gif" 
           style={{ display: 'none' }} 
@@ -760,8 +654,8 @@ const Player = () => {
             />
           )}
           
-          <ImageCloneManager onSelect={handleObjectSelect} />
-          <ModelManager onSelect={handleObjectSelect} />
+          <ImageCloneManager onSelect={setSelectedObject} />
+          <ModelManager onSelect={setSelectedObject} />
           
           <WebFrames
             frames={frames}
@@ -808,14 +702,15 @@ const Player = () => {
             }}
           >
             <SettingsPanel 
-              onToggle={(isOpen) => {
+              onToggle={(isOpen: boolean) => {
                 if (!isOpen) {
                   setCanvasInteractive(true);
                   setShowColorPicker(null);
                   setMouseOverSettings(false);
                   // Reload inventory when settings panel is closed
-                  if (inventoryRef.current && inventoryRef.current.reloadInventory) {
-                    inventoryRef.current.reloadInventory();
+                  if (inventoryRef.current && 'reloadInventory' in inventoryRef.current) {
+                    const inventoryWithReload = inventoryRef.current as { reloadInventory: () => void };
+                    inventoryWithReload.reloadInventory();
                   }
                 } else {
                   setCanvasInteractive(false);
@@ -826,8 +721,9 @@ const Player = () => {
               onClose={() => {
                 setShowSettings(false);
                 // Reload inventory when settings panel is closed
-                if (inventoryRef.current && inventoryRef.current.reloadInventory) {
-                  inventoryRef.current.reloadInventory();
+                if (inventoryRef.current && 'reloadInventory' in inventoryRef.current) {
+                  const inventoryWithReload = inventoryRef.current as { reloadInventory: () => void };
+                  inventoryWithReload.reloadInventory();
                 }
               }}
               activeTab={activeTab}
@@ -850,7 +746,7 @@ const Player = () => {
                 floorPlane: floorPlaneOpacity,
                 background: backgroundOpacity
               }}
-              onOpacityChange={(type, value) => {
+              onOpacityChange={(type: string, value: number) => {
                 if (type === 'grid') setGridOpacity(value);
                 else if (type === 'floorPlane') setFloorPlaneOpacity(value);
                 else if (type === 'background') setBackgroundOpacity(value);
@@ -867,7 +763,7 @@ const Player = () => {
                 thickness: crosshairThickness,
                 style: crosshairStyle
               }}
-              onCrosshairSettingChange={(setting, value) => {
+              onCrosshairSettingChange={(setting: string, value: any) => {
                 if (setting === 'visible') setShowCrosshair(value);
                 else if (setting === 'size') setCrosshairSize(value);
                 else if (setting === 'thickness') setCrosshairThickness(value);
@@ -879,7 +775,7 @@ const Player = () => {
                 floorPlane: floorPlaneVisible,
                 background: backgroundVisible
               }}
-              onVisibilityChange={(setting, value) => {
+              onVisibilityChange={(setting: string, value: boolean) => {
                 if (setting === 'floor') setFloorVisible(value);
                 else if (setting === 'grid') setGridVisible(value);
                 else if (setting === 'floorPlane') setFloorPlaneVisible(value);
@@ -888,7 +784,7 @@ const Player = () => {
               gravityEnabled={gravityEnabled}
               onGravityToggle={setGravityEnabled}
               selectedTheme={selectedTheme}
-              onThemeSelect={(theme) => {
+              onThemeSelect={(theme: string) => {
                 setSelectedTheme(theme);
                 setTheme(theme);
               }}
@@ -948,11 +844,130 @@ const Player = () => {
         {uiVisible && (
           <Inventory 
             ref={inventoryRef}
-            onSelectImage={handleSelectImageFromInventory}
-            onSelectModel={handleSelectModelFromInventory}
-            onClose={handleCloseInventory}
+            onSelectImage={(image: any) => {
+              // Add the selected image to the scene
+              if (!image?.url) {
+                setShowInventory(false);
+                return;
+              }
+              
+              // Calculate position in front of camera
+              const position = new THREE.Vector3();
+              
+              if (cameraRef.current) {
+                const camera = cameraRef.current;
+                const direction = new THREE.Vector3();
+                
+                // Get camera position and direction
+                position.copy(camera.position);
+                camera.getWorldDirection(direction);
+                
+                // Place image at a comfortable distance in front of camera
+                const distance = 3; // 3 units away
+                direction.multiplyScalar(distance);
+                position.add(direction);
+              } else {
+                // Default position if camera not available
+                position.set(0, 1, -3);
+              }
+              
+              // Check if this image is already in the store
+              const existingImage = useImageStore.getState().images.find(img => img.id === image.id);
+              
+              if (existingImage) {
+                // If it exists, update it to be visible in the scene with the new position
+                addImage({
+                  ...existingImage,
+                  src: image.url,
+                  fileName: image.fileName,
+                  position: [position.x, position.y, position.z],
+                  rotation: [0, 0, 0],
+                  scale: 1,
+                  isInScene: true
+                });
+              } else {
+                // Add image to the store
+                addImage({
+                  src: image.url,
+                  fileName: image.fileName,
+                  position: [position.x, position.y, position.z],
+                  rotation: [0, 0, 0],
+                  scale: 1,
+                  isInScene: true
+                });
+              }
+              
+              // Close the inventory
+              setShowInventory(false);
+            }}
+            onSelectModel={(model: any) => {
+              // Add the selected model to the scene
+              if (!model?.url) {
+                setShowInventory(false);
+                return;
+              }
+              
+              // Calculate position in front of camera
+              const position = new THREE.Vector3();
+              
+              if (cameraRef.current) {
+                const camera = cameraRef.current;
+                const direction = new THREE.Vector3();
+                
+                // Get camera position and direction
+                position.copy(camera.position);
+                camera.getWorldDirection(direction);
+                
+                // Place model at a comfortable distance in front of camera
+                direction.multiplyScalar(3);
+                position.add(direction);
+              } else {
+                // Default position if camera not available
+                position.set(0, 1, 0);
+              }
+              
+              // Check if this model is already in the store
+              const existingModel = useModelStore.getState().models.find(mdl => mdl.id === model.id);
+              
+              if (existingModel) {
+                // If it exists, update it to be visible in the scene with the new position
+                useModelStore.getState().updateModel(model.id, {
+                  position: [position.x, position.y, position.z],
+                  rotation: [0, 0, 0],
+                  scale: 1,
+                  isInScene: true
+                });
+              } else {
+                // Add model to the store with destructured position
+                const { addModel } = useModelStore.getState();
+                addModel({
+                  url: model.url,
+                  fileName: model.fileName,
+                  position: [position.x, position.y, position.z],
+                  rotation: [0, 0, 0],
+                  scale: 1,
+                  isInScene: true
+                });
+              }
+              
+              // Close the inventory
+              setShowInventory(false);
+            }}
+            onClose={() => setShowInventory(false)}
             isOpen={showInventory}
-            onRemoveObject={handleRemoveObject}
+            onRemoveObject={(objectData: { type: string; id: string }) => {
+              if (objectData && objectData.type && objectData.id) {
+                // Only remove the object from the canvas (scene)
+                if (objectData.type === 'image') {
+                  // Remove from the scene but keep the data in the inventory
+                  useImageStore.getState().updateImage(objectData.id, { isInScene: false });
+                } else if (objectData.type === 'model') {
+                  // Remove from the scene but keep the data in the inventory
+                  useModelStore.getState().updateModel(objectData.id, { isInScene: false });
+                }
+                setSelectedObject(null);
+              }
+            }}
           />
         )}
       </div>
@@ -960,4 +975,4 @@ const Player = () => {
   );
 };
 
-export default Player;
+export default Player; 

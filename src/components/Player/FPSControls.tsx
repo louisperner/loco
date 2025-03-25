@@ -2,7 +2,21 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls, Html } from '@react-three/drei';
-import { Vector3 } from 'three';
+import { Vector3, Scene, Camera, WebGLRenderer } from 'three';
+
+interface FPSControlsProps {
+  speed?: number;
+  enabled?: boolean;
+  gravityEnabled?: boolean;
+  floorHeight?: number;
+  initialPosition?: [number, number, number];
+}
+
+interface RayHelper {
+  sphere: THREE.Mesh;
+  arrow: THREE.ArrowHelper;
+  laser: THREE.Line;
+}
 
 /**
  * FPSControls Component
@@ -10,31 +24,31 @@ import { Vector3 } from 'three';
  * Handles both keyboard movement (WASD/Arrow keys) and mouse look control
  * in a single system while allowing them to work independently.
  */
-function FPSControls({ 
+const FPSControls: React.FC<FPSControlsProps> = ({ 
   speed = 5, 
   enabled = true, 
   gravityEnabled = false, 
   floorHeight = -2,
   initialPosition = [0,0,0]
-}) {
+}) => {
   const { camera, gl, scene } = useThree();
-  const controls = useRef();
-  const raycaster = useRef(new THREE.Raycaster());
-  const rayHelper = useRef();
-  const moveForward = useRef(false);
-  const moveBackward = useRef(false);
-  const moveLeft = useRef(false);
-  const moveRight = useRef(false);
-  const moveUp = useRef(false);
-  const moveDown = useRef(false);
-  const [isLocked, setIsLocked] = useState(false);
-  const hasSetInitialPosition = useRef(false);
+  const controls = useRef<any>(null);
+  const raycaster = useRef<THREE.Raycaster>(new THREE.Raycaster());
+  const rayHelper = useRef<RayHelper | null>(null);
+  const moveForward = useRef<boolean>(false);
+  const moveBackward = useRef<boolean>(false);
+  const moveLeft = useRef<boolean>(false);
+  const moveRight = useRef<boolean>(false);
+  const moveUp = useRef<boolean>(false);
+  const moveDown = useRef<boolean>(false);
+  const [isLocked, setIsLocked] = useState<boolean>(false);
+  const hasSetInitialPosition = useRef<boolean>(false);
   
-  // Referências para controle de gravidade
-  const verticalVelocity = useRef(0);
-  const isOnGround = useRef(false);
+  // References for gravity control
+  const verticalVelocity = useRef<number>(0);
+  const isOnGround = useRef<boolean>(false);
   
-  // Constantes de física
+  // Physics constants
   const GRAVITY = 0.05;
   const JUMP_FORCE = 0.2;
   
@@ -122,12 +136,12 @@ function FPSControls({
       rayHelper.current.laser.quaternion.copy(camera.quaternion);
       
       // Get ALL objects in the scene for raycasting
-      const allObjects = [];
+      const allObjects: THREE.Mesh[] = [];
       scene.traverse((object) => {
-        if (object.isMesh && 
+        if ((object as THREE.Mesh).isMesh && 
             object.name !== "raycasterHelper" && 
             object.name !== "laserBeam") {
-          allObjects.push(object);
+          allObjects.push(object as THREE.Mesh);
         }
       });
       
@@ -193,11 +207,11 @@ function FPSControls({
   useEffect(() => {
     if (!controls.current) return;
     
-    const onLockStateChange = () => {
+    const onLockStateChange = (): void => {
       setIsLocked(!!document.pointerLockElement);
     };
     
-    const onLockError = (event) => {
+    const onLockError = (event: Event): void => {
       console.warn('Pointer Lock Error:', event);
     };
     
@@ -214,7 +228,7 @@ function FPSControls({
   useEffect(() => {
     if (!enabled || !controls.current) return;
     
-    const handleCanvasClick = (event) => {
+    const handleCanvasClick = (event: MouseEvent): void => {
       // Only handle clicks on the canvas itself, not on UI elements
       if (event.target === gl.domElement && !isLocked && enabled) {
         try {
@@ -234,7 +248,7 @@ function FPSControls({
   }, [gl, enabled, isLocked]);
   
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       if (!enabled) return;
       
       switch (e.code) {
@@ -252,11 +266,11 @@ function FPSControls({
           break;
         case 'Space':
           if (gravityEnabled && isOnGround.current) {
-            // Pular quando estiver no chão com gravidade
+            // Jump when on the ground with gravity enabled
             verticalVelocity.current = JUMP_FORCE;
             isOnGround.current = false;
           } else {
-            // Movimento para cima quando sem gravidade
+            // Move up when gravity is disabled
             moveUp.current = true;
           }
           break;
@@ -266,7 +280,7 @@ function FPSControls({
       }
     };
     
-    const handleKeyUp = (e) => {
+    const handleKeyUp = (e: KeyboardEvent): void => {
       if (!enabled) return;
       
       switch (e.code) {
@@ -305,58 +319,58 @@ function FPSControls({
   useFrame((state, delta) => {
     if (!enabled) return;
     
-    // Ajuste de velocidade para suavizar o movimento
+    // Adjust speed for smooth movement
     const actualSpeed = speed * delta;
     
-    // Direções de movimento
+    // Movement directions
     const direction = new Vector3();
     const sideDirection = new Vector3();
     
-    // Controle frente/trás
+    // Forward/backward control
     if (moveForward.current) direction.z = -1;
     if (moveBackward.current) direction.z = 1;
     
-    // Controle esquerda/direita
+    // Left/right control
     if (moveLeft.current) sideDirection.x = -1;
     if (moveRight.current) sideDirection.x = 1;
     
-    // Normalizar para movimento diagonal consistente
+    // Normalize for consistent diagonal movement
     if (direction.length() > 0) direction.normalize();
     if (sideDirection.length() > 0) sideDirection.normalize();
     
-    // Aplicar rotação da câmera ao movimento
+    // Apply camera rotation to movement
     direction.applyQuaternion(camera.quaternion);
     sideDirection.applyQuaternion(camera.quaternion);
     
-    // Manter movimento horizontal
+    // Keep movement horizontal
     direction.y = 0;
     sideDirection.y = 0;
     
-    // Normalizar novamente
+    // Normalize again
     if (direction.length() > 0) direction.normalize();
     if (sideDirection.length() > 0) sideDirection.normalize();
     
-    // Aplicar movimento horizontal
+    // Apply horizontal movement
     camera.position.addScaledVector(direction, actualSpeed);
     camera.position.addScaledVector(sideDirection, actualSpeed);
     
-    // Sistema de gravidade
+    // Gravity system
     if (gravityEnabled) {
-      // Verificar colisão com o chão
-      if (camera.position.y <= floorHeight + 1.8) { // 1.8 = altura da câmera/jogador
+      // Check floor collision
+      if (camera.position.y <= floorHeight + 1.8) { // 1.8 = camera/player height
         camera.position.y = floorHeight + 1.8;
         verticalVelocity.current = 0;
         isOnGround.current = true;
       } else {
-        // Aplicar gravidade em queda livre
+        // Apply free-fall gravity
         verticalVelocity.current -= GRAVITY;
         isOnGround.current = false;
       }
       
-      // Atualizar posição vertical
+      // Update vertical position
       camera.position.y += verticalVelocity.current;
     } else {
-      // Movimento vertical tradicional (sem gravidade)
+      // Traditional vertical movement (no gravity)
       if (moveUp.current) camera.position.y += actualSpeed;
       if (moveDown.current) camera.position.y -= actualSpeed;
     }
@@ -365,21 +379,22 @@ function FPSControls({
   useEffect(() => {
     if (controls.current) {
       // Prevent context menu on right click
-      const handleContextMenu = (e) => {
+      const handleContextMenu = (e: MouseEvent): void => {
         e.preventDefault();
       };
 
       // Debug key handler
-      const handleKeyPress = (e) => {
+      const handleKeyPress = (e: KeyboardEvent): void => {
         if (e.key === 'F9') {
           // Toggle visibility of collision meshes for debugging
           scene.traverse((object) => {
-            if (object.isMesh && 
+            if ((object as THREE.Mesh).isMesh && 
                 (object.name.includes('collider') || 
                  object.name.includes('image-collider') || 
                  object.name.includes('model-collider'))) {
               
-              const material = object.material;
+              const mesh = object as THREE.Mesh;
+              const material = mesh.material as THREE.MeshBasicMaterial;
               if (material) {
                 material.visible = !material.visible;
                 material.opacity = material.visible ? 0.5 : 0;
@@ -392,16 +407,16 @@ function FPSControls({
         }
       };
 
-      const handleClick = (e) => {
+      const handleClick = (e: MouseEvent): void => {
         if (!enabled || !isLocked) return;
 
         // We don't need to create a new direction vector or raycaster here
         // since we're using the same raycaster that's updated every frame
         
         // Get ALL objects in the scene
-        const allObjects = [];
+        const allObjects: THREE.Object3D[] = [];
         scene.traverse((object) => {
-          if (object.isMesh && 
+          if ((object as THREE.Mesh).isMesh && 
               object.name !== "raycasterHelper" && 
               object.name !== "laserBeam") {
             allObjects.push(object);
@@ -425,8 +440,8 @@ function FPSControls({
             console.log('Intersected object:', intersectedObject);
             
             // Find the parent with userData by traversing up
-            let parent = intersectedObject;
-            let foundObject = null;
+            let parent: THREE.Object3D | null = intersectedObject;
+            let foundObject: THREE.Object3D | null = null;
             
             // Traverse up the parent chain
             while (parent) {
@@ -445,13 +460,19 @@ function FPSControls({
               console.log('Found object to remove:', foundObject.userData);
               
               // Highlight the laser beam red briefly to indicate deletion
-              const originalColor = rayHelper.current.laser.material.color.clone();
-              rayHelper.current.laser.material.color.set(0xff0000);
-              rayHelper.current.laser.material.opacity = 1.0;
+              const materialAsBasic = rayHelper.current?.laser.material as THREE.LineBasicMaterial;
+              const originalColor = materialAsBasic?.color.clone();
+              if (rayHelper.current) {
+                materialAsBasic.color.set(0xff0000);
+                materialAsBasic.opacity = 1.0;
+              }
               
               setTimeout(() => {
-                rayHelper.current.laser.material.color.copy(originalColor);
-                rayHelper.current.laser.material.opacity = 0.8;
+                if (rayHelper.current && originalColor) {
+                  const material = rayHelper.current.laser.material as THREE.LineBasicMaterial;
+                  material.color.copy(originalColor);
+                  material.opacity = 0.8;
+                }
               }, 300);
               
               // Dispatch the remove event
@@ -474,13 +495,19 @@ function FPSControls({
             // console.log('Hit point for new object:', hitPoint);
             
             // Highlight the laser beam green briefly to indicate addition
-            const originalColor = rayHelper.current.laser.material.color.clone();
-            rayHelper.current.laser.material.color.set(0x00ff00);
-            rayHelper.current.laser.material.opacity = 1.0;
+            const material = rayHelper.current?.laser.material as THREE.LineBasicMaterial;
+            const originalColor = material?.color.clone();
+            if (rayHelper.current) {
+              material.color.set(0x00ff00);
+              material.opacity = 1.0;
+            }
             
             setTimeout(() => {
-              rayHelper.current.laser.material.color.copy(originalColor);
-              rayHelper.current.laser.material.opacity = 0.8;
+              if (rayHelper.current && originalColor) {
+                const material = rayHelper.current.laser.material as THREE.LineBasicMaterial;
+                material.color.copy(originalColor);
+                material.opacity = 0.8;
+              }
             }, 300);
             
             // Dispatch an event to add a new object at this position
@@ -497,18 +524,25 @@ function FPSControls({
             // If no intersection, we can add an object at a fixed distance
             const targetPosition = new THREE.Vector3();
             targetPosition.copy(camera.position);
+            const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
             targetPosition.addScaledVector(direction, 10); // Place 10 units in front
             
             console.log('Placing object at distance:', targetPosition);
             
             // Highlight the laser beam green briefly
-            const originalColor = rayHelper.current.laser.material.color.clone();
-            rayHelper.current.laser.material.color.set(0x00ff00);
-            rayHelper.current.laser.material.opacity = 1.0;
+            const material = rayHelper.current?.laser.material as THREE.LineBasicMaterial;
+            const originalColor = material?.color.clone();
+            if (rayHelper.current) {
+              material.color.set(0x00ff00);
+              material.opacity = 1.0;
+            }
             
             setTimeout(() => {
-              rayHelper.current.laser.material.color.copy(originalColor);
-              rayHelper.current.laser.material.opacity = 0.8;
+              if (rayHelper.current && originalColor) {
+                const material = rayHelper.current.laser.material as THREE.LineBasicMaterial;
+                material.color.copy(originalColor);
+                material.opacity = 0.8;
+              }
             }, 300);
             
             // Dispatch an event to add a new object
@@ -537,9 +571,9 @@ function FPSControls({
 
   return (
     <>
-      <PointerLockControls ref={controls} args={[camera, gl.domElement]} />
+      <PointerLockControls ref={controls} camera={camera} domElement={gl.domElement} />
     </>
   );
-}
+};
 
 export default FPSControls; 
