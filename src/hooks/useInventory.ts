@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, MouseEvent, KeyboardEvent, DragEvent } from 'react';
+import { useState, useEffect, useCallback, useMemo, MouseEvent, KeyboardEvent, DragEvent } from 'react';
 import { useImageStore } from '../store/useImageStore';
 import { useModelStore } from '../store/useModelStore';
 import { HOTBAR_STORAGE_KEY, getImageCategory, getModelCategory, showAddedToCanvasIndicator } from '../utils/inventoryUtils';
@@ -254,11 +254,18 @@ export const useInventory = (
 
   // Update showFullInventory when isOpen prop changes
   useEffect(() => {
-    setShowFullInventory(isOpen || false);
-    // Load items whenever the component mounts
-    loadItemsFromDisk();
-  }, [isOpen, loadItemsFromDisk]);
+    // Only update showFullInventory if it's different from the isOpen prop
+    if ((isOpen || false) !== showFullInventory) {
+      setShowFullInventory(isOpen || false);
+    }
+  }, [isOpen, showFullInventory]);
 
+  // Load items when the component mounts only
+  useEffect(() => {
+    loadItemsFromDisk();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  
   // Save hotbar to localStorage whenever it changes
   useEffect(() => {
     try {
@@ -558,20 +565,29 @@ export const useInventory = (
   };
 
   // Filter items based on active tab and search term
-  const filteredItems = items.filter(item => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'images' && item.type !== 'image') return false;
-    if (activeTab === 'models' && item.type !== 'model') return false;
-    if (activeTab !== 'images' && activeTab !== 'models' && activeTab !== 'all') {
-      if (item.category !== activeTab) return false;
+  const filteredItems = useMemo(() => {
+    let result = [...items];
+    
+    // Filter by category/tab
+    if (activeTab === 'images') {
+      result = result.filter(item => item.type === 'image');
+    } else if (activeTab === 'models') {
+      result = result.filter(item => item.type === 'model');
+    } else if (activeTab !== 'all') {
+      result = result.filter(item => item.category === activeTab);
     }
     
-    if (searchTerm) {
-      return item.fileName.toLowerCase().includes(searchTerm.toLowerCase());
+    // Filter by search term
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      result = result.filter(item => 
+        item.fileName.toLowerCase().includes(searchLower) || 
+        (item.category && item.category.toLowerCase().includes(searchLower))
+      );
     }
     
-    return true;
-  });
+    return result;
+  }, [items, activeTab, searchTerm]);
 
   const handleRemoveItem = useCallback(async (itemId: string): Promise<void> => {
     const itemToDelete = items.find(item => item.id === itemId);

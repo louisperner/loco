@@ -2,7 +2,30 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import TopNavBar from '../ui/TopNavBar';
 
-const Hotbar = ({
+// Define the item interface based on what's used in the component
+interface HotbarItem {
+  id: string;
+  type: 'model' | 'image';
+  fileName: string;
+  url: string;
+  thumbnailUrl?: string;
+  [key: string]: any; // For any additional properties
+}
+
+interface HotbarProps {
+  hotbarItems: (HotbarItem | null)[];
+  selectedHotbarSlot: number | null;
+  dragOverSlot: number | null;
+  handleHotbarSlotClick: (index: number, e: React.MouseEvent) => void;
+  handleDragOver: (e: React.DragEvent<HTMLDivElement>, index: number) => void;
+  handleDragLeave: (e: React.DragEvent<HTMLDivElement>, index: number) => void;
+  handleDrop: (e: React.DragEvent<HTMLDivElement>, index: number) => void;
+  handleDragStart: (e: React.DragEvent<HTMLDivElement>, item: HotbarItem) => void;
+  handleDragEnd: (e: React.DragEvent<HTMLDivElement>) => void;
+  handleRemoveFromHotbar: (index: number, e: React.MouseEvent) => void;
+}
+
+const Hotbar: React.FC<HotbarProps> = ({
   hotbarItems,
   selectedHotbarSlot,
   dragOverSlot,

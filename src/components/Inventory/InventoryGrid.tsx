@@ -2,7 +2,33 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import InventoryItem from './InventoryItem';
 
-const InventoryGrid = ({
+// Define item interface based on what's used in the component
+interface InventoryItem {
+  id: string;
+  fileName: string;
+  type: 'model' | 'image';
+  url: string;
+  thumbnailUrl?: string;
+  [key: string]: any; // For any additional properties
+}
+
+interface InventoryGridProps {
+  items: InventoryItem[];
+  loading: boolean;
+  error: string | null;
+  selectedItem: InventoryItem | null;
+  hotbarItems: (InventoryItem | null)[];
+  isAddingToHotbar: boolean;
+  selectedHotbarSlot: number | null;
+  handleItemSelect: (item: InventoryItem) => void;
+  handleAddToHotbar: (item: InventoryItem) => void;
+  handleDragStart: (e: React.DragEvent<HTMLDivElement>, item: InventoryItem) => void;
+  handleDragEnd: (e: React.DragEvent<HTMLDivElement>) => void;
+  handleConfirmSelection: () => void;
+  handleRemoveItem: (itemId: string, e: React.MouseEvent) => void;
+}
+
+const InventoryGrid: React.FC<InventoryGridProps> = ({
   items,
   loading,
   error,
