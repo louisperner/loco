@@ -1,7 +1,9 @@
 import React from 'react';
 import { Circle } from '@react-three/drei';
 
-interface FloorProps {}
+type FloorProps = {
+  // Add any props here if needed in the future
+};
 
 const Floor: React.FC<FloorProps> = () => {
   return (

@@ -70,7 +70,7 @@ const Crosshair: React.FC<CrosshairProps> = ({
         </div>
       );
     
-    case 'plus': // Cross with space in center
+    case 'plus': { // Cross with space in center
       const gap = size / 4;
       return (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[1000]">
@@ -120,6 +120,7 @@ const Crosshair: React.FC<CrosshairProps> = ({
           />
         </div>
       );
+    }
       
     default:
       return null;

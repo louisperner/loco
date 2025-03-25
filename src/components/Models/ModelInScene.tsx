@@ -2,7 +2,6 @@ import React, { useRef, useState, useEffect, Suspense, ReactElement } from 'reac
 import { Html, useGLTF, TransformControls, Box } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useModelStore } from '../../store/useModelStore';
 import { Lock, Unlock, Move, RotateCw, Plus, Minus, MapPin, Trash2 } from 'lucide-react';
 
 // Define types for props and data
@@ -47,14 +46,19 @@ interface ModelErrorBoundaryState {
 
 // Separate model component to use with Suspense and ErrorBoundary
 const Model: React.FC<ModelProps> = ({ url, scale }) => {
-  const [modelUrl, setModelUrl] = useState<string>(url);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
-  
-  // Process URL as needed
+  const [modelUrl, setModelUrl] = useState<string>(url);
+
+  // This component will suspend until the model is loaded
+  const { scene } = useGLTF(modelUrl, undefined, undefined, (error: any) => {
+    console.error('Error loading model with Three.js:', error, modelUrl);
+    throw error; // Propagate the error to the ErrorBoundary
+  });
+
   useEffect(() => {
+    // Handle app-file:// protocol conversion
     const loadModel = async () => {
-      setIsLoading(true);
+      setError(null);
       try {
         // If URL starts with file:// or app-file://, try to load it with Electron
         if ((url && url.startsWith('file://')) || (url && url.startsWith('app-file://'))) {
@@ -105,8 +109,6 @@ const Model: React.FC<ModelProps> = ({ url, scale }) => {
         } else {
           setError(new Error('Unknown error loading model'));
         }
-      } finally {
-        setIsLoading(false);
       }
     };
     
@@ -129,20 +131,9 @@ const Model: React.FC<ModelProps> = ({ url, scale }) => {
     };
   }, [url]);
   
-  // If loading or there's an error, don't try to load the model with THREE
-  if (isLoading) {
-    return null;
-  }
-  
   if (error) {
     throw error; // Let the ErrorBoundary handle it
   }
-  
-  // This component will suspend until the model is loaded
-  const { scene } = useGLTF(modelUrl, undefined, undefined, (error: any) => {
-    console.error('Error loading model with Three.js:', error, modelUrl);
-    throw error; // Propagate the error to the ErrorBoundary
-  });
   
   const clonedScene = scene.clone();
   

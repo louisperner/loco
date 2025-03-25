@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import cheerio from 'cheerio';
 
-interface ScrapProps {}
+type ScrapProps = {
+  // Add any props here if needed in the future
+};
 
 const Scrap: React.FC<ScrapProps> = () => {
   const [titles, setTitles] = useState<string[]>([]);
@@ -14,9 +16,9 @@ const Scrap: React.FC<ScrapProps> = () => {
       const response = await axios.get('https://nodejs.org');
       const html = response.data;
       const $ = cheerio.load(html);
-      let scrapedTitles: string[] = [];
+      const scrapedTitles: string[] = [];
 
-      $('h1').each((index: number, element: any) => {
+      $('h1').each((_index: number, element: any) => {
         scrapedTitles.push($(element).text());
       });
 

@@ -8,7 +8,6 @@ import { FaExpand, FaCompress, FaArrowsAlt } from 'react-icons/fa';
 import { TbRotate360, TbArrowBigUp, TbArrowBigDown, TbArrowBigLeft, TbArrowBigRight } from 'react-icons/tb';
 import { BsArrowsMove } from 'react-icons/bs';
 import * as THREE from 'three';
-import { Object3DEventMap } from 'three';
 
 // Define types for the app
 export interface ImageDataType {
@@ -39,14 +38,6 @@ interface ImageInSceneProps {
 
 interface ImageCloneManagerProps {
   onSelect?: (data: ImageDataType & { type: string }) => void;
-}
-
-// Custom event interface for removeObject
-interface RemoveObjectEvent extends CustomEvent {
-  detail: {
-    type: string;
-    id: string;
-  };
 }
 
 type TransformMode = 'translate' | 'rotate' | 'scale';
@@ -240,6 +231,8 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
         }
       };
     }
+    
+    return undefined; // Return undefined when condition is false
   }, [showControls, imageData, scale, onUpdate]);
 
   // Update position and rotation in useFrame to ensure synchronization

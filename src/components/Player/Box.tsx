@@ -4,7 +4,7 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Import react-live with any type since we don't have type definitions
-// @ts-ignore
+// @ts-expect-error - R3F component props types not fully defined
 import { LiveProvider, LiveComponent } from 'react-live';
 
 interface BoxProps {
@@ -17,10 +17,10 @@ const Box: React.FC<BoxProps> = (props) => {
   // This reference gives us direct access to the THREE.Mesh object
   const ref = useRef<THREE.Mesh>(null);
   // Hold state for hovered and clicked events
-  const [hovered, hover] = useState<boolean>(false);
+  const [_hovered, hover] = useState<boolean>(false);
   const [clicked, click] = useState<boolean>(false);
   // Subscribe this component to the render-loop, rotate the mesh every frame
-  useFrame((state, delta) => {
+  useFrame((_state, delta) => {
     if (ref.current) {
       ref.current.rotation.x += delta;
     }
@@ -31,9 +31,9 @@ const Box: React.FC<BoxProps> = (props) => {
       {...props}
       ref={ref}
       scale={clicked ? 1.5 : 1}
-      onClick={(event) => click(!clicked)}
-      onPointerOver={(event) => hover(true)}
-      onPointerOut={(event) => hover(false)}
+      onClick={(_event) => click(!clicked)}
+      onPointerOver={(_event) => hover(true)}
+      onPointerOut={(_event) => hover(false)}
     >
       {/* <boxGeometry args={[1, 1, 1]} /> */}
       {/* <meshStandardMaterial color={hovered ? 'hotpink' : 'orange'} /> */}

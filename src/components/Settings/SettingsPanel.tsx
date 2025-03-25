@@ -10,7 +10,7 @@ import {
   SlidePanelFooter,
   SlidePanelClose,
 } from '@/components/ui/slide-panel';
-import { FaCog, FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaMagic, FaDatabase } from 'react-icons/fa';
+import { FaCog, FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaMagic } from 'react-icons/fa';
 import { ColorsTab } from './tabs/ColorsTab';
 import { GroundTab } from './tabs/GroundTab';
 import { CrosshairTab } from './tabs/CrosshairTab';
@@ -137,6 +137,10 @@ export function SettingsPanel({
   },
   onEnvironmentSettingChange
 }: SettingsPanelProps) {
+  // Mark unused variables
+  void children;
+  void colorChanged;
+
   const [open, setOpen] = useState(isOpen || false);
   const colorPickerContainerRef = useRef<HTMLDivElement>(null);
   
@@ -144,48 +148,48 @@ export function SettingsPanel({
   const defaultColorPickerRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const effectiveColorPickerRefs = colorPickerRefs || defaultColorPickerRefs;
 
-  // Handle clean all files function for DataManagementTab
-  const handleCleanAllFiles = async () => {
-    try {
-      // Implementation for cleaning all files
-      if (window.electron && typeof window.electron.cleanAllFiles === 'function') {
-        return await window.electron.cleanAllFiles();
-      } else {
-        console.error('Clean files function not available');
-        return { success: false, error: 'Clean files function not available' };
-      }
-    } catch (error) {
-      console.error('Error cleaning files:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
-  };
-
   // Load saved settings on component mount
   useEffect(() => {
     const savedSettings = loadSettings();
     if (savedSettings) {
       // Apply saved settings
-      onColorChange && Object.entries(savedSettings.colors).forEach(([type, color]) => {
-        onColorChange(type, color);
-      });
-      onOpacityChange && Object.entries(savedSettings.opacities).forEach(([type, value]) => {
-        onOpacityChange(type, value);
-      });
-      onGroundSizeChange && onGroundSizeChange(savedSettings.groundSize);
-      onGroundInfiniteToggle && onGroundInfiniteToggle(savedSettings.isGroundInfinite);
-      onGroundShapeChange && onGroundShapeChange(savedSettings.groundShape);
-      onGridPatternChange && onGridPatternChange(savedSettings.gridPattern);
-      onCrosshairSettingChange && Object.entries(savedSettings.crosshairSettings).forEach(([setting, value]) => {
-        onCrosshairSettingChange(setting, value);
-      });
-      onVisibilityChange && Object.entries(savedSettings.visibilitySettings).forEach(([setting, value]) => {
-        onVisibilityChange(setting, value);
-      });
-      onGravityToggle && onGravityToggle(savedSettings.gravityEnabled);
-      onThemeSelect && onThemeSelect(savedSettings.selectedTheme);
-      onEnvironmentSettingChange && Object.entries(savedSettings.environmentSettings).forEach(([setting, value]) => {
-        onEnvironmentSettingChange(setting, value);
-      });
+      if (onColorChange) {
+        Object.entries(savedSettings.colors).forEach(([type, color]) => {
+          onColorChange(type, color);
+        });
+      }
+      
+      if (onOpacityChange) {
+        Object.entries(savedSettings.opacities).forEach(([type, value]) => {
+          onOpacityChange(type, value);
+        });
+      }
+      
+      if (onGroundSizeChange) onGroundSizeChange(savedSettings.groundSize);
+      if (onGroundInfiniteToggle) onGroundInfiniteToggle(savedSettings.isGroundInfinite);
+      if (onGroundShapeChange) onGroundShapeChange(savedSettings.groundShape);
+      if (onGridPatternChange) onGridPatternChange(savedSettings.gridPattern);
+      
+      if (onCrosshairSettingChange) {
+        Object.entries(savedSettings.crosshairSettings).forEach(([setting, value]) => {
+          onCrosshairSettingChange(setting, value);
+        });
+      }
+      
+      if (onVisibilityChange) {
+        Object.entries(savedSettings.visibilitySettings).forEach(([setting, value]) => {
+          onVisibilityChange(setting, value);
+        });
+      }
+      
+      if (onGravityToggle) onGravityToggle(savedSettings.gravityEnabled);
+      if (onThemeSelect) onThemeSelect(savedSettings.selectedTheme);
+      
+      if (onEnvironmentSettingChange) {
+        Object.entries(savedSettings.environmentSettings).forEach(([setting, value]) => {
+          onEnvironmentSettingChange(setting, value);
+        });
+      }
     }
   }, []);
 

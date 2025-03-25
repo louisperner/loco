@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
-interface SplashScreenProps {}
+type SplashScreenProps = {
+  // Add any props here if needed in the future
+};
 
 const SplashScreen: React.FC<SplashScreenProps> = () => {
   const [fadeOut, setFadeOut] = useState<boolean>(false);
