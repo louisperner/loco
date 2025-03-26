@@ -15,6 +15,7 @@ interface InventoryItem {
   width?: number;
   height?: number;
   aspectRatio?: number;
+  [key: string]: unknown;
 }
 
 interface InventoryGridProps {

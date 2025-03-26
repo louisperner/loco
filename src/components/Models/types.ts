@@ -61,6 +61,7 @@ export interface RemoveObjectEvent extends CustomEvent {
 export interface ImageDataType {
   id: string;
   src: string;
+  alt?: string;
   width?: number;
   height?: number;
   position?: [number, number, number];
@@ -70,12 +71,9 @@ export interface ImageDataType {
   removeBackground?: boolean;
   removeBorder?: boolean;
   scale?: number;
-  alt?: string;
   isInScene?: boolean;
-  fileName?: string;
-  type?: string;
-  aspectRatio?: number;
-  thumbnailUrl?: string;
+  camera?: THREE.Camera;
+  [key: string]: unknown;
 }
 
 export interface ImageInSceneProps {
