@@ -1,3 +1,6 @@
+import { ReactNode, MutableRefObject, RefObject } from 'react';
+import { RgbaColor } from 'react-colorful';
+
 export interface LocoSettings {
   colors: {
     grid?: string;
@@ -47,28 +50,38 @@ export interface LocoSettings {
   };
 }
 
+export type ColorType = 'grid' | 'floorPlane' | 'background' | 'crosshair';
+
 export interface SettingsTab {
   id: string;
   label: string;
-  icon?: React.ReactNode;
-  content: React.ReactNode;
+  icon?: ReactNode;
+  content: ReactNode;
 }
 
+// Define possible value types for settings
+export type SettingValue = 
+  | string 
+  | number 
+  | boolean 
+  | [number, number, number] 
+  | RgbaColor;
+
 export interface SettingsPanelProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
   onToggle?: (isOpen: boolean) => void;
   tabs?: SettingsTab[];
   isOpen?: boolean;
   onClose?: () => void;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
-  onColorChange?: (type: string, color: any) => void;
+  onColorChange?: (type: string, color: string | RgbaColor) => void;
   onResetColors?: () => void;
   isResetAnimating?: boolean;
   colorChanged?: string | null;
   showColorPicker?: string | null;
   onColorPickerChange?: (type: string | null) => void;
-  colorPickerRefs?: React.MutableRefObject<{ [key: string]: HTMLDivElement | null }>;
+  colorPickerRefs?: MutableRefObject<{ [key: string]: HTMLDivElement | null }>;
   colors: {
     grid?: string;
     floorPlane?: string;
@@ -95,7 +108,7 @@ export interface SettingsPanelProps {
     thickness: number;
     style: 'classic' | 'dot' | 'cross' | 'plus';
   };
-  onCrosshairSettingChange?: (setting: string, value: any) => void;
+  onCrosshairSettingChange?: (setting: string, value: SettingValue) => void;
   visibilitySettings: {
     floor: boolean;
     grid: boolean;
@@ -124,5 +137,15 @@ export interface SettingsPanelProps {
     starsSaturation: number;
     starsFade: boolean;
   };
-  onEnvironmentSettingChange?: (setting: string, value: any) => void;
+  onEnvironmentSettingChange?: (setting: string, value: SettingValue) => void;
+}
+
+export interface ColorPickerControlProps {
+  color: string;
+  colorKey: string;
+  showColorPicker: string | null;
+  onColorPickerChange: (type: string | null) => void;
+  onColorChange: (type: string, color: string | RgbaColor) => void;
+  colorPickerRefs: MutableRefObject<{ [key: string]: HTMLDivElement | null }>;
+  colorPickerContainerRef: RefObject<HTMLDivElement>;
 } 

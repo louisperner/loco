@@ -1,7 +1,7 @@
 import React from 'react';
 import { Switch } from '@/components/ui/switch';
-import { RgbaColorPicker, RgbaColor } from 'react-colorful';
-import { parseColor } from '../utils';
+import { RgbaColor } from 'react-colorful';
+import { ColorPickerControl } from '../ColorPickerControl';
 
 interface GroundTabProps {
   colors: {
@@ -71,31 +71,15 @@ export function GroundTab({
             <div className="flex items-center justify-between">
               <span className="text-xs text-white/70">Color</span>
               <div className="flex items-center space-x-3">
-                <div 
-                  className="w-6 h-6 rounded-full cursor-pointer border border-white/20"
-                  style={{ backgroundColor: colors.floorPlane }}
-                  onClick={() => onColorPickerChange('floorPlane')}
+                <ColorPickerControl
+                  color={colors.floorPlane || 'rgba(100, 100, 100, 0.3)'}
+                  colorKey="floorPlane"
+                  showColorPicker={showColorPicker}
+                  onColorPickerChange={onColorPickerChange}
+                  onColorChange={onColorChange}
+                  colorPickerRefs={colorPickerRefs}
+                  colorPickerContainerRef={colorPickerContainerRef}
                 />
-                {showColorPicker === 'floorPlane' && (
-                  <div 
-                    ref={(el) => {
-                      if (colorPickerRefs.current) {
-                        colorPickerRefs.current.floorPlane = el;
-                      }
-                    }}
-                    className="absolute right-16 z-50"
-                  >
-                    <div 
-                      ref={colorPickerContainerRef}
-                      className="p-3 rounded-lg bg-[#333333] shadow-xl border border-white/10"
-                    >
-                      <RgbaColorPicker
-                        color={parseColor(colors.floorPlane)}
-                        onChange={(color) => onColorChange('floorPlane', color)}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -160,31 +144,15 @@ export function GroundTab({
             <div className="flex items-center justify-between">
               <span className="text-xs text-white/70">Color</span>
               <div className="flex items-center space-x-3">
-                <div 
-                  className="w-6 h-6 rounded-full cursor-pointer border border-white/20"
-                  style={{ backgroundColor: colors.grid }}
-                  onClick={() => onColorPickerChange('grid')}
+                <ColorPickerControl
+                  color={colors.grid || 'rgba(255, 255, 255, 0.5)'}
+                  colorKey="grid"
+                  showColorPicker={showColorPicker}
+                  onColorPickerChange={onColorPickerChange}
+                  onColorChange={onColorChange}
+                  colorPickerRefs={colorPickerRefs}
+                  colorPickerContainerRef={colorPickerContainerRef}
                 />
-                {showColorPicker === 'grid' && (
-                  <div 
-                    ref={(el) => {
-                      if (colorPickerRefs.current) {
-                        colorPickerRefs.current.grid = el;
-                      }
-                    }}
-                    className="absolute right-16 z-50"
-                  >
-                    <div 
-                      ref={colorPickerContainerRef}
-                      className="p-3 rounded-lg bg-[#333333] shadow-xl border border-white/10"
-                    >
-                      <RgbaColorPicker
-                        color={parseColor(colors.grid)}
-                        onChange={(color) => onColorChange('grid', color)}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -208,7 +176,7 @@ export function GroundTab({
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-white/70">Opacity</span>
-                <span className="text-xs text-white/70">{opacities.grid}</span>
+                <span className="text-xs text-white/70">{opacities.grid.toFixed(1)}</span>
               </div>
               <input 
                 type="range" 

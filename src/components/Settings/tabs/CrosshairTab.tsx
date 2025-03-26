@@ -1,7 +1,8 @@
 import React from 'react';
 import { Switch } from '@/components/ui/switch';
-import { RgbaColorPicker, RgbaColor } from 'react-colorful';
-import { parseColor } from '../utils';
+import { RgbaColor } from 'react-colorful';
+import { ColorPickerControl } from '../ColorPickerControl';
+import { SettingValue } from '../types';
 
 interface CrosshairTabProps {
   colors: {
@@ -13,7 +14,7 @@ interface CrosshairTabProps {
     thickness: number;
     style: 'classic' | 'dot' | 'cross' | 'plus';
   };
-  onCrosshairSettingChange: (setting: string, value: any) => void;
+  onCrosshairSettingChange: (setting: string, value: SettingValue) => void;
   onColorChange: (type: string, color: string | RgbaColor) => void;
   showColorPicker: string | null;
   onColorPickerChange: (type: string | null) => void;
@@ -49,31 +50,15 @@ export function CrosshairTab({
             <div className="flex items-center justify-between">
               <span className="text-xs text-white/70">Color</span>
               <div className="flex items-center space-x-3">
-                <div 
-                  className="w-6 h-6 rounded-full cursor-pointer border border-white/20"
-                  style={{ backgroundColor: colors.crosshair }}
-                  onClick={() => onColorPickerChange('crosshair')}
+                <ColorPickerControl
+                  color={colors.crosshair || 'rgba(255, 255, 255, 1)'}
+                  colorKey="crosshair"
+                  showColorPicker={showColorPicker}
+                  onColorPickerChange={onColorPickerChange}
+                  onColorChange={onColorChange}
+                  colorPickerRefs={colorPickerRefs}
+                  colorPickerContainerRef={colorPickerContainerRef}
                 />
-                {showColorPicker === 'crosshair' && (
-                  <div 
-                    ref={(el) => {
-                      if (colorPickerRefs.current) {
-                        colorPickerRefs.current.crosshair = el;
-                      }
-                    }}
-                    className="absolute right-16 z-50"
-                  >
-                    <div 
-                      ref={colorPickerContainerRef}
-                      className="p-3 rounded-lg bg-[#333333] shadow-xl border border-white/10"
-                    >
-                      <RgbaColorPicker
-                        color={parseColor(colors.crosshair)}
-                        onChange={(color) => onColorChange('crosshair', color)}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 

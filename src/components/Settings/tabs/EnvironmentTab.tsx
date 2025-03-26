@@ -1,5 +1,6 @@
 import React from 'react';
 import { Switch } from '@/components/ui/switch';
+import { SettingValue } from '../types';
 
 interface EnvironmentTabProps {
   environmentSettings: {
@@ -18,7 +19,7 @@ interface EnvironmentTabProps {
     starsSaturation: number;
     starsFade: boolean;
   };
-  onEnvironmentSettingChange: (setting: string, value: any) => void;
+  onEnvironmentSettingChange: (setting: string, value: SettingValue) => void;
   gravityEnabled: boolean;
   onGravityToggle: (enabled: boolean) => void;
 }

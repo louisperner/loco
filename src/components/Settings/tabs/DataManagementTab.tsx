@@ -2,16 +2,6 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FaTrash, FaExclamationTriangle, FaSync } from 'react-icons/fa';
 
-// Add window.electron type declaration
-declare global {
-  interface Window {
-    electron?: {
-      cleanAllFiles: () => Promise<{ success: boolean; message?: string; error?: string }>;
-      [key: string]: any;
-    };
-  }
-}
-
 interface DataManagementTabProps {
   onCleanAllFiles?: () => Promise<{ success: boolean; message?: string; error?: string }>;
 }
@@ -28,13 +18,10 @@ export function DataManagementTab({ onCleanAllFiles }: DataManagementTabProps) {
       setCleaningStatus('Cleaning all files...');
       setShowReload(false);
       
-      // console.log('Starting clean all files process...');
-      
       let result;
       
       // Use the provided onCleanAllFiles prop if available
       if (onCleanAllFiles) {
-        // console.log('Using provided onCleanAllFiles function...');
         result = await onCleanAllFiles();
       } else {
         // Fallback to direct electron API call
@@ -44,14 +31,10 @@ export function DataManagementTab({ onCleanAllFiles }: DataManagementTabProps) {
           throw new Error('Clean files function not available');
         }
         
-        // console.log('Calling electron.cleanAllFiles()...');
         result = await window.electron.cleanAllFiles();
       }
       
-      // console.log('Clean all files result:', result);
-      
       if (result.success) {
-        // console.log('Successfully cleaned files, clearing localStorage...');
         setCleaningStatus(result.message || 'Files cleaned successfully');
         // Clear localStorage for inventory items
         localStorage.removeItem('loco-hotbar-items');

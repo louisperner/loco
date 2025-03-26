@@ -10,30 +10,24 @@ import {
   SlidePanelFooter,
   SlidePanelClose,
 } from '@/components/ui/slide-panel';
-import { FaCog, FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaMagic } from 'react-icons/fa';
+import { FaCog, FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaMagic, FaDatabase } from 'react-icons/fa';
 import { ColorsTab } from './tabs/ColorsTab';
 import { GroundTab } from './tabs/GroundTab';
 import { CrosshairTab } from './tabs/CrosshairTab';
 import { EnvironmentTab } from './tabs/EnvironmentTab';
+import { DataManagementTab } from './tabs/DataManagementTab';
 import { SettingsPanelProps, SettingsTab } from './types';
 import { loadSettings, saveSettings } from './utils';
 
-// Add window.electron type declaration
-declare global {
-  interface Window {
-    electron?: {
-      cleanAllFiles: () => Promise<{ success: boolean; message?: string; error?: string }>;
-      [key: string]: unknown;
-    };
-  }
-}
-
-// TabsContent component to handle tab navigation and content display
-const TabsContent = ({ tabs, activeTab, onTabChange }: { 
+// Interface for TabsContent component props
+interface TabsContentProps {
   tabs: SettingsTab[];
   activeTab: string;
   onTabChange: (tab: string) => void;
-}) => {
+}
+
+// TabsContent component to handle tab navigation and content display
+const TabsContent: React.FC<TabsContentProps> = ({ tabs, activeTab, onTabChange }) => {
   if (!tabs || tabs.length === 0) {
     return null;
   }
@@ -137,7 +131,7 @@ export function SettingsPanel({
   },
   onEnvironmentSettingChange
 }: SettingsPanelProps) {
-  // Mark unused variables
+  // Mark unused variables with void operator to avoid lint warnings
   void children;
   void colorChanged;
 
@@ -333,6 +327,14 @@ export function SettingsPanel({
           gravityEnabled={gravityEnabled}
           onGravityToggle={onGravityToggle || (() => {})}
         />
+      )
+    },
+    {
+      id: 'data',
+      label: 'Data',
+      icon: <FaDatabase className="w-4 h-4" />,
+      content: (
+        <DataManagementTab />
       )
     }
   ];
