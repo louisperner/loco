@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import cheerio from 'cheerio';
 
-type ScrapProps = {
-  // Add any props here if needed in the future
-};
+// Define type for Scrap props
+interface ScrapProps {}
 
 const Scrap: React.FC<ScrapProps> = () => {
   const [titles, setTitles] = useState<string[]>([]);
@@ -18,7 +17,8 @@ const Scrap: React.FC<ScrapProps> = () => {
       const $ = cheerio.load(html);
       const scrapedTitles: string[] = [];
 
-      $('h1').each((_index: number, element: any) => {
+      // Using a type assertion because Cheerio's typings are complex
+      $('h1').each((_index: number, element) => {
         scrapedTitles.push($(element).text());
       });
 

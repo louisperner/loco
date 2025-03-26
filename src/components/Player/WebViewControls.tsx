@@ -1,14 +1,15 @@
-import React, { useState, useRef, useEffect, RefObject } from 'react';
+import React, { useState, useRef, useEffect, RefObject, useMemo } from 'react';
 import { FaArrowLeft, FaRedo, FaTimes, FaHome, FaHistory } from 'react-icons/fa';
+import { sanitizeUrl } from '../../utils/urlSanitizer';
 
 // Define types for WebView element
 interface WebViewElement extends HTMLElement {
   loadURL?: (url: string) => void;
   goBack?: () => void;
-  executeJavaScript?: <T = any>(code: string) => Promise<T>;
+  executeJavaScript?: <T>(code: string) => Promise<T>;
   canGoBack?: () => boolean;
-  addEventListener: (event: string, handler: (...args: any[]) => void) => void;
-  removeEventListener: (event: string, handler: (...args: any[]) => void) => void;
+  addEventListener: (event: string, handler: (args: unknown) => void) => void;
+  removeEventListener: (event: string, handler: (args: unknown) => void) => void;
 }
 
 // Types for scroll position
@@ -29,8 +30,16 @@ interface HistoryEntry {
 // Safe storage type
 interface SafeStorage {
   get: <T>(key: string, defaultValue?: T | null) => T | null;
-  set: (key: string, value: any) => boolean;
+  set: <T>(key: string, value: T) => boolean;
   remove: (key: string) => boolean;
+}
+
+// Define result type for the executeJavaScript call
+interface ScrollResult {
+  x: number;
+  y: number;
+  height: number;
+  url: string;
 }
 
 // Props for the component
@@ -61,15 +70,17 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
   onUrlChange, 
   frameId 
 }) => {
-  const [url, setUrl] = useState<string>(initialUrl);
-  const [inputUrl, setInputUrl] = useState<string>(initialUrl);
+  // Sanitize the initial URL
+  const safeInitialUrl = sanitizeUrl(initialUrl);
+  const [url, setUrl] = useState<string>(safeInitialUrl);
+  const [inputUrl, setInputUrl] = useState<string>(safeInitialUrl);
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [urlHistory, setUrlHistory] = useState<HistoryEntry[]>([]);
-  const lastUrlRef = useRef<string>(initialUrl);
+  const lastUrlRef = useRef<string>(safeInitialUrl);
   const scrollPositionsRef = useRef<Record<string, ScrollPosition>>({});
 
-  // Create safe localStorage wrapper
-  const safeStorage: SafeStorage = {
+  // Create safe localStorage wrapper with useMemo to prevent recreation on each render
+  const safeStorage = useMemo<SafeStorage>(() => ({
     get<T>(key: string, defaultValue: T | null = null): T | null {
       try {
         const value = localStorage.getItem(key);
@@ -79,7 +90,7 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
         return defaultValue;
       }
     },
-    set(key: string, value: any): boolean {
+    set<T>(key: string, value: T): boolean {
       try {
         localStorage.setItem(key, JSON.stringify(value));
         return true;
@@ -97,14 +108,14 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
         return false;
       }
     }
-  };
+  }), []);
 
   // Notify parent component when URL changes
   useEffect(() => {
-    if (url !== initialUrl && onUrlChange) {
+    if (url !== safeInitialUrl && onUrlChange) {
       onUrlChange(url);
     }
-  }, [url, initialUrl, onUrlChange]);
+  }, [url, safeInitialUrl, onUrlChange]);
 
   // Load saved data from localStorage at component mount
   useEffect(() => {
@@ -122,16 +133,17 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
         const frameUrlKey = `${STORAGE_KEYS.FRAME_URL_PREFIX}${frameId}_url`;
         const savedFrameUrl = localStorage.getItem(frameUrlKey);
         
-        if (savedFrameUrl && savedFrameUrl !== 'about:blank' && savedFrameUrl !== initialUrl) {
+        if (savedFrameUrl && savedFrameUrl !== 'about:blank' && savedFrameUrl !== safeInitialUrl) {
           // console.log(`📥 Loading saved URL for frame ${frameId}:`, savedFrameUrl);
-          setUrl(savedFrameUrl);
-          setInputUrl(savedFrameUrl);
-          lastUrlRef.current = savedFrameUrl;
+          const safeSavedUrl = sanitizeUrl(savedFrameUrl);
+          setUrl(safeSavedUrl);
+          setInputUrl(safeSavedUrl);
+          lastUrlRef.current = safeSavedUrl;
           
           // Handle navigation in next tick to ensure component is fully mounted
           setTimeout(() => {
             if (webviewRef?.current && webviewRef.current.loadURL) {
-              webviewRef.current.loadURL(savedFrameUrl);
+              webviewRef.current.loadURL(safeSavedUrl);
             }
           }, 100);
         }
@@ -139,7 +151,7 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
     } catch (error) {
       console.error('❌ Error loading data from localStorage:', error);
     }
-  }, [frameId, initialUrl, webviewRef]);
+  }, [frameId, safeInitialUrl, webviewRef, safeStorage]);
 
   // Save all data to localStorage
   const saveAllDataToLocalStorage = (): boolean => {
@@ -204,7 +216,7 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
     if (!webviewRef?.current || !url || !webviewRef.current.executeJavaScript) return;
     
     try {
-      webviewRef.current.executeJavaScript(`
+      webviewRef.current.executeJavaScript<ScrollResult>(`
         (function() {
           return {
             x: window.scrollX,
@@ -269,8 +281,10 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
     }
     
     try {
-      setUrl(processedUrl);
-      webviewRef.current.loadURL(processedUrl);
+      // Sanitize the URL before using it
+      const safeUrl = sanitizeUrl(processedUrl);
+      setUrl(safeUrl);
+      webviewRef.current.loadURL(safeUrl);
     } catch (error) {
       console.error('Error navigating to URL:', error);
     }
@@ -280,10 +294,12 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
     if (!webviewRef?.current || !webviewRef.current.loadURL) return;
     
     try {
-      setInputUrl(historyUrl);
-      setUrl(historyUrl);
+      // Sanitize the URL before using it
+      const safeUrl = sanitizeUrl(historyUrl);
+      setInputUrl(safeUrl);
+      setUrl(safeUrl);
       setShowHistory(false);
-      webviewRef.current.loadURL(historyUrl);
+      webviewRef.current.loadURL(safeUrl);
     } catch (error) {
       console.error('Error navigating to history item:', error);
     }

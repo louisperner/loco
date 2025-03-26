@@ -14,6 +14,8 @@ import { SettingsPanel } from '@/components/Settings';
 import { useThemeStore } from '../../store/ThemeStore';
 import Inventory from '../Inventory/Inventory';
 
+// TODO: Replace 'any' with proper types throughout this component
+
 // Import separated components
 import { 
   Crosshair, 
@@ -78,7 +80,7 @@ export interface HotbarItem {
   id: string;
   name: string;
   type: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface HotbarContextType {
@@ -91,6 +93,26 @@ export const HotbarContext = React.createContext<HotbarContextType>({
   selectedHotbarItem: null,
   setSelectedHotbarItem: () => {},
 });
+
+// Define Frame interface for WebFrames component
+interface Frame {
+  id: string;
+  url: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  originalPosition: [number, number, number];
+  originalRotation: [number, number, number];
+}
+
+// Types for inventory
+interface InventoryItem {
+  id: string;
+  type: 'image' | 'model';
+  fileName: string;
+  url: string;
+  thumbnailUrl?: string;
+  [key: string]: unknown;
+}
 
 const Player: React.FC = () => {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -216,8 +238,6 @@ const Player: React.FC = () => {
     }, 100); // Small delay to ensure component is ready
   });
 
-  // @ts-ignore
-  const [selectedObject, setSelectedObject] = useState<any | null>(null);
   const addImage = useImageStore(state => state.addImage);
 
   // Load saved settings on mount
@@ -315,7 +335,42 @@ const Player: React.FC = () => {
     localStorage.setItem('visibility-settings', JSON.stringify(visibilitySettings));
   }, [floorVisible, gridVisible, floorPlaneVisible, backgroundVisible]);
 
-  // Handlers
+  // Handlers with useCallback to prevent dependency changes on every render
+  const handleModeChange = useCallback((mode: string): void => {
+    setCurrentMode(mode);
+    setMovementEnabled(mode === 'live');
+    
+    if (mode === 'build') {
+      setShowPreview(true);
+      setConfirmedPosition(null);
+      setConfirmedRotation(null);
+    } else {
+      setShowPreview(false);
+      if (pendingWebsiteUrl) {
+        setPendingWebsiteUrl(null);
+      }
+      setConfirmedPosition(null);
+      setConfirmedRotation(null);
+    }
+  }, [pendingWebsiteUrl]);
+
+  const handleToggleHelp = useCallback((): void => {
+    setShowHelp(!showHelp);
+    setMovementEnabled(showHelp);
+  }, [showHelp]);
+
+  const handleCancel = useCallback((): void => {
+    if (currentMode === 'build') {
+      if (pendingWebsiteUrl) {
+        setPendingWebsiteUrl(null);
+        setConfirmedPosition(null);
+        setConfirmedRotation(null);
+      } else {
+        handleModeChange('live');
+      }
+    }
+  }, [currentMode, pendingWebsiteUrl, handleModeChange]);
+
   const handleAddFrame = (url: string, pos?: [number, number, number], rot?: [number, number, number]): void => {
     const position = pos || confirmedPosition;
     const rotation = rot || confirmedRotation;
@@ -357,41 +412,6 @@ const Player: React.FC = () => {
     }
   };
 
-  const handleModeChange = (mode: string): void => {
-    setCurrentMode(mode);
-    setMovementEnabled(mode === 'live');
-    
-    if (mode === 'build') {
-      setShowPreview(true);
-      setConfirmedPosition(null);
-      setConfirmedRotation(null);
-    } else {
-      setShowPreview(false);
-      if (pendingWebsiteUrl) {
-        setPendingWebsiteUrl(null);
-      }
-      setConfirmedPosition(null);
-      setConfirmedRotation(null);
-    }
-  };
-
-  const handleToggleHelp = (): void => {
-    setShowHelp(!showHelp);
-    setMovementEnabled(showHelp);
-  };
-
-  const handleCancel = (): void => {
-    if (currentMode === 'build') {
-      if (pendingWebsiteUrl) {
-        setPendingWebsiteUrl(null);
-        setConfirmedPosition(null);
-        setConfirmedRotation(null);
-      } else {
-        handleModeChange('live');
-      }
-    }
-  };
-
   const handleCloseFrame = (frameId: number): void => {
     setFrames(prevFrames => prevFrames.filter(frame => frame.id !== frameId));
   };
@@ -409,7 +429,7 @@ const Player: React.FC = () => {
     }));
   };
 
-  const handleColorChange = (type: string, color: any): void => {
+  const handleColorChange = (type: string, color: { r: number; g: number; b: number; a: number } | string): void => {
     // If color is an RgbaColor object, convert it to string
     const colorValue = typeof color === 'object' ? rgbaToString(color) : color;
     const opacity = typeof color === 'object' ? color.a : 1;
@@ -457,7 +477,7 @@ const Player: React.FC = () => {
     }
   };
 
-  const handleEnvironmentSettingChange = (setting: keyof EnvironmentSettings, value: any): void => {
+  const handleEnvironmentSettingChange = (setting: keyof EnvironmentSettings, value: number | boolean | string | [number, number, number]): void => {
     setEnvironmentSettings(prev => ({
       ...prev,
       [setting]: value
@@ -505,7 +525,7 @@ const Player: React.FC = () => {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showCatalog, showHelp, currentMode, pendingWebsiteUrl, isSpotlightOpen]);
+  }, [showCatalog, showHelp, currentMode, pendingWebsiteUrl, isSpotlightOpen, handleCancel, handleModeChange, handleToggleHelp]);
 
   return (
     <HotbarContext.Provider value={{ selectedHotbarItem, setSelectedHotbarItem }}>
@@ -608,13 +628,16 @@ const Player: React.FC = () => {
             />
           )}
           
-          <ImageCloneManager onSelect={setSelectedObject} />
-          <ModelManager onSelect={setSelectedObject} />
+          <ImageCloneManager onSelect={() => {}} />
+          <ModelManager onSelect={() => {}} />
           
-          <WebFrames
-            frames={frames as any}
-            onCloseFrame={handleCloseFrame as any}
-            onRestorePosition={handleRestoreFramePosition as any}
+          <WebFrames 
+            frames={frames.map(frame => ({
+              ...frame,
+              id: frame.id.toString()
+            })) as unknown as Frame[]}
+            onCloseFrame={(frameId: string) => handleCloseFrame(Number(frameId))}
+            onRestorePosition={(frameId: string) => handleRestoreFramePosition(Number(frameId))}
             onUpdateFrameUrl={(frameId, newUrl) => {
               setFrames(prevFrames => prevFrames.map(frame => 
                 frame.id === Number(frameId) ? { ...frame, url: newUrl } : frame
@@ -719,11 +742,11 @@ const Player: React.FC = () => {
                 thickness: crosshairThickness,
                 style: crosshairStyle as "dot" | "cross" | "plus" | "classic"
               }}
-              onCrosshairSettingChange={(setting: string, value: any) => {
-                if (setting === 'visible') setShowCrosshair(value);
-                else if (setting === 'size') setCrosshairSize(value);
-                else if (setting === 'thickness') setCrosshairThickness(value);
-                else if (setting === 'style') setCrosshairStyle(value);
+              onCrosshairSettingChange={(setting: string, value: unknown) => {
+                if (setting === 'visible') setShowCrosshair(value as boolean);
+                else if (setting === 'size') setCrosshairSize(value as number);
+                else if (setting === 'thickness') setCrosshairThickness(value as number);
+                else if (setting === 'style') setCrosshairStyle(value as string);
               }}
               visibilitySettings={{
                 floor: floorVisible,
@@ -742,11 +765,12 @@ const Player: React.FC = () => {
               selectedTheme={selectedTheme ?? ''}
               onThemeSelect={(theme: string) => {
                 setSelectedTheme(theme);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 setTheme(theme as any);
               }}
               environmentSettings={environmentSettings}
-              onEnvironmentSettingChange={(setting: string, value: any) => 
-                handleEnvironmentSettingChange(setting as keyof EnvironmentSettings, value)
+              onEnvironmentSettingChange={(setting: string, value: unknown) => 
+                handleEnvironmentSettingChange(setting as keyof EnvironmentSettings, value as number | boolean | string | [number, number, number])
               }
             />
           </div>
@@ -802,7 +826,7 @@ const Player: React.FC = () => {
         {uiVisible && (
           <Inventory 
             ref={inventoryRef}
-            onSelectImage={(image: any) => {
+            onSelectImage={(image: InventoryItem) => {
               // Add the selected image to the scene
               if (!image?.url) {
                 setShowInventory(false);
@@ -845,7 +869,7 @@ const Player: React.FC = () => {
                 });
               } else {
                 // Add image to the store
-                addImage({
+                useImageStore.getState().addImage({
                   src: image.url,
                   fileName: image.fileName,
                   position: [position.x, position.y, position.z],
@@ -858,7 +882,7 @@ const Player: React.FC = () => {
               // Close the inventory
               setShowInventory(false);
             }}
-            onSelectModel={(model: any) => {
+            onSelectModel={(model: InventoryItem) => {
               // Add the selected model to the scene
               if (!model?.url) {
                 setShowInventory(false);
@@ -923,7 +947,6 @@ const Player: React.FC = () => {
                   // Try as model
                   useModelStore.getState().updateModel(id, { isInScene: false });
                 }
-                setSelectedObject(null);
               }
             }}
           />

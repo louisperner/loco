@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect  } from 'react';
 import { elementClickTrackerScript } from '../../utils/webviewInjection';
 import WebViewControls from './WebViewControls';
 import { useImageStore } from '../../store/useImageStore';
+import { sanitizeUrl } from '../../utils/urlSanitizer';
 
 // Define interfaces
 interface BoxFrameProps {
@@ -44,7 +45,7 @@ const BoxFrame: React.FC<BoxFrameProps> = ({
   onUrlChange
 }) => {
   const webviewRef = useRef<WebViewElement>(null) as React.MutableRefObject<WebViewElement>;
-  const [currentUrl, setCurrentUrl] = useState<string>(url);
+  const [currentUrl, setCurrentUrl] = useState<string>(sanitizeUrl(url));
   const [loadError, setLoadError] = useState<string | null>(null);
   // @ts-ignore
   const [showControls, setShowControls] = useState<boolean>(true);
@@ -119,9 +120,11 @@ const BoxFrame: React.FC<BoxFrameProps> = ({
   };
 
   const handleUrlChange = (newUrl: string): void => {
-    setCurrentUrl(newUrl);
+    // Sanitize the URL before setting it
+    const safeUrl = sanitizeUrl(newUrl);
+    setCurrentUrl(safeUrl);
     if (onUrlChange) {
-      onUrlChange(frameId, newUrl);
+      onUrlChange(frameId, safeUrl);
     }
   };
 
