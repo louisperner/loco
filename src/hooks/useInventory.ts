@@ -3,18 +3,7 @@ import { useImageStore } from '../store/useImageStore';
 import { useModelStore } from '../store/useModelStore';
 import { HOTBAR_STORAGE_KEY, getImageCategory, getModelCategory, showAddedToCanvasIndicator } from '../utils/inventoryUtils';
 
-// Extend the Window interface for TypeScript
-declare global {
-  interface Window {
-    electron?: {
-      listImagesFromDisk?: () => Promise<{ success: boolean; images: InventoryItem[]; error?: string }>;
-      listModelsFromDisk?: () => Promise<{ success: boolean; models: InventoryItem[]; error?: string }>;
-      deleteFile?: (path: string) => Promise<{ success: boolean; error?: string }>;
-      cleanAllFiles: () => Promise<{ success: boolean; message?: string; error?: string }>;
-      [key: string]: any;
-    };
-  }
-}
+// Note: Window interface with electron API is defined in src/types/global.d.ts
 
 export interface InventoryItem {
   id: string;
@@ -97,7 +86,6 @@ export const useInventory = (
 
   const loadItemsFromDisk = useCallback(async (): Promise<void> => {
     try {
-      // console.log('Loading inventory items from disk...');
       setLoading(true);
       
       let allItems: InventoryItem[] = [];
@@ -108,35 +96,37 @@ export const useInventory = (
         typeof window.electron.listModelsFromDisk === 'function';
       
       if (isElectronAvailable) {
-        // Electron environment - load from disk
-        // console.log('Electron environment detected, loading files from disk');
         try {
-          const imageResult = await window.electron.listImagesFromDisk!();
-          
-          if (imageResult.success) {
-            // console.log(`Loaded ${imageResult.images.length} images from disk`);
-            const imageItems = imageResult.images.map(img => ({
-              ...img,
-              type: 'image' as const,
-              category: getImageCategory(img.fileName)
-            }));
-            allItems = [...allItems, ...imageItems];
+          const electron = window.electron;
+          if (electron && electron.listImagesFromDisk) {
+            const imageResult = await electron.listImagesFromDisk();
+            
+            if (imageResult.success) {
+              const imageItems = imageResult.images.map((img: any) => ({
+                ...img,
+                type: 'image' as const,
+                category: getImageCategory(img.fileName)
+              }));
+              allItems = [...allItems, ...imageItems];
+            }
           }
         } catch (error) {
           console.error('Error loading images from disk:', error);
         }
         
         try {
-          const modelResult = await window.electron.listModelsFromDisk!();
-          
-          if (modelResult.success) {
-            // console.log(`Loaded ${modelResult.models.length} models from disk`);
-            const modelItems = modelResult.models.map(model => ({
-              ...model,
-              type: 'model' as const,
-              category: getModelCategory(model.fileName)
-            }));
-            allItems = [...allItems, ...modelItems];
+          const electron = window.electron;
+          if (electron && electron.listModelsFromDisk) {
+            const modelResult = await electron.listModelsFromDisk();
+            
+            if (modelResult.success) {
+              const modelItems = modelResult.models.map((model: any) => ({
+                ...model,
+                type: 'model' as const,
+                category: getModelCategory(model.fileName)
+              }));
+              allItems = [...allItems, ...modelItems];
+            }
           }
         } catch (error) {
           console.error('Error loading models from disk:', error);
@@ -144,7 +134,6 @@ export const useInventory = (
       }
       
       // Always include items from store
-      // console.log(`Loading ${storeImages.length} images from store`);
       const storeImageItems = storeImages.map(img => ({
         id: img.id,
         type: 'image' as const,
@@ -157,7 +146,6 @@ export const useInventory = (
       }));
       allItems = [...allItems, ...storeImageItems];
       
-      // console.log(`Loading ${storeModels.length} models from store`);
       const storeModelItems = storeModels.map(model => ({
         id: model.id,
         type: 'model' as const,
@@ -169,8 +157,6 @@ export const useInventory = (
         category: getModelCategory(model.fileName || 'Unknown')
       }));
       allItems = [...allItems, ...storeModelItems];
-      
-      // console.log(`Total raw items before deduplication: ${allItems.length}`);
       
       // Extract unique categories
       const uniqueCategories = [...new Set(allItems.map(item => item.category))].filter(Boolean) as string[];
@@ -227,7 +213,6 @@ export const useInventory = (
         if (filePath) seenPaths.set(filePath, itemIndex);
       });
       
-      // console.log(`Total items after deduplication: ${uniqueItems.length}`);
       setItems(uniqueItems);
       
       // Restore hotbar items
@@ -253,10 +238,10 @@ export const useInventory = (
       }
       
       setSelectedItem(null);
-      setLoading(false);
     } catch (error) {
-      console.error(`Error loading items from disk:`, error);
+      console.error('Error loading inventory items:', error);
       setError((error as Error).message);
+    } finally {
       setLoading(false);
     }
   }, [storeImages, storeModels]);

@@ -4,19 +4,7 @@ import { useModelStore } from '../store/useModelStore';
 import * as THREE from 'three';
 import { saveModelThumbnail } from '../utils/modelThumbnailGenerator';
 
-// Extend the Window interface for TypeScript
-declare global {
-  interface Window {
-    electron?: {
-      cleanAllFiles: () => Promise<{ success: boolean; message?: string; error?: string }>;
-      saveModelFile?: (file: File, filename: string) => Promise<string>;
-      saveImageFile?: (file: File, filename: string) => Promise<string>;
-      [key: string]: any;
-    };
-    _modelFileCache?: Record<string, any>;
-    _blobUrlCache?: Record<string, any>;
-  }
-}
+// Note: Window interface with electron API is defined in src/types/global.d.ts
 
 // Return type for the hook
 interface FileHandlingHook {

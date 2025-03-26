@@ -6,7 +6,7 @@ declare module 'src/store/CodeStore' {
     code: string;
     updateCode: (code: string) => void;
     updateTranspiledCode: (code: string) => void;
-    updateComponents: (components: any[]) => void;
+    updateComponents: (components: unknown[]) => void;
   };
 }
 
@@ -36,36 +36,39 @@ declare module 'src/store/ThemeStore' {
 
 // Components
 declare module 'src/Components/Settings' {
-  export const SettingsPanel: React.FC<any>;
+  export const SettingsPanel: React.FC<Record<string, unknown>>;
 }
 
 declare module 'src/Scene' {
-  export const Crosshair: React.FC<any>;
-  export const Floor: React.FC<any>;
-  export const PreviewFrame: React.FC<any>;
-  export const FrameRateLimiter: React.FC<any>;
-  export const CameraExposer: React.FC<any>;
+  export const Crosshair: React.FC<Record<string, unknown>>;
+  export const Floor: React.FC<Record<string, unknown>>;
+  export const PreviewFrame: React.FC<Record<string, unknown>>;
+  export const FrameRateLimiter: React.FC<Record<string, unknown>>;
+  export const CameraExposer: React.FC<Record<string, unknown>>;
 }
 
 // Player components
 declare module 'src/components/Player/WebFrames' {
-  const WebFrames: React.FC<any>;
+  const WebFrames: React.FC<Record<string, unknown>>;
   export default WebFrames;
 }
 
 declare module 'src/components/Player/Spotlight' {
-  const Spotlight: React.FC<any>;
+  const Spotlight: React.FC<Record<string, unknown>>;
   export default Spotlight;
 }
 
 declare module 'src/components/Player/MessageManager' {
-  const MessageManager: React.FC<any>;
+  const MessageManager: React.FC<Record<string, unknown>>;
   export default MessageManager;
 }
 
 // Hooks
 declare module 'src/hooks/useFileHandling' {
-  export function useFileHandling(cameraRef: any): {
+  import { RefObject } from 'react';
+  import * as THREE from 'three';
+  
+  export function useFileHandling(cameraRef: RefObject<THREE.Camera>): {
     isDragging: boolean;
     handleDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
     handleDragLeave: (e: React.DragEvent<HTMLDivElement>) => void;
@@ -77,7 +80,28 @@ declare module 'src/hooks/useFileHandling' {
 
 // UI components
 declare module 'src/ui/index' {
-  export const Button: React.FC<any>;
-  export const Switch: React.FC<any>;
-  export const Slider: React.FC<any>;
+  interface ButtonProps {
+    onClick?: () => void;
+    children?: React.ReactNode;
+    [key: string]: unknown;
+  }
+  
+  interface SwitchProps {
+    checked?: boolean;
+    onChange?: (checked: boolean) => void;
+    [key: string]: unknown;
+  }
+  
+  interface SliderProps {
+    value?: number;
+    onChange?: (value: number) => void;
+    min?: number;
+    max?: number;
+    step?: number;
+    [key: string]: unknown;
+  }
+  
+  export const Button: React.FC<ButtonProps>;
+  export const Switch: React.FC<SwitchProps>;
+  export const Slider: React.FC<SliderProps>;
 } 

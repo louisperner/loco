@@ -37,13 +37,7 @@ interface ModelStore {
   clearAllModels: () => void;
 }
 
-// Declare window extensions
-declare global {
-  interface Window {
-    _modelFileCache?: Record<string, any>;
-    _blobUrlCache?: Record<string, any>;
-  }
-}
+// Note: Window interface with _blobUrlCache and _modelFileCache is defined in src/types/global.d.ts
 
 // Helper function to clean up blob URLs
 const cleanupBlobUrl = (url: string): void => {

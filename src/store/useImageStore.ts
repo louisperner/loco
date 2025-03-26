@@ -46,11 +46,7 @@ interface ImageStore {
 }
 
 // Declare window extensions
-declare global {
-  interface Window {
-    _imageBlobCache?: Record<string, string>;
-  }
-}
+// Note: Window interface with _imageBlobCache is defined in src/types/global.d.ts
 
 const loadImagesFromStorage = (): Image[] => {
   try {
