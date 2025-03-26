@@ -60,7 +60,7 @@ const loadImagesFromStorage = (): Image[] => {
     // Processar URLs das imagens para converter file:// para app-file://
     return parsedImages.map(image => {
       if (image.src && image.src.startsWith('file://')) {
-        console.log('Convertendo URL de imagem salva:', image.src);
+        // console.log('Convertendo URL de imagem salva:', image.src);
         return {
           ...image,
           src: image.src.replace('file://', 'app-file://')
@@ -95,7 +95,7 @@ const cleanupBlobUrl = (url: string): void => {
       
       // Revoke the URL if it's not used elsewhere
       URL.revokeObjectURL(url);
-      console.log('Revoked blob URL for image:', url);
+      // console.log('Revoked blob URL for image:', url);
     } catch (error) {
       console.error('Error revoking blob URL:', error);
     }

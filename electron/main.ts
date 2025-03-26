@@ -27,7 +27,7 @@ app.whenReady().then(() => {
     try {
       // Decode the URL to handle special characters
       const decodedUrl = decodeURI(url);
-      console.log('Loading file via app-file protocol:', decodedUrl);
+      // console.log('Loading file via app-file protocol:', decodedUrl);
       
       // Check if file exists
       if (!fs.existsSync(decodedUrl)) {
@@ -106,7 +106,7 @@ app.whenReady().then(() => {
   win.webContents.session.webRequest.onBeforeRequest((details, callback) => {
     // Allow all requests, including blob URLs and app-file URLs
     if (details.url.startsWith('app-file://')) {
-      console.log('Allowing app-file request:', details.url);
+      // console.log('Allowing app-file request:', details.url);
     }
     callback({});
   });
@@ -120,7 +120,7 @@ app.whenReady().then(() => {
     try {
       // Decode the URL to handle special characters
       const decodedUrl = decodeURI(url);
-      console.log('Loading file via app-file protocol (webview session):', decodedUrl);
+      // console.log('Loading file via app-file protocol (webview session):', decodedUrl);
       
       // Check if file exists
       if (!fs.existsSync(decodedUrl)) {
@@ -206,7 +206,7 @@ app.whenReady().then(() => {
   // }, 300);
 
   // const updateIgnoreMouseEvents = async (x, y) => {
-  //   // console.log('updateIgnoreMouseEvents');
+  //   // // console.log('updateIgnoreMouseEvents');
 
   //   // capture 1x1 image of mouse position.
   //   const image = await win.webContents.capturePage({
@@ -220,7 +220,7 @@ app.whenReady().then(() => {
 
   //   // set ignore mouse events by alpha.
   //   win.setIgnoreMouseEvents(!buffer[3]);
-  //   // console.log('setIgnoreMouseEvents', !buffer[3]);
+  //   // // console.log('setIgnoreMouseEvents', !buffer[3]);
   // };
 
   // Handle IPC calls for saving files
@@ -262,7 +262,7 @@ app.whenReady().then(() => {
   ipcMain.handle('test-file-access', async (event, filePath) => {
     try {
       const exists = fs.existsSync(filePath);
-      console.log(`Verificando acesso ao arquivo: ${filePath} - Existe: ${exists}`);
+      // console.log(`Verificando acesso ao arquivo: ${filePath} - Existe: ${exists}`);
       
       if (exists) {
         // Tenta ler algumas informações para verificar permissões
@@ -280,7 +280,7 @@ app.whenReady().then(() => {
   // Manipulador para ler arquivo como buffer
   ipcMain.handle('read-file-as-buffer', async (event, filePath) => {
     try {
-      // console.log(`Lendo arquivo como buffer: ${filePath}`);
+      // // console.log(`Lendo arquivo como buffer: ${filePath}`);
       
       // Verificar se o arquivo existe
       if (!fs.existsSync(filePath)) {

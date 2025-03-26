@@ -23,7 +23,7 @@ declare global {
   interface Window {
     electron?: {
       cleanAllFiles: () => Promise<{ success: boolean; message?: string; error?: string }>;
-      [key: string]: any;
+      [key: string]: unknown;
     };
   }
 }
@@ -191,6 +191,7 @@ export function SettingsPanel({
         });
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Save settings whenever they change
@@ -253,6 +254,7 @@ export function SettingsPanel({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showColorPicker, onColorPickerChange]);
 
   // Define default tabs if none are provided

@@ -32,6 +32,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
   initialPosition = [0,0,0]
 }) => {
   const { camera, gl, scene } = useThree();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const controls = useRef<any>(null);
   const raycaster = useRef<THREE.Raycaster>(new THREE.Raycaster());
   const rayHelper = useRef<RayHelper | null>(null);
@@ -400,11 +401,11 @@ const FPSControls: React.FC<FPSControlsProps> = ({
                 material.visible = !material.visible;
                 material.opacity = material.visible ? 0.5 : 0;
                 material.color.set(material.visible ? 0xff0000 : 0xffffff);
-                console.log(`Set ${object.name} visibility to ${material.visible}`);
+                // console.log(`Set ${object.name} visibility to ${material.visible}`);
               }
             }
           });
-          console.log('Toggled collision mesh visibility (F9)');
+          // console.log('Toggled collision mesh visibility (F9)');
         }
       };
 
@@ -430,15 +431,15 @@ const FPSControls: React.FC<FPSControlsProps> = ({
         if (e.button === 2) { // Right click - DELETE objects
           e.preventDefault();
           
-          console.log('Camera position:', camera.position);
-          console.log('Raycaster direction:', raycaster.current.ray.direction);
-          console.log('Total meshes in scene:', allObjects.length);
-          console.log('Raycaster intersects:', intersects.length, intersects);
+          // console.log('Camera position:', camera.position);
+          // console.log('Raycaster direction:', raycaster.current.ray.direction);
+          // console.log('Total meshes in scene:', allObjects.length);
+          // console.log('Raycaster intersects:', intersects.length, intersects);
           
           if (intersects.length > 0) {
             // Get the first intersected object
             const intersectedObject = intersects[0].object;
-            console.log('Intersected object:', intersectedObject);
+            // console.log('Intersected object:', intersectedObject);
             
             // Find the parent with userData by traversing up
             let parent: THREE.Object3D | null = intersectedObject;
@@ -446,7 +447,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
             
             // Traverse up the parent chain
             while (parent) {
-              console.log('Checking parent:', parent.name || 'unnamed', parent.userData);
+              // console.log('Checking parent:', parent.name || 'unnamed', parent.userData);
               
               if (parent.userData && 
                  (parent.userData.type === 'image' || parent.userData.type === 'model') && 
@@ -458,7 +459,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
             }
             
             if (foundObject) {
-              console.log('Found object to remove:', foundObject.userData);
+              // console.log('Found object to remove:', foundObject.userData);
               
               // Highlight the laser beam red briefly to indicate deletion
               const materialAsBasic = rayHelper.current?.laser.material as THREE.LineBasicMaterial;
@@ -482,10 +483,10 @@ const FPSControls: React.FC<FPSControlsProps> = ({
               });
               window.dispatchEvent(removeEvent);
             } else {
-              console.log('No valid object found in parent chain');
+              // console.log('No valid object found in parent chain');
             }
           } else {
-            console.log('No intersections found');
+            // console.log('No intersections found');
           }
         } else if (e.button === 0) { // Left click - ADD objects at empty space
           e.preventDefault();
@@ -493,7 +494,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
           // If we have an intersection, we can use that point to place a new object
           if (intersects.length > 0) {
             const hitPoint = intersects[0].point;
-            // console.log('Hit point for new object:', hitPoint);
+            // // console.log('Hit point for new object:', hitPoint);
             
             // Highlight the laser beam green briefly to indicate addition
             const material = rayHelper.current?.laser.material as THREE.LineBasicMaterial;
@@ -528,7 +529,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
             const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
             targetPosition.addScaledVector(direction, 10); // Place 10 units in front
             
-            console.log('Placing object at distance:', targetPosition);
+            // console.log('Placing object at distance:', targetPosition);
             
             // Highlight the laser beam green briefly
             const material = rayHelper.current?.laser.material as THREE.LineBasicMaterial;

@@ -97,7 +97,7 @@ export const useInventory = (
 
   const loadItemsFromDisk = useCallback(async (): Promise<void> => {
     try {
-      console.log('Loading inventory items from disk...');
+      // console.log('Loading inventory items from disk...');
       setLoading(true);
       
       let allItems: InventoryItem[] = [];
@@ -109,12 +109,12 @@ export const useInventory = (
       
       if (isElectronAvailable) {
         // Electron environment - load from disk
-        console.log('Electron environment detected, loading files from disk');
+        // console.log('Electron environment detected, loading files from disk');
         try {
           const imageResult = await window.electron.listImagesFromDisk!();
           
           if (imageResult.success) {
-            console.log(`Loaded ${imageResult.images.length} images from disk`);
+            // console.log(`Loaded ${imageResult.images.length} images from disk`);
             const imageItems = imageResult.images.map(img => ({
               ...img,
               type: 'image' as const,
@@ -130,7 +130,7 @@ export const useInventory = (
           const modelResult = await window.electron.listModelsFromDisk!();
           
           if (modelResult.success) {
-            console.log(`Loaded ${modelResult.models.length} models from disk`);
+            // console.log(`Loaded ${modelResult.models.length} models from disk`);
             const modelItems = modelResult.models.map(model => ({
               ...model,
               type: 'model' as const,
@@ -144,7 +144,7 @@ export const useInventory = (
       }
       
       // Always include items from store
-      console.log(`Loading ${storeImages.length} images from store`);
+      // console.log(`Loading ${storeImages.length} images from store`);
       const storeImageItems = storeImages.map(img => ({
         id: img.id,
         type: 'image' as const,
@@ -157,7 +157,7 @@ export const useInventory = (
       }));
       allItems = [...allItems, ...storeImageItems];
       
-      console.log(`Loading ${storeModels.length} models from store`);
+      // console.log(`Loading ${storeModels.length} models from store`);
       const storeModelItems = storeModels.map(model => ({
         id: model.id,
         type: 'model' as const,
@@ -170,7 +170,7 @@ export const useInventory = (
       }));
       allItems = [...allItems, ...storeModelItems];
       
-      console.log(`Total raw items before deduplication: ${allItems.length}`);
+      // console.log(`Total raw items before deduplication: ${allItems.length}`);
       
       // Extract unique categories
       const uniqueCategories = [...new Set(allItems.map(item => item.category))].filter(Boolean) as string[];
@@ -227,7 +227,7 @@ export const useInventory = (
         if (filePath) seenPaths.set(filePath, itemIndex);
       });
       
-      console.log(`Total items after deduplication: ${uniqueItems.length}`);
+      // console.log(`Total items after deduplication: ${uniqueItems.length}`);
       setItems(uniqueItems);
       
       // Restore hotbar items

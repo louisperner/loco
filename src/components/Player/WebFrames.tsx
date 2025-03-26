@@ -86,7 +86,7 @@ const WebFrames: React.FC<WebFramesProps> = ({
       oldKeys.forEach(oldKey => {
         const oldData = safeStorage.get<Frame[]>(oldKey);
         if (oldData && oldData.length > 0) {
-          console.log(`🔄 Migrating data from ${oldKey} to ${STORAGE_KEYS.FRAMES}`);
+          // console.log(`🔄 Migrating data from ${oldKey} to ${STORAGE_KEYS.FRAMES}`);
           safeStorage.set(STORAGE_KEYS.FRAMES, oldData);
           safeStorage.remove(oldKey);
         }
@@ -107,7 +107,7 @@ const WebFrames: React.FC<WebFramesProps> = ({
       
       // Only restore if we have saved frames and current frames are empty
       if (savedFrames && savedFrames.length > 0 && frames.length === 0 && onLoadSavedFrames) {
-        console.log(`📋 Loading ${savedFrames.length} saved frames from localStorage`);
+        // console.log(`📋 Loading ${savedFrames.length} saved frames from localStorage`);
         onLoadSavedFrames(savedFrames);
       }
     } catch (error) {

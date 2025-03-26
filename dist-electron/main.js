@@ -50,7 +50,6 @@ electron.app.whenReady().then(() => {
     const url = request.url.substring(10);
     try {
       const decodedUrl = decodeURI(url);
-      console.log("Loading file via app-file protocol:", decodedUrl);
       if (!fs.existsSync(decodedUrl)) {
         console.error("File not found:", decodedUrl);
         return callback({ error: -2 });
@@ -115,9 +114,7 @@ electron.app.whenReady().then(() => {
     }
   });
   win.webContents.session.webRequest.onBeforeRequest((details, callback) => {
-    if (details.url.startsWith("app-file://")) {
-      console.log("Allowing app-file request:", details.url);
-    }
+    if (details.url.startsWith("app-file://")) ;
     callback({});
   });
   const persistentSession = electron.session.fromPartition("persist:webviewsession");
@@ -125,7 +122,6 @@ electron.app.whenReady().then(() => {
     const url = request.url.substring(10);
     try {
       const decodedUrl = decodeURI(url);
-      console.log("Loading file via app-file protocol (webview session):", decodedUrl);
       if (!fs.existsSync(decodedUrl)) {
         console.error("File not found:", decodedUrl);
         return callback({ error: -2 });
@@ -195,7 +191,6 @@ electron.app.whenReady().then(() => {
   electron.ipcMain.handle("test-file-access", async (event, filePath) => {
     try {
       const exists = fs.existsSync(filePath);
-      console.log(`Verificando acesso ao arquivo: ${filePath} - Existe: ${exists}`);
       if (exists) {
         const stats = fs.statSync(filePath);
         return { exists, size: stats.size, isFile: stats.isFile() };

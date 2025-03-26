@@ -14,7 +14,7 @@ interface ElectronAPI {
     message?: string;
     error?: string;
   }>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Extend the Window interface for TypeScript
@@ -77,7 +77,7 @@ export const generateModelThumbnail = async (modelUrl: string, width: number = 3
           });
       } else if (modelUrl.startsWith('file://') || modelUrl.startsWith('app-file://')) {
         // Browser environment with file:// or app-file:// URLs
-        console.info('Browser environment detected, cannot generate thumbnail for file URLs');
+        // console.info('Browser environment detected, cannot generate thumbnail for file URLs');
         resolve(null);
       } else {
         // Regular URL, try to render it directly

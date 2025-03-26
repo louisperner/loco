@@ -123,7 +123,7 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
         const savedFrameUrl = localStorage.getItem(frameUrlKey);
         
         if (savedFrameUrl && savedFrameUrl !== 'about:blank' && savedFrameUrl !== initialUrl) {
-          console.log(`📥 Loading saved URL for frame ${frameId}:`, savedFrameUrl);
+          // console.log(`📥 Loading saved URL for frame ${frameId}:`, savedFrameUrl);
           setUrl(savedFrameUrl);
           setInputUrl(savedFrameUrl);
           lastUrlRef.current = savedFrameUrl;

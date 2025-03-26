@@ -25,7 +25,7 @@ app.whenReady().then(() => {
     const url = request.url.substring(10);
     try {
       const decodedUrl = decodeURI(url);
-      console.log('Loading file via app-file protocol:', decodedUrl);
+      // console.log('Loading file via app-file protocol:', decodedUrl);
       
       if (!fs.existsSync(decodedUrl)) {
         console.error('File not found:', decodedUrl);
@@ -109,7 +109,7 @@ app.whenReady().then(() => {
     const url = request.url.substring(10);
     try {
       const decodedUrl = decodeURI(url);
-      console.log('Loading file via app-file protocol (webview session):', decodedUrl);
+      // console.log('Loading file via app-file protocol (webview session):', decodedUrl);
       
       if (!fs.existsSync(decodedUrl)) {
         console.error('File not found:', decodedUrl);
@@ -212,18 +212,18 @@ app.whenReady().then(() => {
   // List images from disk
   ipcMain.handle('list-images-from-disk', async (event) => {
     try {
-      console.log('Listing images from disk...');
+      // console.log('Listing images from disk...');
       
       // Check if the images directory exists
       if (!fs.existsSync(IMAGES_DIR)) {
-        console.log('Images directory does not exist, creating it...');
+        // console.log('Images directory does not exist, creating it...');
         fs.mkdirSync(IMAGES_DIR, { recursive: true });
         return [];
       }
       
       // Read all files in the images directory
       const files = fs.readdirSync(IMAGES_DIR);
-      console.log(`Found ${files.length} files in images directory`);
+      // console.log(`Found ${files.length} files in images directory`);
       
       // Filter for image files and create image objects
       const imageFiles = files.filter(file => {
@@ -231,7 +231,7 @@ app.whenReady().then(() => {
         return ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(ext);
       });
       
-      console.log(`Found ${imageFiles.length} image files`);
+      // console.log(`Found ${imageFiles.length} image files`);
       
       // Create image objects with metadata
       const images = imageFiles.map(file => {
@@ -263,7 +263,7 @@ app.whenReady().then(() => {
   ipcMain.handle('test-file-access', async (event, filePath) => {
     try {
       const exists = fs.existsSync(filePath);
-      console.log(`Verificando acesso ao arquivo: ${filePath} - Existe: ${exists}`);
+      // console.log(`Verificando acesso ao arquivo: ${filePath} - Existe: ${exists}`);
       
       if (exists) {
         const stats = fs.statSync(filePath);
@@ -280,7 +280,7 @@ app.whenReady().then(() => {
   // Read file as buffer
   ipcMain.handle('read-file-as-buffer', async (event, filePath) => {
     try {
-      // console.log(`Lendo arquivo como buffer: ${filePath}`);
+      // // console.log(`Lendo arquivo como buffer: ${filePath}`);
       
       if (!fs.existsSync(filePath)) {
         throw new Error(`Arquivo não encontrado: ${filePath}`);
@@ -297,11 +297,11 @@ app.whenReady().then(() => {
   // Clean all files from inventory
   ipcMain.handle('clean-all-files', async (event) => {
     try {
-      console.log('Cleaning all files from inventory...');
+      // console.log('Cleaning all files from inventory...');
       
       // Check if directories exist
       if (!fs.existsSync(IMAGES_DIR) && !fs.existsSync(MODELS_DIR)) {
-        console.log('No directories to clean');
+        // console.log('No directories to clean');
         return { success: true, message: 'No files to clean' };
       }
       
@@ -309,39 +309,39 @@ app.whenReady().then(() => {
       
       // Clean images directory
       if (fs.existsSync(IMAGES_DIR)) {
-        console.log(`Images directory exists at: ${IMAGES_DIR}`);
+        // console.log(`Images directory exists at: ${IMAGES_DIR}`);
         const imageFiles = fs.readdirSync(IMAGES_DIR);
-        console.log(`Found ${imageFiles.length} image files to delete`);
+        // console.log(`Found ${imageFiles.length} image files to delete`);
         
         for (const file of imageFiles) {
           const filePath = path.join(IMAGES_DIR, file);
-          console.log(`Deleting image file: ${filePath}`);
+          // console.log(`Deleting image file: ${filePath}`);
           fs.unlinkSync(filePath);
           deletedCount++;
         }
-        console.log(`Deleted ${imageFiles.length} image files`);
+        // console.log(`Deleted ${imageFiles.length} image files`);
       } else {
-        console.log(`Images directory does not exist: ${IMAGES_DIR}`);
+        // console.log(`Images directory does not exist: ${IMAGES_DIR}`);
       }
       
       // Clean models directory
       if (fs.existsSync(MODELS_DIR)) {
-        console.log(`Models directory exists at: ${MODELS_DIR}`);
+        // console.log(`Models directory exists at: ${MODELS_DIR}`);
         const modelFiles = fs.readdirSync(MODELS_DIR);
-        console.log(`Found ${modelFiles.length} model files to delete`);
+        // console.log(`Found ${modelFiles.length} model files to delete`);
         
         for (const file of modelFiles) {
           const filePath = path.join(MODELS_DIR, file);
-          console.log(`Deleting model file: ${filePath}`);
+          // console.log(`Deleting model file: ${filePath}`);
           fs.unlinkSync(filePath);
           deletedCount++;
         }
-        console.log(`Deleted ${modelFiles.length} model files`);
+        // console.log(`Deleted ${modelFiles.length} model files`);
       } else {
-        console.log(`Models directory does not exist: ${MODELS_DIR}`);
+        // console.log(`Models directory does not exist: ${MODELS_DIR}`);
       }
       
-      console.log(`Clean operation completed. Deleted ${deletedCount} files in total.`);
+      // console.log(`Clean operation completed. Deleted ${deletedCount} files in total.`);
       return { 
         success: true, 
         message: `Successfully cleaned ${deletedCount} files from inventory` 

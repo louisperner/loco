@@ -60,7 +60,7 @@ const cleanupBlobUrl = (url: string): void => {
       
       // Revoke the URL
       URL.revokeObjectURL(url);
-      console.log('Revoked blob URL:', url);
+      // console.log('Revoked blob URL:', url);
     } catch (error) {
       console.error('Error cleaning up blob URL:', error);
     }
@@ -79,7 +79,7 @@ const loadModelsFromStorage = (): Model[] => {
     // e também pré-carregar quando possível
     return parsedModels.map(model => {
       if (model.url && model.url.startsWith('file://')) {
-        console.log('Convertendo URL de modelo salvo:', model.url);
+        // console.log('Convertendo URL de modelo salvo:', model.url);
         return {
           ...model,
           url: model.url.replace('file://', 'app-file://')

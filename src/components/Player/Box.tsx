@@ -10,7 +10,7 @@ import { LiveProvider, LiveComponent } from 'react-live';
 interface BoxProps {
   finalCode: string;
   position?: [number, number, number];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 const Box: React.FC<BoxProps> = (props) => {

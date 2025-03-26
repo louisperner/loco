@@ -205,10 +205,10 @@ const Player: React.FC = () => {
     handleImageDrop
   } = useFileHandling(cameraRef, () => {
     // Reload inventory when files are dropped
-    console.log('File drop callback triggered, attempting to reload inventory');
+    // console.log('File drop callback triggered, attempting to reload inventory');
     setTimeout(() => {
       if (inventoryRef.current) {
-        console.log('Reloading inventory after file drop');
+        // console.log('Reloading inventory after file drop');
         inventoryRef.current.reloadInventory();
       } else {
         console.warn('inventoryRef.current is null, cannot reload inventory');

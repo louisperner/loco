@@ -27,7 +27,7 @@ window.sendToHost = function(channel, data) {
   const event = new CustomEvent('boxframe-media-event', {
     detail: data
   });
-  console.log('📤 Enviando evento para o host:', data);
+  // console.log('📤 Enviando evento para o host:', data);
   window.dispatchEvent(event);
 };
 
@@ -37,7 +37,7 @@ document.addEventListener('dragend', (e) => {
   
   // Verificar se é uma imagem
   if (target.tagName === 'IMG' && target.src) {
-    console.log(JSON.stringify({
+    // console.log(JSON.stringify({
       type: 'image',
       src: target.src,
       alt: target.alt || '',

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Html, TransformControls } from '@react-three/drei';
-import { useThree, useFrame } from '@react-three/fiber';
+import { useThree, useFrame, ThreeEvent } from '@react-three/fiber';
 import { useImageStore } from '../../store/useImageStore';
 import { BiSolidCameraHome, BiReset, BiBorderAll } from 'react-icons/bi';
 import { MdInvertColors, MdHideImage, MdDelete } from 'react-icons/md';
@@ -26,7 +26,8 @@ export interface ImageDataType {
   isInScene?: boolean;
   fileName?: string;
   type?: string;
-  [key: string]: any; // For any additional properties
+  aspectRatio?: number;
+  thumbnailUrl?: string;
 }
 
 interface ImageInSceneProps {
@@ -105,13 +106,14 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
           // Check if this blob URL is in the cache before revoking
           if (window._imageBlobCache && !Object.values(window._imageBlobCache).includes(imageSrc)) {
             URL.revokeObjectURL(imageSrc);
-            console.log('Revoked blob URL for image:', imageSrc);
+            // // console.log('Revoked blob URL for image:', imageSrc);
           }
         } catch (error) {
           console.error('Error revoking blob URL:', error);
         }
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src]);
 
   // Function to save changes
@@ -258,8 +260,8 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
     }
   });
 
-  // Modified to use any type to avoid errors with Three.js event types
-  const handleClick = (e: any): void => {
+  // Modified to use ThreeEvent type instead of any
+  const handleClick = (e: ThreeEvent<MouseEvent>): void => {
     e.stopPropagation();
     if (onSelect) {
       onSelect({ ...imageData, type: 'image' });
@@ -641,14 +643,16 @@ const ImageCloneManager: React.FC<ImageCloneManagerProps> = ({ onSelect }) => {
   // Load saved images from localStorage only once on mount
   useEffect(() => {
     loadSavedImages();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array to run only once on mount
 
   // Listen for removeObject events
   useEffect(() => {
-    const handleRemoveObject = (event: any): void => {
-      if (event.detail && event.detail.type === 'image') {
+    const handleRemoveObject = (event: Event): void => {
+      const customEvent = event as CustomEvent<{type: string; id: string}>;
+      if (customEvent.detail && customEvent.detail.type === 'image') {
         // Instead of removing the image, just update it to mark as not in scene
-        updateImage(event.detail.id, { isInScene: false });
+        updateImage(customEvent.detail.id, { isInScene: false });
       }
     };
 
@@ -662,7 +666,7 @@ const ImageCloneManager: React.FC<ImageCloneManagerProps> = ({ onSelect }) => {
     window.mainCamera = camera;
     
     window.addImageToScene = (imageData: ImageDataType): string => {
-      console.log('Calling addImageToScene via global window', imageData);
+      // console.log('Calling addImageToScene via global window', imageData);
       return addImage({ ...imageData, camera });
     };
 

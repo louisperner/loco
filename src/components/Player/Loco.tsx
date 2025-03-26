@@ -18,14 +18,14 @@ type GLTFResult = GLTF & {
 }
 
 interface LocoProps {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface MarkerProps {
   children?: React.ReactNode;
   position?: [number, number, number];
   rotation?: [number, number, number];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // @ts-ignore

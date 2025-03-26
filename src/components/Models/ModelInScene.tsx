@@ -12,7 +12,22 @@ export interface ModelDataType {
   position?: [number, number, number];
   rotation?: [number, number, number];
   scale?: number;
-  [key: string]: any; // For any additional properties
+  [key: string]: unknown; // For any additional properties
+}
+
+// Add Electron API type declaration
+declare global {
+  interface Window {
+    electron?: {
+      loadFileAsBlob: (url: string) => Promise<{
+        success: boolean;
+        blobUrl?: string;
+        error?: string;
+      }>;
+      [key: string]: any;
+    };
+    _blobUrlCache?: Record<string, any>;
+  }
 }
 
 interface ModelProps {
@@ -36,7 +51,7 @@ interface ModelInSceneProps {
 
 interface ModelErrorBoundaryProps {
   children: React.ReactNode;
-  fallback: ReactElement;
+  fallback: ReactElement<ModelFallbackProps>;
 }
 
 interface ModelErrorBoundaryState {
@@ -47,99 +62,112 @@ interface ModelErrorBoundaryState {
 // Separate model component to use with Suspense and ErrorBoundary
 const Model: React.FC<ModelProps> = ({ url, scale }) => {
   const [error, setError] = useState<Error | null>(null);
-  const [modelUrl, setModelUrl] = useState<string>(url);
-
-  // This component will suspend until the model is loaded
-  const { scene } = useGLTF(modelUrl, undefined, undefined, (error: any) => {
-    console.error('Error loading model with Three.js:', error, modelUrl);
-    throw error; // Propagate the error to the ErrorBoundary
-  });
-
+  const [isConverting, setIsConverting] = useState<boolean>(true);
+  const [processedUrl, setProcessedUrl] = useState<string>('/placeholder-model.glb');
+  
+  // Process the URL before loading the model
   useEffect(() => {
-    // Handle app-file:// protocol conversion
-    const loadModel = async () => {
-      setError(null);
+    let isMounted = true;
+    
+    const processUrl = async () => {
+      if (!isMounted) return;
+      
+      setIsConverting(true);
       try {
-        // If URL starts with file:// or app-file://, try to load it with Electron
-        if ((url && url.startsWith('file://')) || (url && url.startsWith('app-file://'))) {
-          // console.log('Loading model with Electron:', url);
-          
-          if (window.electron && window.electron.loadFileAsBlob) {
-            const result = await window.electron.loadFileAsBlob(url);
-            if (result.success) {
-              // console.log('Model loaded successfully, using blob URL:', result.blobUrl);
-              
-              // Store the blob URL in a global cache to prevent garbage collection
-              window._blobUrlCache = window._blobUrlCache || {};
-              window._blobUrlCache[result.blobUrl] = true;
-              
-              setModelUrl(result.blobUrl);
-            } else {
-              console.error('Error loading model with Electron:', result.error);
-              setError(new Error(`Error loading model: ${result.error}`));
-              // Keep original URL as fallback
-              setModelUrl(url);
+        // Handle different URL protocols
+        if (url.startsWith('file://') || url.startsWith('app-file://')) {
+          // In Electron environment
+          if (window.electron && typeof window.electron.loadFileAsBlob === 'function') {
+            try {
+              const result = await window.electron.loadFileAsBlob(url);
+              if (result.success && result.blobUrl && isMounted) {
+                // Cache the blob URL
+                window._blobUrlCache = window._blobUrlCache || {};
+                window._blobUrlCache[result.blobUrl] = true;
+                
+                setProcessedUrl(result.blobUrl);
+              } else if (isMounted) {
+                console.error('Electron API returned error:', result.error);
+                setError(new Error(`Failed to load model: ${result.error || 'Unknown error'}`));
+                setProcessedUrl('/placeholder-model.glb');
+              }
+            } catch (electronError) {
+              if (isMounted) {
+                console.error('Error with Electron API:', electronError);
+                setError(new Error(`Error with Electron API: ${electronError}`));
+                setProcessedUrl('/placeholder-model.glb');
+              }
             }
-          } else {
-            console.info('Browser environment detected, using alternative model URL');
-            // In browser environment, handle file URLs appropriately
-            if (url.startsWith('file://')) {
-              // Use a placeholder model in browser mode
-              setModelUrl('/placeholder-model.glb');
-              setError(new Error('File system access not available in browser'));
-            } else {
-              // Try to use the URL directly
-              setModelUrl(url);
-            }
+          } else if (isMounted) {
+            // Browser environment
+            console.warn('Electron API not available for file:// or app-file:// protocol');
+            setError(new Error('File system access not available in browser'));
+            setProcessedUrl('/placeholder-model.glb');
           }
-        } else if (url && url.startsWith('blob:')) {
-          // For blob URLs, ensure they're cached to prevent garbage collection
-          console.log('Using blob URL directly:', url);
+        } else if (url.startsWith('blob:') && isMounted) {
+          // Already a blob URL
           window._blobUrlCache = window._blobUrlCache || {};
           window._blobUrlCache[url] = true;
-          setModelUrl(url);
-        } else {
-          // Normal URL, keep as is
-          setModelUrl(url);
+          setProcessedUrl(url);
+        } else if (isMounted) {
+          // Normal http/https URL
+          setProcessedUrl(url);
         }
       } catch (error) {
-        console.error('Error processing model URL:', error);
-        if (error instanceof Error) {
-          setError(error);
-        } else {
-          setError(new Error('Unknown error loading model'));
+        if (isMounted) {
+          console.error('Error processing URL:', error);
+          setError(error instanceof Error ? error : new Error('Unknown error processing URL'));
+          setProcessedUrl('/placeholder-model.glb');
+        }
+      } finally {
+        if (isMounted) {
+          setIsConverting(false);
         }
       }
     };
     
-    loadModel();
+    processUrl();
     
-    // Cleanup function to revoke blob URLs when component unmounts
     return () => {
-      if (modelUrl && modelUrl.startsWith('blob:') && window._blobUrlCache) {
-        delete window._blobUrlCache[modelUrl];
-        // Only revoke if no other components are using this blob URL
-        if (!Object.values(window._blobUrlCache).some(v => v === modelUrl)) {
+      isMounted = false;
+      
+      // Cleanup blob URLs
+      if (processedUrl && processedUrl.startsWith('blob:') && window._blobUrlCache) {
+        delete window._blobUrlCache[processedUrl];
+        
+        // Only revoke if no other components are using it
+        if (!Object.values(window._blobUrlCache).some(v => v === processedUrl)) {
           try {
-            URL.revokeObjectURL(modelUrl);
-            console.log('Revoked blob URL:', modelUrl);
+            URL.revokeObjectURL(processedUrl);
           } catch (e) {
-            console.error('Error revoking blob URL:', e);
+            // Error revoking URL
           }
         }
       }
     };
   }, [url]);
   
+  // If error happened during URL conversion
   if (error) {
-    throw error; // Let the ErrorBoundary handle it
+    throw error;
   }
   
-  const clonedScene = scene.clone();
+  // Show loading indicator if still converting URL
+  if (isConverting) {
+    return null; // Let Suspense fallback handle it
+  }
   
+  // Return the actual model component with the processed URL
+  return <ActualModel url={processedUrl} scale={scale} />;
+};
+
+// Component that actually loads the model using useGLTF
+const ActualModel: React.FC<ModelProps> = ({ url, scale }) => {
+  // Now we can safely use useGLTF with a properly processed URL
+  const { scene } = useGLTF(url);
   return (
     <primitive 
-      object={clonedScene} 
+      object={scene.clone()} 
       dispose={null}
       scale={scale}
     />
@@ -182,37 +210,12 @@ class ModelErrorBoundary extends React.Component<ModelErrorBoundaryProps, ModelE
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    // Log the error with additional details for diagnosis
-    console.error(`Error loading model: ${error.message}`, errorInfo);
-    
-    // If the error is related to file:// protocol, provide a helpful hint
-    if (error.message && error.message.includes('file://')) {
-      console.info('HINT: The error may be related to local file permissions. Check if you are using the app-file:// protocol or have properly configured security permissions in Electron.');
-    }
-    
-    // If the error is about CORS, provide specific hints
-    if (error.message && error.message.includes('CORS')) {
-      console.info('HINT: The error may be related to CORS restrictions. In Electron, you can configure webSecurity: false in webPreferences or use a custom protocol.');
-    }
-    
-    // If the error is about Content Security Policy
-    if (error.message && (error.message.includes('Content Security Policy') || error.message.includes('CSP'))) {
-      console.info('HINT: The error is related to Content Security Policy (CSP). Check if your CSP allows blob: URLs in connect-src. Add "blob:" to the connect-src directive in your CSP.');
-    }
-    
-    // If the error is about Failed to fetch
-    if (error.message && error.message.includes('Failed to fetch')) {
-      console.info('HINT: The "Failed to fetch" error may be related to network issues, CORS, or CSP. Check if the URL is accessible and if your CSP allows access to this resource.');
-    }
-  }
-
   render(): React.ReactNode {
     if (this.state.hasError) {
       // Display detailed information in the fallback
       return React.cloneElement(this.props.fallback, { 
         errorDetails: this.state.error ? this.state.error.message : 'Unknown error'
-      } as any);
+      });
     }
 
     return this.props.children;
@@ -252,22 +255,22 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
   }, [scale]);
 
   // Handles when pointer hovers over the model
-  const handlePointerOver = (e: any): void => {
-    e.stopPropagation();
+  const handlePointerOver = (e: { nativeEvent: PointerEvent }): void => {
+    if (e.nativeEvent) e.nativeEvent.stopPropagation?.();
     setHovered(true);
     document.body.style.cursor = 'pointer';
   };
 
   // Handles when pointer leaves the model
-  const handlePointerOut = (e: any): void => {
-    e.stopPropagation();
+  const handlePointerOut = (e: { nativeEvent: PointerEvent }): void => {
+    if (e.nativeEvent) e.nativeEvent.stopPropagation?.();
     setHovered(false);
     document.body.style.cursor = 'auto';
   };
 
   // Handle click to select this model
-  const handleClick = (e: any): void => {
-    e.stopPropagation();
+  const handleClick = (e: { nativeEvent: MouseEvent }): void => {
+    if (e.nativeEvent) e.nativeEvent.stopPropagation?.();
     if (onSelect) {
       onSelect(id);
     }

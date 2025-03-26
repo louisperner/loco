@@ -10,7 +10,12 @@ interface HotbarItem {
   fileName: string;
   url: string;
   thumbnailUrl?: string;
-  [key: string]: any; // For any additional properties
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number;
+  width?: number;
+  height?: number;
+  aspectRatio?: number;
 }
 
 interface HotbarProps {
