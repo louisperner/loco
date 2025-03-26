@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Grid, Plane, Circle } from '@react-three/drei';
 import { useThemeStore } from '../../../store/ThemeStore';
 import * as THREE from 'three';
@@ -20,7 +20,6 @@ const Floor: React.FC<FloorProps> = ({
 }) => {
   const gridColor = useThemeStore(state => state.gridColor);
   const floorPlaneColor = useThemeStore(state => state.floorPlaneColor);
-  const gridOpacity = useThemeStore(state => state.gridOpacity);
   const floorPlaneOpacity = useThemeStore(state => state.floorPlaneOpacity);
   
   // Extract RGB values from the rgba strings
@@ -40,6 +39,111 @@ const Floor: React.FC<FloorProps> = ({
   const size = isInfinite ? 10 : groundSize;
   const fadeDistance = isInfinite ? 100 : groundSize;
   
+  // Create reusable material
+  const floorMaterial = useMemo(() => (
+    <meshStandardMaterial 
+      color={parseColor(floorPlaneColor)}
+      opacity={floorPlaneOpacity / 100}
+      transparent={true}
+    />
+  ), [floorPlaneColor, floorPlaneOpacity]);
+
+  // Render appropriate floor shape based on groundShape prop
+  const renderFloorShape = () => {
+    if (!floorPlaneVisible) return null;
+    
+    if (isInfinite) {
+      return (
+        <Plane 
+          args={[2000, 2000]} 
+          rotation={[-Math.PI / 2, 0, 0]} 
+          position={[0, 0, 0]}
+          receiveShadow
+          raycast={() => null}
+        >
+          {floorMaterial}
+        </Plane>
+      );
+    }
+    
+    switch (groundShape) {
+      case 'circle':
+        return (
+          <Circle 
+            args={[size / 2]} 
+            rotation={[-Math.PI / 2, 0, 0]} 
+            position={[0, 0, 0]}
+            receiveShadow
+            raycast={() => null}
+          >
+            {floorMaterial}
+          </Circle>
+        );
+      case 'square':
+        return (
+          <Plane 
+            args={[size, size]} 
+            rotation={[-Math.PI / 2, 0, 0]} 
+            position={[0, 0, 0]}
+            receiveShadow
+            raycast={() => null}
+          >
+            {floorMaterial}
+          </Plane>
+        );
+      case 'hexagon':
+        return (
+          <mesh
+            rotation={[-Math.PI / 2, 0, 0]} 
+            position={[0, 0, 0]}
+            receiveShadow
+            raycast={() => null}
+          >
+            <circleGeometry args={[size / 2, 6]} />
+            {floorMaterial}
+          </mesh>
+        );
+      case 'triangle':
+        return (
+          <mesh
+            rotation={[-Math.PI / 2, 0, 0]} 
+            position={[0, 0, 0]}
+            receiveShadow
+            raycast={() => null}
+          >
+            <circleGeometry args={[size / 2, 3]} />
+            {floorMaterial}
+          </mesh>
+        );
+      case 'octagon':
+        return (
+          <mesh
+            rotation={[-Math.PI / 2, 0, 0]} 
+            position={[0, 0, 0]}
+            receiveShadow
+            raycast={() => null}
+          >
+            <circleGeometry args={[size / 2, 8]} />
+            {floorMaterial}
+          </mesh>
+        );
+      case 'diamond':
+        return (
+          <mesh
+            rotation={[-Math.PI / 2, 0, 0]} 
+            position={[0, 0, 0]}
+            receiveShadow
+            raycast={() => null}
+          >
+            <circleGeometry args={[size / 2, 4, Math.PI/4]} />
+            {floorMaterial}
+          </mesh>
+        );
+      default:
+        return null;
+    }
+  };
+  
   return (
     <>
       {gridVisible && (
@@ -56,118 +160,11 @@ const Floor: React.FC<FloorProps> = ({
           followCamera={isInfinite}
           position={[0, 0.01, 0]}
           infiniteGrid={isInfinite}
-          opacity={gridOpacity / 100}
           raycast={() => null}
         />
       )}
       
-      {/* Render infinite plane when infinite ground is enabled */}
-      {floorPlaneVisible && isInfinite && (
-        <Plane 
-          args={[2000, 2000]} 
-          rotation={[-Math.PI / 2, 0, 0]} 
-          position={[0, 0, 0]}
-          receiveShadow
-          raycast={() => null}
-        >
-          <meshStandardMaterial 
-            color={parseColor(floorPlaneColor)}
-            opacity={floorPlaneOpacity / 100}
-            transparent={true}
-          />
-        </Plane>
-      )}
-      
-      {/* Only render shape-specific planes when NOT in infinite mode */}
-      {floorPlaneVisible && !isInfinite && groundShape === 'circle' && (
-        <Circle 
-          args={[size / 2]} 
-          rotation={[-Math.PI / 2, 0, 0]} 
-          position={[0, 0, 0]}
-          receiveShadow
-          raycast={() => null}
-        >
-          <meshStandardMaterial 
-            color={parseColor(floorPlaneColor)}
-            opacity={floorPlaneOpacity / 100}
-            transparent={true}
-          />
-        </Circle>
-      )}
-      {floorPlaneVisible && !isInfinite && groundShape === 'square' && (
-        <Plane 
-          args={[size, size]} 
-          rotation={[-Math.PI / 2, 0, 0]} 
-          position={[0, 0, 0]}
-          receiveShadow
-          raycast={() => null}
-        >
-          <meshStandardMaterial 
-            color={parseColor(floorPlaneColor)}
-            opacity={floorPlaneOpacity / 100}
-            transparent={true}
-          />
-        </Plane>
-      )}
-      {floorPlaneVisible && !isInfinite && groundShape === 'hexagon' && (
-        <mesh
-          rotation={[-Math.PI / 2, 0, 0]} 
-          position={[0, 0, 0]}
-          receiveShadow
-          raycast={() => null}
-        >
-          <circleGeometry args={[size / 2, 6]} />
-          <meshStandardMaterial 
-            color={parseColor(floorPlaneColor)}
-            opacity={floorPlaneOpacity / 100}
-            transparent={true}
-          />
-        </mesh>
-      )}
-      {floorPlaneVisible && !isInfinite && groundShape === 'triangle' && (
-        <mesh
-          rotation={[-Math.PI / 2, 0, 0]} 
-          position={[0, 0, 0]}
-          receiveShadow
-          raycast={() => null}
-        >
-          <circleGeometry args={[size / 2, 3]} />
-          <meshStandardMaterial 
-            color={parseColor(floorPlaneColor)}
-            opacity={floorPlaneOpacity / 100}
-            transparent={true}
-          />
-        </mesh>
-      )}
-      {floorPlaneVisible && !isInfinite && groundShape === 'octagon' && (
-        <mesh
-          rotation={[-Math.PI / 2, 0, 0]} 
-          position={[0, 0, 0]}
-          receiveShadow
-        >
-          <circleGeometry args={[size / 2, 8]} />
-          <meshStandardMaterial 
-            color={parseColor(floorPlaneColor)}
-            opacity={floorPlaneOpacity / 100}
-            transparent={true}
-          />
-        </mesh>
-      )}
-      {floorPlaneVisible && !isInfinite && groundShape === 'diamond' && (
-        <mesh
-          rotation={[-Math.PI / 2, 0, 0]} 
-          position={[0, 0, 0]}
-          receiveShadow
-          raycast={() => null}
-        >
-          <circleGeometry args={[size / 2, 4, Math.PI/4]} />
-          <meshStandardMaterial 
-            color={parseColor(floorPlaneColor)}
-            opacity={floorPlaneOpacity / 100}
-            transparent={true}
-          />
-        </mesh>
-      )}
+      {renderFloorShape()}
     </>
   );
 };
