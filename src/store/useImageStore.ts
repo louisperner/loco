@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import * as THREE from 'three';
 
 /**
  * Store para gerenciar imagens no espaço 3D
@@ -18,7 +17,7 @@ export interface Image {
   scale?: number | [number, number, number];
   fileName?: string;
   fromUrl?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Image data interface for adding new images
@@ -32,7 +31,7 @@ export interface ImageData {
   scale?: number | [number, number, number];
   fileName?: string;
   fromUrl?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Store interface

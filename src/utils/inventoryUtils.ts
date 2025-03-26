@@ -22,7 +22,7 @@ export const HOTBAR_STORAGE_KEY = 'loco-hotbar-items';
 // Interface for inventory item
 export interface InventoryItem {
   fileName: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Function to show visual feedback when item is added to canvas

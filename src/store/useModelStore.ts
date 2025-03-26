@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import * as THREE from 'three';
 
 /**
  * Store para gerenciar modelos 3D no espaço
@@ -15,7 +14,7 @@ export interface Model {
   rotation: [number, number, number];
   scale: number | [number, number, number];
   added: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // ModelData interface (for adding new models)
@@ -25,7 +24,7 @@ export interface ModelData {
   position?: [number, number, number];
   rotation?: [number, number, number];
   scale?: number | [number, number, number];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Store interface
@@ -60,9 +59,6 @@ const cleanupBlobUrl = (url: string): void => {
     }
   }
 };
-
-// Manter um cache de blobs para modelos
-const modelBlobCache = new Map<string, string>();
 
 const loadModelsFromStorage = (): Model[] => {
   try {

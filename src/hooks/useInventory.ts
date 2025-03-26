@@ -17,7 +17,7 @@ export interface InventoryItem {
   modifiedAt?: string;
   category?: string;
   inventoryId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface InventoryHookProps {
@@ -102,15 +102,23 @@ export const useInventory = (
             const imageResult = await electron.listImagesFromDisk();
             
             if (imageResult.success) {
-              const imageItems = imageResult.images.map((img: any) => ({
-                ...img,
+              const imageItems = imageResult.images.map((img) => ({
+                id: String((img as Record<string, unknown>).id || ''),
                 type: 'image' as const,
-                category: getImageCategory(img.fileName)
+                fileName: String((img as Record<string, unknown>).fileName || ''),
+                url: String((img as Record<string, unknown>).url || ''),
+                thumbnailUrl: String((img as Record<string, unknown>).thumbnailUrl || ''),
+                filePath: (img as Record<string, unknown>).filePath as string | undefined,
+                fileSize: (img as Record<string, unknown>).fileSize as number | undefined,
+                createdAt: (img as Record<string, unknown>).createdAt as string | undefined,
+                modifiedAt: (img as Record<string, unknown>).modifiedAt as string | undefined,
+                category: getImageCategory(String((img as Record<string, unknown>).fileName || ''))
               }));
               allItems = [...allItems, ...imageItems];
             }
           }
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error('Error loading images from disk:', error);
         }
         
@@ -120,15 +128,23 @@ export const useInventory = (
             const modelResult = await electron.listModelsFromDisk();
             
             if (modelResult.success) {
-              const modelItems = modelResult.models.map((model: any) => ({
-                ...model,
+              const modelItems = modelResult.models.map((model) => ({
+                id: String((model as Record<string, unknown>).id || ''),
                 type: 'model' as const,
-                category: getModelCategory(model.fileName)
+                fileName: String((model as Record<string, unknown>).fileName || ''),
+                url: String((model as Record<string, unknown>).url || ''),
+                thumbnailUrl: String((model as Record<string, unknown>).thumbnailUrl || ''),
+                filePath: (model as Record<string, unknown>).filePath as string | undefined,
+                fileSize: (model as Record<string, unknown>).fileSize as number | undefined,
+                createdAt: (model as Record<string, unknown>).createdAt as string | undefined,
+                modifiedAt: (model as Record<string, unknown>).modifiedAt as string | undefined,
+                category: getModelCategory(String((model as Record<string, unknown>).fileName || ''))
               }));
               allItems = [...allItems, ...modelItems];
             }
           }
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error('Error loading models from disk:', error);
         }
       }
@@ -151,7 +167,7 @@ export const useInventory = (
         type: 'model' as const,
         fileName: model.fileName || 'Unknown',
         url: model.url,
-        thumbnailUrl: model.thumbnailUrl,
+        thumbnailUrl: model.thumbnailUrl as string | undefined,
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString(),
         category: getModelCategory(model.fileName || 'Unknown')
@@ -234,11 +250,13 @@ export const useInventory = (
           setHotbarItems(newHotbarItems);
         }
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error('Error restoring hotbar from localStorage:', error);
       }
       
       setSelectedItem(null);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error loading inventory items:', error);
       setError((error as Error).message);
     } finally {
@@ -266,101 +284,41 @@ export const useInventory = (
       const hotbarIds = hotbarItems.map(item => item ? item.id : null);
       localStorage.setItem(HOTBAR_STORAGE_KEY, JSON.stringify(hotbarIds));
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error saving hotbar to localStorage:', error);
     }
   }, [hotbarItems]);
 
-  // Keyboard event handlers
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+  // Move addItemToHotbarSlot into useCallback to avoid dependency cycle
+  const addItemToHotbarSlot = useCallback((item: InventoryItem, slotIndex: number): void => {
+    if (slotIndex >= 0 && slotIndex < 9) {
+      const existingIndex = hotbarItems.findIndex(hotbarItem => 
+        hotbarItem && hotbarItem.id === item.id
+      );
       
-      if (e.key === 'e' || e.key === 'E' || e.key === 'Escape') {
-        e.preventDefault();
-        
-        if (document.pointerLockElement === null) {
-          const canvas = document.querySelector('canvas');
-          if (canvas) {
-            // Create click event in a cross-browser compatible way
-            try {
-              // Modern approach for most browsers
-              canvas.dispatchEvent(new Event('click', {
-                bubbles: true,
-                cancelable: true
-              }));
-            } catch (error) {
-              // Fallback for older browsers or environments where Event constructor isn't available
-              const clickEvent = document.createEvent('MouseEvents');
-              clickEvent.initEvent('click', true, true);
-              canvas.dispatchEvent(clickEvent);
-            }
-          }
-        }
-
-        if (onClose) onClose();
-      } else if (e.key === 'q' || e.key === 'Q') {
-        e.preventDefault();
-        setSelectedItem(null);
-        setSelectedHotbarSlot(null);
-      } else if (e.key >= '1' && e.key <= '9') {
-        const index = parseInt(e.key) - 1;
-        setSelectedHotbarSlot(index);
-        
-        if (hotbarItems[index]) {
-          handleItemSelect(hotbarItems[index]!);
-        } else {
-          setSelectedItem(null);
-        }
-      } else if (e.key === 'b' || e.key === 'B') {
-        e.preventDefault();
-        setIsAddingToHotbar(prev => !prev);
+      if (existingIndex !== -1 && existingIndex !== slotIndex) {
+        const newHotbarItems = [...hotbarItems];
+        newHotbarItems[existingIndex] = null;
+        newHotbarItems[slotIndex] = item;
+        setHotbarItems(newHotbarItems);
+      } else if (existingIndex === -1) {
+        const newHotbarItems = [...hotbarItems];
+        newHotbarItems[slotIndex] = item;
+        setHotbarItems(newHotbarItems);
       }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown as any);
-    return () => window.removeEventListener('keydown', handleKeyDown as any);
-  }, [onClose, hotbarItems]);
+    }
+  }, [hotbarItems, setHotbarItems]);
 
-  // Mouse click handlers
-  useEffect(() => {
-    const handleMouseClick = (e: MouseEvent) => {
-      const canvas = document.querySelector('canvas');
-      if (!canvas) return;
-
-      if (e.target === canvas || canvas.contains(e.target as Node)) {
-        if (e.button === 0 && selectedHotbarSlot !== null && hotbarItems[selectedHotbarSlot]) {
-          handleAddToCanvas(hotbarItems[selectedHotbarSlot]!);
-        } else if (e.button === 2 && typeof onRemoveObject === 'function') {
-          onRemoveObject();
-        }
-      }
-    };
-
-    const preventContextMenu = (e: MouseEvent) => {
-      const canvas = document.querySelector('canvas');
-      if (canvas && (e.target === canvas || canvas.contains(e.target as Node))) {
-        e.preventDefault();
-      }
-    };
-
-    document.addEventListener('mousedown', handleMouseClick as any);
-    document.addEventListener('contextmenu', preventContextMenu as any);
-
-    return () => {
-      document.removeEventListener('mousedown', handleMouseClick as any);
-      document.removeEventListener('contextmenu', preventContextMenu as any);
-    };
-  }, [selectedHotbarSlot, hotbarItems, onRemoveObject]);
-
-  const handleItemSelect = (item: InventoryItem): void => {
+  // Now handleItemSelect can use addItemToHotbarSlot safely
+  const handleItemSelect = useCallback((item: InventoryItem): void => {
     setSelectedItem(item);
     
     if (isAddingToHotbar && selectedHotbarSlot !== null) {
       addItemToHotbarSlot(item, selectedHotbarSlot);
     }
-  };
+  }, [isAddingToHotbar, selectedHotbarSlot, setSelectedItem, addItemToHotbarSlot]);
 
-  const handleAddToCanvas = (item: InventoryItem): void => {
+  const handleAddToCanvas = useCallback((item: InventoryItem): void => {
     if (!item) return;
     
     if (item.type === 'image' && onSelectImage) {
@@ -370,7 +328,129 @@ export const useInventory = (
       onSelectModel(item);
       showAddedToCanvasIndicator(item);
     }
-  };
+  }, [onSelectImage, onSelectModel]);
+
+  // Keyboard handling for inventory view
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      // Skip if we're not showing the inventory
+      if (!showFullInventory) return;
+      
+      // Skip if we're focused in an input element
+      const activeElement = document.activeElement;
+      if (
+        activeElement?.tagName === 'INPUT' || 
+        activeElement?.tagName === 'TEXTAREA' || 
+        activeElement?.tagName === 'SELECT'
+      ) {
+        return;
+      }
+      
+      // Handle Escape key to close inventory
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        // eslint-disable-next-line no-console
+        console.log('Escape key pressed, closing inventory');
+        setShowFullInventory(false);
+        setSelectedItem(null);
+      }
+      
+      // Handle Q key to clear selection
+      if (e.key === 'q' || e.key === 'Q') {
+        e.preventDefault();
+        // eslint-disable-next-line no-console
+        console.log('Q key pressed, clearing selection');
+        setSelectedItem(null);
+        setSelectedHotbarSlot(null);
+      }
+      
+      // Handle B key to toggle adding items to hotbar
+      if (e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        // eslint-disable-next-line no-console
+        console.log('B key pressed, toggling add to hotbar mode');
+        setIsAddingToHotbar(!isAddingToHotbar);
+      }
+      
+      // Note: number keys are handled by the global keyboard handler
+    };
+    
+    // Use a named function for the keydown listener to help with debugging
+    const inventoryKeydownListener = handleKeyDown as unknown as EventListener;
+    document.addEventListener('keydown', inventoryKeydownListener);
+    
+    // eslint-disable-next-line no-console
+    console.log("Inventory-specific keyboard handler initialized");
+    
+    return () => {
+      document.removeEventListener('keydown', inventoryKeydownListener);
+      // eslint-disable-next-line no-console
+      console.log("Inventory-specific keyboard handler removed");
+    };
+  }, [
+    showFullInventory, 
+    setShowFullInventory, 
+    setSelectedItem, 
+    setSelectedHotbarSlot, 
+    isAddingToHotbar, 
+    setIsAddingToHotbar
+  ]);
+
+  // Mouse click handlers
+  useEffect(() => {
+    const handleMouseClick = (e: MouseEvent): void => {
+      const canvas = document.querySelector('canvas');
+      if (!canvas) return;
+
+      // Check if we're clicking on the canvas
+      if (e.target === canvas || canvas.contains(e.target as Node)) {
+        // Left click and we have a selected hotbar slot with an item
+        if (e.button === 0 && selectedHotbarSlot !== null && hotbarItems[selectedHotbarSlot]) {
+          // Debug information
+          // eslint-disable-next-line no-console
+          console.log(`Left click on canvas with hotbar slot ${selectedHotbarSlot} selected, placing item:`, 
+            hotbarItems[selectedHotbarSlot]?.fileName);
+          
+          // Add the selected item to the canvas
+          handleAddToCanvas(hotbarItems[selectedHotbarSlot]!);
+        } 
+        // Right click and we have a remove handler
+        else if (e.button === 2 && typeof onRemoveObject === 'function') {
+          // eslint-disable-next-line no-console
+          console.log('Right click on canvas, removing object');
+          onRemoveObject();
+        }
+        else {
+          // eslint-disable-next-line no-console
+          console.log('Click on canvas but no action taken', { 
+            button: e.button, 
+            selectedHotbarSlot, 
+            hasItem: selectedHotbarSlot !== null ? !!hotbarItems[selectedHotbarSlot] : false 
+          });
+        }
+      }
+    };
+
+    const preventContextMenu = (e: MouseEvent): void => {
+      const canvas = document.querySelector('canvas');
+      if (canvas && (e.target === canvas || canvas.contains(e.target as Node))) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('mousedown', handleMouseClick as unknown as EventListener);
+    document.addEventListener('contextmenu', preventContextMenu as unknown as EventListener);
+    
+    // eslint-disable-next-line no-console
+    console.log("Mouse click handler initialized");
+
+    return () => {
+      document.removeEventListener('mousedown', handleMouseClick as unknown as EventListener);
+      document.removeEventListener('contextmenu', preventContextMenu as unknown as EventListener);
+      // eslint-disable-next-line no-console
+      console.log("Mouse click handler removed");
+    };
+  }, [selectedHotbarSlot, hotbarItems, onRemoveObject, handleAddToCanvas]);
 
   const handleConfirmSelection = (): void => {
     if (!selectedItem) return;
@@ -395,7 +475,7 @@ export const useInventory = (
     setSearchTerm(e.target.value);
   };
 
-  const handleHotbarSlotClick = (index: number, e: MouseEvent): void => {
+  const handleHotbarSlotClick = (index: number, _e: MouseEvent): void => {
     const item = hotbarItems[index];
     setSelectedHotbarSlot(index);
     
@@ -406,26 +486,7 @@ export const useInventory = (
     }
   };
 
-  const addItemToHotbarSlot = (item: InventoryItem, slotIndex: number): void => {
-    if (slotIndex >= 0 && slotIndex < 9) {
-      const existingIndex = hotbarItems.findIndex(hotbarItem => 
-        hotbarItem && hotbarItem.id === item.id
-      );
-      
-      if (existingIndex !== -1 && existingIndex !== slotIndex) {
-        const newHotbarItems = [...hotbarItems];
-        newHotbarItems[existingIndex] = null;
-        newHotbarItems[slotIndex] = item;
-        setHotbarItems(newHotbarItems);
-      } else if (existingIndex === -1) {
-        const newHotbarItems = [...hotbarItems];
-        newHotbarItems[slotIndex] = item;
-        setHotbarItems(newHotbarItems);
-      }
-    }
-  };
-
-  const handleAddToHotbar = (item: InventoryItem, e: MouseEvent): void => {
+  const handleAddToHotbar = useCallback((item: InventoryItem, e: MouseEvent): void => {
     e.stopPropagation();
     
     if (selectedHotbarSlot !== null) {
@@ -438,7 +499,7 @@ export const useInventory = (
         addItemToHotbarSlot(item, 0);
       }
     }
-  };
+  }, [selectedHotbarSlot, hotbarItems, addItemToHotbarSlot]);
 
   const handleRemoveFromHotbar = (index: number, e: MouseEvent): void => {
     e.stopPropagation();
@@ -467,6 +528,7 @@ export const useInventory = (
       e.dataTransfer.setData('application/json', jsonData);
       e.dataTransfer.setData('text/plain', item.fileName);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error setting drag data:', error);
     }
     
@@ -507,7 +569,7 @@ export const useInventory = (
     e.currentTarget.classList.add('dragging');
   };
 
-  const handleDragEnd = (e: DragEvent<HTMLDivElement>): void => {
+  const handleDragEnd = (_e: DragEvent<HTMLDivElement>): void => {
     setDraggedItem(null);
     setDragOverSlot(null);
     
@@ -516,8 +578,8 @@ export const useInventory = (
     });
     
     const ghostElement = document.querySelector('.drag-ghost');
-    if (ghostElement) {
-      document.body.removeChild(ghostElement);
+    if (ghostElement && ghostElement.parentNode) {
+      ghostElement.parentNode.removeChild(ghostElement);
     }
   };
 
@@ -549,7 +611,7 @@ export const useInventory = (
     }
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>, index: number): void => {
+  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>, index: number): void => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -563,7 +625,7 @@ export const useInventory = (
         setDraggedItem(null);
       }, 50);
     }
-  };
+  }, [draggedItem, setDraggedItem, addItemToHotbarSlot]);
 
   // Filter items based on active tab and search term
   const filteredItems = useMemo(() => {
@@ -633,6 +695,7 @@ export const useInventory = (
         if (onRemoveObject) onRemoveObject(model.id);
       });
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Erro ao remover do canvas:', error);
       return;
     }
@@ -673,6 +736,7 @@ export const useInventory = (
           await window.electron.deleteFile(path);
         }
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error('Erro ao deletar arquivos:', error);
       }
     }
@@ -682,6 +746,60 @@ export const useInventory = (
       setSelectedItem(null);
     }
   }, [items, selectedItem, onRemoveObject]);
+
+  // Global keyboard handler for hotbar selection
+  useEffect(() => {
+    const handleGlobalHotkeys = (e: KeyboardEvent): void => {
+      // Skip if we're focused in an input element
+      const activeElement = document.activeElement;
+      if (
+        activeElement?.tagName === 'INPUT' || 
+        activeElement?.tagName === 'TEXTAREA' || 
+        activeElement?.tagName === 'SELECT'
+      ) {
+        return;
+      }
+
+      // Handle number keys 1-9 for hotbar selection (top row number keys)
+      if (e.key >= '1' && e.key <= '9') {
+        // Get slot index (0-8) from key (1-9)
+        const slotIndex = parseInt(e.key, 10) - 1;
+        
+        // Always prevent default browser behavior for number keys
+        e.preventDefault();
+        
+        // Debug information
+        // eslint-disable-next-line no-console
+        console.log(`Number key ${e.key} pressed, selecting hotbar slot ${slotIndex}`);
+        
+        // Always select the slot regardless of content
+        setSelectedHotbarSlot(slotIndex);
+        
+        // Set selected item based on hotbar contents
+        if (hotbarItems[slotIndex]) {
+          // eslint-disable-next-line no-console
+          console.log(`Found item in slot ${slotIndex}:`, hotbarItems[slotIndex]?.fileName);
+          setSelectedItem(hotbarItems[slotIndex]!);
+        } else {
+          // eslint-disable-next-line no-console
+          console.log(`No item in slot ${slotIndex}, clearing item selection`);
+          setSelectedItem(null);
+        }
+      }
+    };
+
+    // eslint-disable-next-line no-console
+    console.log("Global hotbar keyboard handler initialized");
+    
+    // Use true for capture to ensure this handler runs before others
+    document.addEventListener('keydown', handleGlobalHotkeys as unknown as EventListener, true);
+    
+    return () => {
+      document.removeEventListener('keydown', handleGlobalHotkeys as unknown as EventListener, true);
+      // eslint-disable-next-line no-console
+      console.log("Global hotbar keyboard handler removed");
+    };
+  }, [hotbarItems, setSelectedItem]);
 
   return {
     items: filteredItems,

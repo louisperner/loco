@@ -6,6 +6,21 @@ import { saveModelThumbnail } from '../utils/modelThumbnailGenerator';
 
 // Note: Window interface with electron API is defined in src/types/global.d.ts
 
+// Custom logging function to replace console.error
+const logError = (message: string, error?: unknown): void => {
+  // In production, this could send to a monitoring service
+  // For now, we just directly log errors
+  // eslint-disable-next-line no-console
+  console.error(message, error);
+};
+
+// Custom logging function for info messages
+const logInfo = (message: string): void => {
+  // In production, this would be a noop or send to a monitoring service
+  // eslint-disable-next-line no-console
+  console.info(message);
+};
+
 // Return type for the hook
 interface FileHandlingHook {
   isDragging: boolean;
@@ -62,10 +77,11 @@ export const useFileHandling = (
       
       // Check if we have access to the camera
       if (!cameraRef.current) {
+        // eslint-disable-next-line no-console
         console.warn('Camera reference not available. Model will be placed at origin.');
         
         // Add model at origin if camera not available
-        const modelId = addModel({
+        const id = addModel({
           url: objectUrl,
           fileName: file.name,
           position: [0, 1, 0], // Default position above ground
@@ -80,10 +96,10 @@ export const useFileHandling = (
           // console.log('Saving model file to disk...');
           window.electron.saveModelFile(file, file.name).then(async (savedPath: string) => {
             // Generate and save a thumbnail for the model
-            const thumbnailUrl = await saveModelThumbnail(savedPath, modelId);
+            const thumbnailUrl = await saveModelThumbnail(savedPath, id);
             
             // Update model with the new file path and thumbnail
-            updateModel(modelId, { 
+            updateModel(id, { 
               url: savedPath,
               thumbnailUrl: thumbnailUrl
             });
@@ -97,7 +113,7 @@ export const useFileHandling = (
               if (window._blobUrlCache) delete window._blobUrlCache[objectUrl];
               // console.log('Revoked blob URL after saving to disk:', objectUrl);
             } catch (e) {
-              console.error('Error revoking blob URL:', e);
+              logError('Error revoking blob URL:', e);
             }
             
             // Call the callback after successful save
@@ -106,11 +122,11 @@ export const useFileHandling = (
               onSuccessfulFileDrop();
             }
           }).catch((error: Error) => {
-            console.error('Error saving model file:', error);
+            logError('Error saving model file:', error);
             alert(`Error saving model file: ${error.message}`);
           });
         } else {
-          console.info('Running in browser environment, using blob URL for model storage');
+          logInfo('Running in browser environment, using blob URL for model storage');
           // Call the callback for browser environment
           if (onSuccessfulFileDrop) {
             // console.log('Calling file drop callback for browser environment');
@@ -134,7 +150,7 @@ export const useFileHandling = (
       // console.log('Placing model at position:', position);
       
       // Add model to the store
-      const modelId = addModel({
+      const id = addModel({
         url: objectUrl,
         fileName: file.name,
         position: [position.x, position.y, position.z],
@@ -149,10 +165,10 @@ export const useFileHandling = (
         // console.log('Saving model file to disk...');
         window.electron.saveModelFile(file, file.name).then(async (savedPath: string) => {
           // Generate and save a thumbnail for the model
-          const thumbnailUrl = await saveModelThumbnail(savedPath, modelId);
+          const thumbnailUrl = await saveModelThumbnail(savedPath, id);
           
           // Update model with the new file path and thumbnail
-          updateModel(modelId, { 
+          updateModel(id, { 
             url: savedPath,
             thumbnailUrl: thumbnailUrl
           });
@@ -166,7 +182,7 @@ export const useFileHandling = (
             if (window._blobUrlCache) delete window._blobUrlCache[objectUrl];
             // console.log('Revoked blob URL after saving to disk:', objectUrl);
           } catch (e) {
-            console.error('Error revoking blob URL:', e);
+            logError('Error revoking blob URL:', e);
           }
           
           // Call the callback after successful save
@@ -175,11 +191,11 @@ export const useFileHandling = (
             onSuccessfulFileDrop();
           }
         }).catch((error: Error) => {
-          console.error('Error saving model file:', error);
+          logError('Error saving model file:', error);
           alert(`Error saving model file: ${error.message}`);
         });
       } else {
-        console.info('Running in browser environment, using blob URL for model storage');
+        logInfo('Running in browser environment, using blob URL for model storage');
         // Call the callback for browser environment
         if (onSuccessfulFileDrop) {
           // console.log('Calling file drop callback for browser environment');
@@ -187,7 +203,7 @@ export const useFileHandling = (
         }
       }
     } catch (error) {
-      console.error('Error handling model drop:', error);
+      logError('Error handling model drop:', error);
       alert(`Error loading 3D model: ${(error as Error).message}`);
     }
   }, [addModel, updateModel, cameraRef, onSuccessfulFileDrop]);
@@ -202,10 +218,11 @@ export const useFileHandling = (
       
       // Check if we have access to the camera
       if (!cameraRef.current) {
+        // eslint-disable-next-line no-console
         console.warn('Camera reference not available. Image will be placed at origin.');
         
         // Add image at origin if camera not available
-        const imageId = addImage({
+        const id = addImage({
           src: objectUrl,
           fileName: file.name,
           position: [0, 1, 0], // Default position
@@ -220,7 +237,7 @@ export const useFileHandling = (
           // console.log('Saving image file to disk...');
           window.electron.saveImageFile(file, file.name).then((savedPath: string) => {
             // Update image with the new file path
-            updateImage(imageId, { src: savedPath });
+            updateImage(id, { src: savedPath });
             // console.log(`Saved image to disk: ${savedPath}`);
             
             // Call the callback after successful save
@@ -229,11 +246,11 @@ export const useFileHandling = (
               onSuccessfulFileDrop();
             }
           }).catch((error: Error) => {
-            console.error('Error saving image file:', error);
+            logError('Error saving image file:', error);
             alert(`Error saving image file: ${error.message}`);
           });
         } else {
-          console.info('Running in browser environment, using blob URL for image storage');
+          logInfo('Running in browser environment, using blob URL for image storage');
           // Call the callback for browser environment
           if (onSuccessfulFileDrop) {
             // console.log('Calling file drop callback for browser environment');
@@ -256,33 +273,34 @@ export const useFileHandling = (
       
       // console.log('Placing image at position:', position);
       
-      // Calculate image dimensions asynchronously
+      // Create an image to get dimensions
       const img = new Image();
+      
       img.onload = () => {
-        // Calculate aspect ratio
         const aspectRatio = img.width / img.height;
-        // console.log('Image loaded with dimensions:', img.width, 'x', img.height, 'aspect ratio:', aspectRatio);
+        const scale = aspectRatio > 1 
+          ? [aspectRatio, 1, 1] as [number, number, number] 
+          : [1, 1 / aspectRatio, 1] as [number, number, number];
         
-        // Add image to the store
-        const imageId = addImage({
+        // Add image to the store with dimensions
+        const id = addImage({
           src: objectUrl,
           fileName: file.name,
+          width: img.width,
+          height: img.height,
           position: [position.x, position.y, position.z],
           rotation: [0, 0, 0],
-          scale: 1,
-          width: 300,
-          height: 200,
-          aspectRatio,
+          scale,
         });
         
-        // console.log(`Added image: ${file.name} with ID: ${imageId} at position:`, position);
+        // console.log(`Added image with dimensions: ${file.name} with ID: ${imageId}`);
         
         // Save the file to disk using Electron's IPC
         if (window.electron && window.electron.saveImageFile) {
           // console.log('Saving image file to disk...');
           window.electron.saveImageFile(file, file.name).then((savedPath: string) => {
             // Update image with the new file path
-            updateImage(imageId, { src: savedPath });
+            updateImage(id, { src: savedPath });
             // console.log(`Saved image to disk: ${savedPath}`);
             
             // Call the callback after successful save
@@ -291,11 +309,11 @@ export const useFileHandling = (
               onSuccessfulFileDrop();
             }
           }).catch((error: Error) => {
-            console.error('Error saving image file:', error);
+            logError('Error saving image file:', error);
             alert(`Error saving image file: ${error.message}`);
           });
         } else {
-          console.info('Running in browser environment, using blob URL for image storage');
+          logInfo('Running in browser environment, using blob URL for image storage');
           // Call the callback for browser environment
           if (onSuccessfulFileDrop) {
             // console.log('Calling file drop callback for browser environment');
@@ -305,10 +323,10 @@ export const useFileHandling = (
       };
       
       img.onerror = (error) => {
-        console.error('Error loading image dimensions:', error);
+        logError('Error loading image dimensions:', error);
         
         // Add image without dimensions
-        const imageId = addImage({
+        const id = addImage({
           src: objectUrl,
           fileName: file.name,
           position: [position.x, position.y, position.z],
@@ -323,7 +341,7 @@ export const useFileHandling = (
           // console.log('Saving image file to disk...');
           window.electron.saveImageFile(file, file.name).then((savedPath: string) => {
             // Update image with the new file path
-            updateImage(imageId, { src: savedPath });
+            updateImage(id, { src: savedPath });
             // console.log(`Saved image to disk: ${savedPath}`);
             
             // Call the callback after successful save
@@ -332,11 +350,11 @@ export const useFileHandling = (
               onSuccessfulFileDrop();
             }
           }).catch((error: Error) => {
-            console.error('Error saving image file:', error);
+            logError('Error saving image file:', error);
             alert(`Error saving image file: ${error.message}`);
           });
         } else {
-          console.info('Running in browser environment, using blob URL for image storage');
+          logInfo('Running in browser environment, using blob URL for image storage');
           // Call the callback for browser environment
           if (onSuccessfulFileDrop) {
             // console.log('Calling file drop callback for browser environment');
@@ -347,7 +365,7 @@ export const useFileHandling = (
       
       img.src = objectUrl;
     } catch (error) {
-      console.error('Error handling image drop:', error);
+      logError('Error handling image drop:', error);
       alert(`Error loading image: ${(error as Error).message}`);
     }
   }, [addImage, updateImage, cameraRef, onSuccessfulFileDrop]);
@@ -356,13 +374,13 @@ export const useFileHandling = (
     type: string;
     url: string;
     fileName?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   }
   
   interface InventoryDrop {
     type: string;
     itemData?: InventoryItem;
-    [key: string]: any;
+    [key: string]: unknown;
   }
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
@@ -408,7 +426,7 @@ export const useFileHandling = (
                 }
                 
                 // Add image to the store
-                const imageId = addImage({
+                addImage({
                   src: item.url,
                   fileName: item.fileName || 'Untitled Image',
                   position: [position.x, position.y, position.z],
@@ -439,7 +457,7 @@ export const useFileHandling = (
                 }
                 
                 // Add model to the store
-                const modelId = addModel({
+                addModel({
                   url: item.url,
                   fileName: item.fileName || 'Untitled Model',
                   position: [position.x, position.y, position.z],
@@ -453,11 +471,11 @@ export const useFileHandling = (
             }
           }
         } catch (jsonError) {
-          console.error('Error parsing JSON data from drop:', jsonError);
+          logError('Error parsing JSON data from drop:', jsonError);
         }
       }
     } catch (error) {
-      console.error('Error processing inventory item drop:', error);
+      logError('Error processing inventory item drop:', error);
     }
     
     // If not an inventory item, process as a file drop
@@ -491,7 +509,7 @@ export const useFileHandling = (
       // console.log('Unsupported file type:', fileName);
       alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, PNG, WEBP, GIF`);
     }
-  }, [handleModelDrop, handleImageDrop, addImage, addModel, cameraRef, onSuccessfulFileDrop]);
+  }, [handleModelDrop, handleImageDrop, setIsDragging, addImage, addModel, cameraRef]);
 
   return {
     isDragging,
