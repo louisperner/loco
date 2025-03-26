@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, RefObject } from 'react';
-import { FaArrowLeft, FaRedo, FaTimes, FaStar, FaHome, FaBookmark, FaHistory } from 'react-icons/fa';
+import { FaArrowLeft, FaRedo, FaTimes, FaHome, FaHistory } from 'react-icons/fa';
 
 // Define types for WebView element
 interface WebViewElement extends HTMLElement {
@@ -63,16 +63,10 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
 }) => {
   const [url, setUrl] = useState<string>(initialUrl);
   const [inputUrl, setInputUrl] = useState<string>(initialUrl);
-  const [isNavigating, setIsNavigating] = useState<boolean>(false);
-  const [canGoBack, setCanGoBack] = useState<boolean>(false);
-  const [hoveredElement, setHoveredElement] = useState<string | null>(null);
-  const [loadingProgress, setLoadingProgress] = useState<number>(0);
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [urlHistory, setUrlHistory] = useState<HistoryEntry[]>([]);
-  const highlightRef = useRef<HTMLDivElement | null>(null);
   const lastUrlRef = useRef<string>(initialUrl);
   const scrollPositionsRef = useRef<Record<string, ScrollPosition>>({});
-  const hasInitializedRef = useRef<boolean>(false);
 
   // Create safe localStorage wrapper
   const safeStorage: SafeStorage = {
@@ -177,58 +171,6 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
     }
   };
   
-  // Save URL to history
-  const saveUrlToHistory = (newUrl: string): boolean => {
-    if (!newUrl || newUrl === 'about:blank') return false;
-    
-    try {
-      // Create history entry
-      const historyEntry: HistoryEntry = {
-        url: newUrl,
-        timestamp: new Date().toISOString(),
-        frameId: frameId || 'unknown'
-      };
-      
-      // Update in-memory history (max 100 entries)
-      const updatedHistory = [
-        historyEntry,
-        ...urlHistory.filter(item => item.url !== newUrl)
-      ].slice(0, 100);
-      
-      setUrlHistory(updatedHistory);
-      
-      // Save to localStorage
-      safeStorage.set(STORAGE_KEYS.URL_HISTORY, updatedHistory);
-      
-      // Save as current URL for this frame
-      if (frameId) {
-        const frameUrlKey = `${STORAGE_KEYS.FRAME_URL_PREFIX}${frameId}_url`;
-        localStorage.setItem(frameUrlKey, newUrl);
-        localStorage.setItem('lastVisitedUrl', newUrl);
-        localStorage.setItem('currentWebviewUrl', newUrl);
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('❌ Error saving URL to history:', error);
-      return false;
-    }
-  };
-  
-  // Normalize and extract domain from URL
-  const getDomainFromUrl = (urlString: string): string => {
-    if (!urlString) return '';
-    
-    try {
-      let parsableUrl = urlString;
-      if (!parsableUrl.startsWith('http://') && !parsableUrl.startsWith('https://')) {
-        parsableUrl = 'https://' + parsableUrl;
-      }
-      return new URL(parsableUrl).hostname.replace('www.', '');
-    } catch (error) {
-      return urlString;
-    }
-  };
   
   // Save scroll position
   const saveScrollPosition = (url: string, position: ScrollPosition): boolean => {
@@ -327,12 +269,10 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
     }
     
     try {
-      setIsNavigating(true);
       setUrl(processedUrl);
       webviewRef.current.loadURL(processedUrl);
     } catch (error) {
       console.error('Error navigating to URL:', error);
-      setIsNavigating(false);
     }
   };
 
@@ -359,8 +299,7 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
         <button 
           type="button" 
           onClick={handleGoBack} 
-          disabled={!canGoBack}
-          className={`p-2 rounded hover:bg-gray-700 ${!canGoBack ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`p-2 rounded hover:bg-gray-700 opacity-50 cursor-not-allowed`}
         >
           <FaArrowLeft size={12} />
         </button>
@@ -425,15 +364,6 @@ const WebViewControls: React.FC<WebViewControlsProps> = ({
             <FaHome size={10} />
             <span>Reposicionar frame</span>
           </button>
-        </div>
-      )}
-      
-      {loadingProgress > 0 && loadingProgress < 100 && (
-        <div className="h-1 bg-gray-700 rounded-full overflow-hidden mt-1">
-          <div 
-            className="h-full bg-blue-500 transition-all duration-300 ease-out"
-            style={{ width: `${loadingProgress}%` }}
-          />
         </div>
       )}
     </div>

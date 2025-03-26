@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Html, Sky, Stars } from '@react-three/drei';
+import { Sky, Stars } from '@react-three/drei';
 import * as THREE from 'three';
-import { useCodeStore } from '../../store/CodeStore';
 import WebFrames from './WebFrames';
 import Spotlight from './Spotlight';
 import FPSControls from './FPSControls';
@@ -11,7 +10,6 @@ import MessageManager from './MessageManager';
 import { useImageStore } from '../../store/useImageStore';
 import { useModelStore } from '../../store/useModelStore';
 import ModelManager from '../Models/ModelManager';
-import { Button, Switch, Slider } from '../ui/index';
 import { SettingsPanel } from '@/components/Settings';
 import { useThemeStore } from '../../store/ThemeStore';
 import Inventory from '../Inventory/Inventory';
@@ -27,10 +25,7 @@ import {
 
 // Import utilities
 import { 
-  hexToRgba, 
   rgbaToString, 
-  stringToRgba, 
-  getButtonColorStyle 
 } from '../../utils/colorUtils';
 
 // Import hooks
@@ -98,13 +93,17 @@ export const HotbarContext = React.createContext<HotbarContextType>({
 });
 
 const Player: React.FC = () => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const cameraRef = useRef<THREE.Camera>(null);
+  const cameraRef = useRef<THREE.Camera>(null) as React.MutableRefObject<THREE.Camera>;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const settingsPanelRef = useRef<HTMLDivElement>(null);
-  const colorPickerRefs = useRef<Record<string, HTMLElement | null>>({});
-  const inventoryRef = useRef<HTMLDivElement>(null);
+  const colorPickerRefs = useRef<Record<string, HTMLDivElement | null>>({}) as React.MutableRefObject<Record<string, HTMLDivElement | null>>;
+  
+  // Define InventoryRefHandle interface with reloadInventory method
+  interface InventoryRefHandle {
+    reloadInventory: () => void;
+  }
+  const inventoryRef = useRef<InventoryRefHandle>(null);
   
   // UI visibility state
   const [uiVisible, setUiVisible] = useState<boolean>(true);
@@ -112,33 +111,20 @@ const Player: React.FC = () => {
   // Hotbar state
   const [selectedHotbarItem, setSelectedHotbarItem] = useState<HotbarItem | null>(null);
   
-  // Code Store
-  const { updateCode, updateTranspiledCode, updateComponents } = useCodeStore();
-  const { code } = useCodeStore();
   
   // States
   const [frames, setFrames] = useState<WebFrame[]>([]);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [confirmedPosition, setConfirmedPosition] = useState<[number, number, number] | null>(null);
   const [confirmedRotation, setConfirmedRotation] = useState<[number, number, number] | null>(null);
-  const [finalCode, setFinalCode] = useState<string>(`function Application() {
-    return (
-      <div>
-        <h1>Teste 1</h1>
-      </div>
-    );
-  }
-  render(<Application />);`);
-  
   const [currentMode, setCurrentMode] = useState<string>('live');
   const [showCatalog, setShowCatalog] = useState<boolean>(false);
   const [movementEnabled, setMovementEnabled] = useState<boolean>(true);
   const [showHelp, setShowHelp] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [showInventory, setShowInventory] = useState<boolean>(false);
-  
   const [pendingWebsiteUrl, setPendingWebsiteUrl] = useState<string | null>(null);
-  const [showFrameControls, setShowFrameControls] = useState<boolean>(true);
+  // @ts-ignore
   const [selectedFrame, setSelectedFrame] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<string>('cores');
   const [isResetAnimating, setIsResetAnimating] = useState<boolean>(false);
@@ -146,6 +132,7 @@ const Player: React.FC = () => {
   const [canvasInteractive, setCanvasInteractive] = useState<boolean>(true);
   const [showColorPicker, setShowColorPicker] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
+  // @ts-ignore
   const [mouseOverSettings, setMouseOverSettings] = useState<boolean>(false);
   const [isSpotlightOpen, setIsSpotlightOpen] = useState<boolean>(false);
   
@@ -218,17 +205,9 @@ const Player: React.FC = () => {
     handleImageDrop
   } = useFileHandling(cameraRef);
 
-  const { images, removeImage } = useImageStore();
-  const { models, removeModel } = useModelStore();
+  // @ts-ignore
   const [selectedObject, setSelectedObject] = useState<any | null>(null);
   const addImage = useImageStore(state => state.addImage);
-
-  // Effects
-  useEffect(() => {
-    if (code !== '') {
-      setFinalCode(`${code} render(<Application />);`);
-    }
-  }, [code]);
 
   // Load saved settings on mount
   useEffect(() => {
@@ -385,15 +364,7 @@ const Player: React.FC = () => {
     }
   };
 
-  const handleOpenCatalog = (): void => {
-    setShowCatalog(true);
-    setMovementEnabled(false);
-  };
 
-  const handleCloseCatalog = (): void => {
-    setShowCatalog(false);
-    setMovementEnabled(true);
-  };
 
   const handleToggleHelp = (): void => {
     setShowHelp(!showHelp);
@@ -416,9 +387,7 @@ const Player: React.FC = () => {
     setFrames(prevFrames => prevFrames.filter(frame => frame.id !== frameId));
   };
 
-  const handleClearAllFrames = (): void => {
-    setFrames([]);
-  };
+
 
   const handleRestoreFramePosition = (frameId: number): void => {
     setFrames(prevFrames => prevFrames.map(frame => {
@@ -431,12 +400,6 @@ const Player: React.FC = () => {
       }
       return frame;
     }));
-  };
-
-  const handleFrameMove = (frameId: number, newPosition: [number, number, number], newRotation: [number, number, number]): void => {
-    setFrames(prevFrames => prevFrames.map(frame =>
-      frame.id === frameId ? { ...frame, position: newPosition, rotation: newRotation } : frame
-    ));
   };
 
   const handleColorChange = (type: string, color: any): void => {
@@ -537,23 +500,6 @@ const Player: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showCatalog, showHelp, currentMode, pendingWebsiteUrl, isSpotlightOpen]);
 
-  // Add toggleSettings function
-  const toggleSettings = (): void => {
-    const newState = !showSettings;
-    setShowSettings(newState);
-    setCanvasInteractive(!newState);
-  };
-
-  // Handle hotbar item selection
-  const handleHotbarItemSelect = (item: HotbarItem | null): void => {
-    setSelectedHotbarItem(item);
-    
-    // You can add logic here to handle different item types
-    console.log(`Selected hotbar item: ${item?.name}`);
-    
-    // Example: Switch tools based on item type
-  };
-
   return (
     <HotbarContext.Provider value={{ selectedHotbarItem, setSelectedHotbarItem }}>
       <div 
@@ -640,7 +586,6 @@ const Player: React.FC = () => {
               azimuth={environmentSettings.skyAzimuth} 
               turbidity={environmentSettings.skyTurbidity}
               rayleigh={environmentSettings.skyRayleigh}
-              opacity={environmentSettings.skyOpacity}
             />
           )}
           {environmentSettings.starsVisible && (
@@ -658,12 +603,12 @@ const Player: React.FC = () => {
           <ModelManager onSelect={setSelectedObject} />
           
           <WebFrames
-            frames={frames}
-            onCloseFrame={handleCloseFrame}
-            onRestorePosition={handleRestoreFramePosition}
+            frames={frames as any}
+            onCloseFrame={handleCloseFrame as any}
+            onRestorePosition={handleRestoreFramePosition as any}
             onUpdateFrameUrl={(frameId, newUrl) => {
               setFrames(prevFrames => prevFrames.map(frame => 
-                frame.id === frameId ? { ...frame, url: newUrl } : frame
+                frame.id === Number(frameId) ? { ...frame, url: newUrl } : frame
               ));
             }}
           />
@@ -684,7 +629,7 @@ const Player: React.FC = () => {
             floorPlaneVisible={floorPlaneVisible} 
             groundSize={groundSize}
             isInfinite={isGroundInfinite}
-            groundShape={groundShape}
+            groundShape={groundShape as "circle" | "square" | "hexagon"}
           />
         </Canvas>
         
@@ -755,13 +700,15 @@ const Player: React.FC = () => {
               onGroundSizeChange={handleGroundSizeChange}
               isGroundInfinite={isGroundInfinite}
               onGroundInfiniteToggle={handleGroundInfiniteToggle}
-              groundShape={groundShape}
+              groundShape={groundShape as "circle" | "square" | "hexagon"}
               onGroundShapeChange={setGroundShape}
+              gridPattern="lines"
+              onGridPatternChange={() => {}}
               crosshairSettings={{
                 visible: showCrosshair,
                 size: crosshairSize,
                 thickness: crosshairThickness,
-                style: crosshairStyle
+                style: crosshairStyle as "dot" | "cross" | "plus" | "classic"
               }}
               onCrosshairSettingChange={(setting: string, value: any) => {
                 if (setting === 'visible') setShowCrosshair(value);
@@ -783,13 +730,15 @@ const Player: React.FC = () => {
               }}
               gravityEnabled={gravityEnabled}
               onGravityToggle={setGravityEnabled}
-              selectedTheme={selectedTheme}
+              selectedTheme={selectedTheme ?? ''}
               onThemeSelect={(theme: string) => {
                 setSelectedTheme(theme);
-                setTheme(theme);
+                setTheme(theme as any);
               }}
               environmentSettings={environmentSettings}
-              onEnvironmentSettingChange={handleEnvironmentSettingChange}
+              onEnvironmentSettingChange={(setting: string, value: any) => 
+                handleEnvironmentSettingChange(setting as keyof EnvironmentSettings, value)
+              }
             />
           </div>
         )}
@@ -827,7 +776,7 @@ const Player: React.FC = () => {
             size={crosshairSize} 
             color={crosshairColor} 
             thickness={crosshairThickness} 
-            style={crosshairStyle}
+            style={crosshairStyle as "circle" | "dot" | "cross" | "plus" | "classic"}
           />
         )}
 
@@ -955,15 +904,15 @@ const Player: React.FC = () => {
             }}
             onClose={() => setShowInventory(false)}
             isOpen={showInventory}
-            onRemoveObject={(objectData: { type: string; id: string }) => {
-              if (objectData && objectData.type && objectData.id) {
-                // Only remove the object from the canvas (scene)
-                if (objectData.type === 'image') {
-                  // Remove from the scene but keep the data in the inventory
-                  useImageStore.getState().updateImage(objectData.id, { isInScene: false });
-                } else if (objectData.type === 'model') {
-                  // Remove from the scene but keep the data in the inventory
-                  useModelStore.getState().updateModel(objectData.id, { isInScene: false });
+            onRemoveObject={(id?: string) => {
+              if (id) {
+                // Try to find and remove the object (could be either image or model)
+                const image = useImageStore.getState().images.find(img => img.id === id);
+                if (image) {
+                  useImageStore.getState().updateImage(id, { isInScene: false });
+                } else {
+                  // Try as model
+                  useModelStore.getState().updateModel(id, { isInScene: false });
                 }
                 setSelectedObject(null);
               }

@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Html } from '@react-three/drei';
 import { elementClickTrackerScript } from '../../utils/webviewInjection';
 import WebViewControls from './WebViewControls';
 import { useImageStore } from '../../store/useImageStore';
-import * as THREE from 'three';
 
 // Define interfaces
 interface BoxFrameProps {
@@ -30,18 +28,16 @@ interface WebViewElement extends HTMLElement {
 const BoxFrame: React.FC<BoxFrameProps> = ({ 
   url, 
   frameId, 
-  position,
-  rotation,
   onMediaDragStart, 
   onClose, 
   onRestorePosition, 
   hasCustomPosition = false, 
   onUrlChange
 }) => {
-  const webviewRef = useRef<WebViewElement>(null);
+  const webviewRef = useRef<WebViewElement>(null) as React.MutableRefObject<WebViewElement>;
   const [currentUrl, setCurrentUrl] = useState<string>(url);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  // @ts-ignore
   const [showControls, setShowControls] = useState<boolean>(true);
   
   // Removemos o useThree e usaremos o camera que vier como prop ou através do event handler
@@ -80,12 +76,12 @@ const BoxFrame: React.FC<BoxFrameProps> = ({
                 // console.log('JavaScript successfully injected');
               })
               .catch(err => {
-                // console.error('Error injecting JavaScript:', err);
-                // // Try with a simpler script to test if injection works at all
-                // const testScript = `console.log('Test injection');`;
-                // webview.executeJavaScript(testScript).catch(e => {
-                //   console.warn('Even simple script injection failed:', e);
-                // });
+                console.error('Error injecting JavaScript:', err);
+                // Try with a simpler script to test if injection works at all
+                const testScript = `console.log('Test injection');`;
+                webview.executeJavaScript(testScript).catch(e => {
+                  console.warn('Even simple script injection failed:', e);
+                });
               });
           }
         }, 300);
@@ -143,7 +139,7 @@ const BoxFrame: React.FC<BoxFrameProps> = ({
           webviewRef={webviewRef} 
           onClose={handleCloseWebview} 
           initialUrl={url}
-          onRestorePosition={hasCustomPosition ? onRestorePosition : null}
+          onRestorePosition={hasCustomPosition ? onRestorePosition : undefined}
           onUrlChange={handleUrlChange}
           frameId={frameId}
         />
@@ -153,7 +149,7 @@ const BoxFrame: React.FC<BoxFrameProps> = ({
         ref={webviewRef as React.RefObject<HTMLElement>}
         className='w-screen h-screen'
         src={`${url.includes('https://') ? '' : 'https://'}${url}`}
-        allowpopups="true"
+        allowpopups={true}
         partition="persist:webviewsession"
         webpreferences="allowRunningInsecureContent=yes, autoplayPolicy=no-user-gesture-required"
       ></webview>
