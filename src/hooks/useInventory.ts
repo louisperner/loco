@@ -58,6 +58,7 @@ export interface InventoryHookResult {
   handleDrop: (e: DragEvent<HTMLDivElement>, index: number) => void;
   loadItemsFromDisk: () => Promise<void>;
   handleRemoveItem: (itemId: string) => Promise<void>;
+  addItemToHotbarDirect: (item: InventoryItem) => void;
 }
 
 export const useInventory = (
@@ -234,20 +235,26 @@ export const useInventory = (
       // Restore hotbar items
       try {
         const savedHotbar = localStorage.getItem(HOTBAR_STORAGE_KEY);
+        console.log('Loaded savedHotbar from localStorage:', savedHotbar);
         if (savedHotbar) {
           const savedHotbarIds = JSON.parse(savedHotbar) as (string | null)[];
+          console.log('Parsed savedHotbarIds:', savedHotbarIds);
           const newHotbarItems: (InventoryItem | null)[] = Array(9).fill(null);
           
           savedHotbarIds.forEach((id, index) => {
             if (id) {
               const item = uniqueItems.find(item => item.id === id);
+              console.log(`Looking for item with ID ${id} for slot ${index}:`, item);
               if (item) {
                 newHotbarItems[index] = item;
               }
             }
           });
           
+          console.log('Restored hotbar from localStorage:', newHotbarItems);
           setHotbarItems(newHotbarItems);
+        } else {
+          console.log('No saved hotbar found in localStorage');
         }
       } catch (error) {
         // eslint-disable-next-line no-console
@@ -281,8 +288,11 @@ export const useInventory = (
   // Save hotbar to localStorage whenever it changes
   useEffect(() => {
     try {
+      console.log('Saving hotbar to localStorage:', hotbarItems);
       const hotbarIds = hotbarItems.map(item => item ? item.id : null);
+      console.log('Hotbar IDs to save:', hotbarIds);
       localStorage.setItem(HOTBAR_STORAGE_KEY, JSON.stringify(hotbarIds));
+      console.log('Hotbar saved to localStorage successfully');
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Error saving hotbar to localStorage:', error);
@@ -291,21 +301,33 @@ export const useInventory = (
 
   // Move addItemToHotbarSlot into useCallback to avoid dependency cycle
   const addItemToHotbarSlot = useCallback((item: InventoryItem, slotIndex: number): void => {
+    console.log(`addItemToHotbarSlot called with item: ${item.fileName} for slot: ${slotIndex}`);
+    
     if (slotIndex >= 0 && slotIndex < 9) {
       const existingIndex = hotbarItems.findIndex(hotbarItem => 
         hotbarItem && hotbarItem.id === item.id
       );
       
+      console.log(`Existing index of item in hotbar: ${existingIndex}`);
+      
       if (existingIndex !== -1 && existingIndex !== slotIndex) {
+        console.log(`Item exists in slot ${existingIndex}, moving to slot ${slotIndex}`);
         const newHotbarItems = [...hotbarItems];
         newHotbarItems[existingIndex] = null;
         newHotbarItems[slotIndex] = item;
+        console.log('New hotbar items before update:', newHotbarItems);
         setHotbarItems(newHotbarItems);
       } else if (existingIndex === -1) {
+        console.log(`Item doesn't exist in hotbar, adding to slot ${slotIndex}`);
         const newHotbarItems = [...hotbarItems];
         newHotbarItems[slotIndex] = item;
+        console.log('New hotbar items before update:', newHotbarItems);
         setHotbarItems(newHotbarItems);
+      } else {
+        console.log(`Item already exists in slot ${slotIndex}, no change needed`);
       }
+    } else {
+      console.log(`Invalid slot index: ${slotIndex}`);
     }
   }, [hotbarItems, setHotbarItems]);
 
@@ -489,17 +511,43 @@ export const useInventory = (
   const handleAddToHotbar = useCallback((item: InventoryItem, e: MouseEvent): void => {
     e.stopPropagation();
     
+    // Log the item being added and current hotbar state
+    console.log('handleAddToHotbar called with item:', item);
+    console.log('Current hotbar state:', hotbarItems);
+    console.log('Selected hotbar slot:', selectedHotbarSlot);
+    
     if (selectedHotbarSlot !== null) {
+      console.log(`Adding item to selected slot ${selectedHotbarSlot}`);
+      // First try using the helper function
       addItemToHotbarSlot(item, selectedHotbarSlot);
+      
+      // Also update directly as a fallback
+      const newHotbarItems = [...hotbarItems];
+      newHotbarItems[selectedHotbarSlot] = item;
+      setHotbarItems(newHotbarItems);
     } else {
       const emptySlotIndex = hotbarItems.findIndex(slot => slot === null);
       if (emptySlotIndex !== -1) {
+        console.log(`Adding item to first empty slot ${emptySlotIndex}`);
+        // First try using the helper function
         addItemToHotbarSlot(item, emptySlotIndex);
+        
+        // Also update directly as a fallback
+        const newHotbarItems = [...hotbarItems];
+        newHotbarItems[emptySlotIndex] = item;
+        setHotbarItems(newHotbarItems);
       } else {
+        console.log('No empty slots, adding to slot 0');
+        // First try using the helper function
         addItemToHotbarSlot(item, 0);
+        
+        // Also update directly as a fallback
+        const newHotbarItems = [...hotbarItems];
+        newHotbarItems[0] = item;
+        setHotbarItems(newHotbarItems);
       }
     }
-  }, [selectedHotbarSlot, hotbarItems, addItemToHotbarSlot]);
+  }, [selectedHotbarSlot, hotbarItems, addItemToHotbarSlot, setHotbarItems]);
 
   const handleRemoveFromHotbar = (index: number, e: MouseEvent): void => {
     e.stopPropagation();
@@ -801,6 +849,32 @@ export const useInventory = (
     };
   }, [hotbarItems, setSelectedItem]);
 
+  // Direct method to add an item to the hotbar (no event required)
+  const addItemToHotbarDirect = useCallback((item: InventoryItem): void => {
+    console.log('addItemToHotbarDirect called with item:', item);
+    
+    if (selectedHotbarSlot !== null) {
+      console.log(`Adding item directly to selected slot ${selectedHotbarSlot}`);
+      // Update hotbar items
+      const newHotbarItems = [...hotbarItems];
+      newHotbarItems[selectedHotbarSlot] = item;
+      setHotbarItems(newHotbarItems);
+    } else {
+      const emptySlotIndex = hotbarItems.findIndex(slot => slot === null);
+      if (emptySlotIndex !== -1) {
+        console.log(`Adding item directly to first empty slot ${emptySlotIndex}`);
+        const newHotbarItems = [...hotbarItems];
+        newHotbarItems[emptySlotIndex] = item;
+        setHotbarItems(newHotbarItems);
+      } else {
+        console.log('No empty slots, adding directly to slot 0');
+        const newHotbarItems = [...hotbarItems];
+        newHotbarItems[0] = item;
+        setHotbarItems(newHotbarItems);
+      }
+    }
+  }, [selectedHotbarSlot, hotbarItems, setHotbarItems]);
+
   return {
     items: filteredItems,
     loading,
@@ -823,6 +897,7 @@ export const useInventory = (
     handleSearchChange,
     handleHotbarSlotClick,
     handleAddToHotbar,
+    addItemToHotbarDirect,
     handleRemoveFromHotbar,
     handleDragStart,
     handleDragEnd,

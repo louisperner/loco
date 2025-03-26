@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, forwardRef, ForwardRefRenderFunction, MouseEvent, useMemo } from 'react';
+import React, { useRef, useEffect, forwardRef, ForwardRefRenderFunction, useMemo } from 'react';
 import { useInventory, InventoryItem } from '../../hooks/useInventory';
 import Hotbar from './Hotbar';
 import InventoryGrid from './InventoryGrid';
@@ -43,7 +43,7 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
     handleTabChange,
     handleSearchChange,
     handleHotbarSlotClick,
-    handleAddToHotbar,
+    addItemToHotbarDirect,
     handleRemoveFromHotbar,
     handleDragStart,
     handleDragEnd,
@@ -71,18 +71,15 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
     reloadInventory: loadItemsFromDisk
   }));
 
-  // Wrapper for handleAddToHotbar to make the MouseEvent optional
-  const handleAddToHotbarWrapper = useMemo(() => {
-    return (item: InventoryItem, e?: MouseEvent) => {
-      if (e) {
-        handleAddToHotbar(item, e as MouseEvent);
-      } else {
-        // Create a synthetic event if not provided
-        const syntheticEvent = new MouseEvent('click') as unknown as MouseEvent;
-        handleAddToHotbar(item, syntheticEvent);
-      }
+  // Direct method to add an item to the hotbar without requiring an event
+  const addItemToHotbarDirectly = useMemo(() => {
+    return (item: InventoryItem) => {
+      console.log('Direct method to add item to hotbar:', item);
+      
+      // Use the new direct method from the hook
+      addItemToHotbarDirect(item);
     };
-  }, [handleAddToHotbar]);
+  }, [addItemToHotbarDirect]);
 
   // Memoize the Hotbar component to prevent unnecessary re-renders
   const hotbarComponent = useMemo(() => (
@@ -132,7 +129,7 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
               isAddingToHotbar={isAddingToHotbar}
               selectedHotbarSlot={selectedHotbarSlot}
               handleItemSelect={handleItemSelect}
-              handleAddToHotbar={handleAddToHotbarWrapper}
+              handleAddToHotbar={addItemToHotbarDirectly}
               handleDragStart={handleDragStart}
               handleDragEnd={handleDragEnd}
               handleConfirmSelection={handleConfirmSelection}

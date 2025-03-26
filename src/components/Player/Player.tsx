@@ -908,29 +908,18 @@ const Player: React.FC = () => {
                 position.set(0, 1, 0);
               }
               
-              // Check if this model is already in the store
-              const existingModel = useModelStore.getState().models.find(mdl => mdl.id === model.id);
-              
-              if (existingModel) {
-                // If it exists, update it to be visible in the scene with the new position
-                useModelStore.getState().updateModel(model.id, {
-                  position: [position.x, position.y, position.z],
-                  rotation: [0, 0, 0],
-                  scale: 1,
-                  isInScene: true
-                });
-              } else {
-                // Add model to the store with destructured position
-                const { addModel } = useModelStore.getState();
-                addModel({
-                  url: model.url,
-                  fileName: model.fileName,
-                  position: [position.x, position.y, position.z],
-                  rotation: [0, 0, 0],
-                  scale: 1,
-                  isInScene: true
-                });
-              }
+              // Always create a new model instance (clone) to add to the scene
+              const { addModel } = useModelStore.getState();
+              addModel({
+                url: model.url,
+                fileName: model.fileName,
+                position: [position.x, position.y, position.z],
+                rotation: [0, 0, 0],
+                scale: 1,
+                isInScene: true,
+                // Keep track of the original inventory item ID for reference
+                inventoryId: model.id
+              });
               
               // Close the inventory
               setShowInventory(false);
