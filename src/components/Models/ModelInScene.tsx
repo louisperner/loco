@@ -1,63 +1,15 @@
-import React, { useRef, useState, useEffect, Suspense, ReactElement, useMemo, useCallback } from 'react';
+import React, { useRef, useState, useEffect, Suspense, useMemo, useCallback } from 'react';
 import { Html, useGLTF, TransformControls, Box } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Lock, Unlock, Move, RotateCw, Plus, Minus, MapPin, Trash2 } from 'lucide-react';
-
-// Define types for props and data
-export interface ModelDataType {
-  id: string;
-  url: string;
-  fileName?: string;
-  position?: [number, number, number];
-  rotation?: [number, number, number];
-  scale?: number;
-  [key: string]: unknown; // For any additional properties
-}
-
-// Add Electron API type declaration
-declare global {
-  interface Window {
-    electron?: {
-      loadFileAsBlob: (url: string) => Promise<{
-        success: boolean;
-        blobUrl?: string;
-        error?: string;
-      }>;
-      [key: string]: any;
-    };
-    _blobUrlCache?: Record<string, any>;
-  }
-}
-
-interface ModelProps {
-  url: string;
-  scale: number;
-}
-
-interface ModelFallbackProps {
-  fileName?: string;
-  scale: number;
-  errorDetails?: string;
-}
-
-interface ModelInSceneProps {
-  modelData: ModelDataType;
-  onRemove: (id: string) => void;
-  onUpdate: (data: ModelDataType) => void;
-  selected?: boolean;
-  onSelect?: (id: string) => void;
-}
-
-interface ModelErrorBoundaryProps {
-  children: React.ReactNode;
-  fallback: ReactElement<ModelFallbackProps>;
-}
-
-interface ModelErrorBoundaryState {
-  hasError: boolean;
-  error: Error | null;
-}
+import { 
+  ModelProps, 
+  ModelFallbackProps, 
+  ModelInSceneProps 
+} from './types';
+import ErrorBoundary from './ErrorBoundary';
+import { processFileUrl, controlButtonStyle } from './utils';
 
 // Separate model component to use with Suspense and ErrorBoundary
 const Model: React.FC<ModelProps> = ({ url, scale }) => {
@@ -74,48 +26,15 @@ const Model: React.FC<ModelProps> = ({ url, scale }) => {
       
       setIsConverting(true);
       try {
-        // Handle different URL protocols
-        if (url.startsWith('file://') || url.startsWith('app-file://')) {
-          // In Electron environment
-          if (window.electron && typeof window.electron.loadFileAsBlob === 'function') {
-            try {
-              const result = await window.electron.loadFileAsBlob(url);
-              if (result.success && result.blobUrl && isMounted) {
-                // Cache the blob URL
-                window._blobUrlCache = window._blobUrlCache || {};
-                window._blobUrlCache[result.blobUrl] = true;
-                
-                setProcessedUrl(result.blobUrl);
-              } else if (isMounted) {
-                console.error('Electron API returned error:', result.error);
-                setError(new Error(`Failed to load model: ${result.error || 'Unknown error'}`));
-                setProcessedUrl('/placeholder-model.glb');
-              }
-            } catch (electronError) {
-              if (isMounted) {
-                console.error('Error with Electron API:', electronError);
-                setError(new Error(`Error with Electron API: ${electronError}`));
-                setProcessedUrl('/placeholder-model.glb');
-              }
-            }
-          } else if (isMounted) {
-            // Browser environment
-            console.warn('Electron API not available for file:// or app-file:// protocol');
-            setError(new Error('File system access not available in browser'));
-            setProcessedUrl('/placeholder-model.glb');
+        const result = await processFileUrl(url);
+        if (isMounted) {
+          if (result.error) {
+            setError(result.error);
           }
-        } else if (url.startsWith('blob:') && isMounted) {
-          // Already a blob URL
-          window._blobUrlCache = window._blobUrlCache || {};
-          window._blobUrlCache[url] = true;
-          setProcessedUrl(url);
-        } else if (isMounted) {
-          // Normal http/https URL
-          setProcessedUrl(url);
+          setProcessedUrl(result.processedUrl);
         }
       } catch (error) {
         if (isMounted) {
-          console.error('Error processing URL:', error);
           setError(error instanceof Error ? error : new Error('Unknown error processing URL'));
           setProcessedUrl('/placeholder-model.glb');
         }
@@ -130,20 +49,6 @@ const Model: React.FC<ModelProps> = ({ url, scale }) => {
     
     return () => {
       isMounted = false;
-      
-      // Cleanup blob URLs
-      if (processedUrl && processedUrl.startsWith('blob:') && window._blobUrlCache) {
-        delete window._blobUrlCache[processedUrl];
-        
-        // Only revoke if no other components are using it
-        if (!Object.values(window._blobUrlCache).some(v => v === processedUrl)) {
-          try {
-            URL.revokeObjectURL(processedUrl);
-          } catch (e) {
-            // Error revoking URL
-          }
-        }
-      }
     };
   }, [url]);
   
@@ -197,30 +102,6 @@ const ModelFallback: React.FC<ModelFallbackProps> = ({ fileName, scale, errorDet
     </Box>
   );
 };
-
-// Custom error boundary for model loading
-class ModelErrorBoundary extends React.Component<ModelErrorBoundaryProps, ModelErrorBoundaryState> {
-  constructor(props: ModelErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error): ModelErrorBoundaryState {
-    // Update state so the next render will show the fallback UI
-    return { hasError: true, error };
-  }
-
-  render(): React.ReactNode {
-    if (this.state.hasError) {
-      // Display detailed information in the fallback
-      return React.cloneElement(this.props.fallback, { 
-        errorDetails: this.state.error ? this.state.error.message : 'Unknown error'
-      });
-    }
-
-    return this.props.children;
-  }
-}
 
 const ModelInScene: React.FC<ModelInSceneProps> = ({ 
   modelData, 
@@ -568,7 +449,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         </mesh>
         
         {/* Use Suspense and ErrorBoundary for model loading */}
-        <ModelErrorBoundary 
+        <ErrorBoundary 
           fallback={<ModelFallback fileName={fileName} scale={scale} />}
         >
           <Suspense fallback={<Box args={[0.8, 0.8, 0.8]} scale={scale}>
@@ -585,27 +466,13 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
           </Box>}>
             <Model url={url} scale={scale} />
           </Suspense>
-        </ModelErrorBoundary>
+        </ErrorBoundary>
 
         {/* Only render control panel if visible - lazy loading */}
         {controlPanelVisible && ControlPanel && <ControlPanel />}
       </group>
     </>
   );
-};
-
-const controlButtonStyle: React.CSSProperties = {
-  background: 'transparent',
-  border: '1px solid white',
-  borderRadius: '4px',
-  color: 'white',
-  padding: '4px 8px',
-  cursor: 'pointer',
-  fontSize: '14px',
-  transition: 'background-color 0.2s',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
 };
 
 export default ModelInScene; 

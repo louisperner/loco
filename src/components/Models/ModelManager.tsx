@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useModelStore } from '../../store/useModelStore';
-import ModelInScene, { ModelDataType } from './ModelInScene';
-
-interface ModelManagerProps {
-  onSelect?: (model: ModelDataType & { type: string }) => void;
-}
-
-interface RemoveObjectEvent extends CustomEvent {
-  detail: {
-    type: string;
-    id: string;
-  };
-}
+import ModelInScene from './ModelInScene';
+import { ModelDataType, ModelManagerProps, RemoveObjectEvent } from './types';
 
 const ModelManager: React.FC<ModelManagerProps> = ({ onSelect }) => {
   const { models, updateModel } = useModelStore();

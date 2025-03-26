@@ -8,40 +8,8 @@ import { FaExpand, FaCompress, FaArrowsAlt } from 'react-icons/fa';
 import { TbRotate360, TbArrowBigUp, TbArrowBigDown, TbArrowBigLeft, TbArrowBigRight } from 'react-icons/tb';
 import { BsArrowsMove } from 'react-icons/bs';
 import * as THREE from 'three';
-
-// Define types for the app
-export interface ImageDataType {
-  id: string;
-  src: string;
-  width?: number;
-  height?: number;
-  position?: [number, number, number];
-  rotation?: [number, number, number];
-  lookAtUser?: boolean;
-  invertColors?: boolean;
-  removeBackground?: boolean;
-  removeBorder?: boolean;
-  scale?: number;
-  alt?: string;
-  isInScene?: boolean;
-  fileName?: string;
-  type?: string;
-  aspectRatio?: number;
-  thumbnailUrl?: string;
-}
-
-interface ImageInSceneProps {
-  imageData: ImageDataType;
-  onRemove: () => void;
-  onUpdate: (data: ImageDataType) => void;
-  onSelect?: (data: ImageDataType & { type: string }) => void;
-}
-
-interface ImageCloneManagerProps {
-  onSelect?: (data: ImageDataType & { type: string }) => void;
-}
-
-type TransformMode = 'translate' | 'rotate' | 'scale';
+import { ImageDataType, ImageInSceneProps, ImageCloneManagerProps, TransformMode } from './types';
+import { processImageUrl, revokeBlobUrl, iconButtonStyle } from './utils';
 
 // Component to render a single image in 3D space
 const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpdate, onSelect }) => {
@@ -74,25 +42,11 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
   // Handle app-file URLs
   useEffect(() => {
     const loadImage = async (): Promise<void> => {
-      if (src && (src.startsWith('app-file://') || src.startsWith('file://'))) {
-        try {
-          if (window.electron && window.electron.loadImageFromAppFile) {
-            const result = await window.electron.loadImageFromAppFile(src);
-            if (result.success && result.url) {
-              setImageSrc(result.url);
-            } else {
-              console.error('Failed to load image from app-file URL:', result.error);
-              setImageSrc(src); // Fallback to original source
-            }
-          } else {
-            console.warn('electron.loadImageFromAppFile not available, using original src');
-            setImageSrc(src);
-          }
-        } catch (error) {
-          console.error('Error loading image from app-file URL:', error);
-          setImageSrc(src);
-        }
-      } else {
+      try {
+        const processedUrl = await processImageUrl(src);
+        setImageSrc(processedUrl);
+      } catch (error) {
+        console.error('Error processing image URL:', error);
         setImageSrc(src);
       }
     };
@@ -101,17 +55,7 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
     
     // Cleanup function to revoke blob URLs
     return () => {
-      if (imageSrc && imageSrc.startsWith('blob:') && imageSrc !== src) {
-        try {
-          // Check if this blob URL is in the cache before revoking
-          if (window._imageBlobCache && !Object.values(window._imageBlobCache).includes(imageSrc)) {
-            URL.revokeObjectURL(imageSrc);
-            // // console.log('Revoked blob URL for image:', imageSrc);
-          }
-        } catch (error) {
-          console.error('Error revoking blob URL:', error);
-        }
-      }
+      revokeBlobUrl(imageSrc, src);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src]);
@@ -616,19 +560,6 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
       </group>
     </>
   );
-};
-
-const iconButtonStyle: React.CSSProperties = {
-  backgroundColor: '#444',
-  border: 'none',
-  color: 'white',
-  padding: '6px',
-  borderRadius: '4px',
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  transition: 'background-color 0.2s',
 };
 
 // Main component that manages images using Zustand
