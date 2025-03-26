@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, Suspense, ReactElement } from 'react';
+import React, { useRef, useState, useEffect, Suspense, ReactElement, useMemo, useCallback } from 'react';
 import { Html, useGLTF, TransformControls, Box } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -243,180 +243,263 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
   const [transformMode, setTransformMode] = useState<'translate' | 'rotate'>('translate');
   const [scale, setScale] = useState<number>(initialScale);
   const groupRef = useRef<THREE.Group>(null);
+  const pointerTimerRef = useRef<number | null>(null);
+  const boundingBoxRef = useRef<THREE.Box3 | null>(null);
+  const lastRaycastTime = useRef<number>(0);
+  const RAY_THROTTLE = 100; // ms between raycasts
   
   // Get camera for positioning
   const { camera } = useThree();
+
+  // Compute and cache bounding box to avoid recalculating it every frame
+  useEffect(() => {
+    // Initialize bounding box
+    if (groupRef.current) {
+      boundingBoxRef.current = new THREE.Box3().setFromObject(groupRef.current);
+    }
+    
+    // We'll update the bounding box when position/rotation/scale changes in other effects
+    // instead of using MutationObserver which doesn't work well with Three.js objects
+  }, []);
+  
+  // Update bounding box when position changes
+  useEffect(() => {
+    if (groupRef.current && boundingBoxRef.current) {
+      boundingBoxRef.current = new THREE.Box3().setFromObject(groupRef.current);
+    }
+  }, [position]);
+  
+  // Update bounding box when rotation changes
+  useEffect(() => {
+    if (groupRef.current && boundingBoxRef.current) {
+      boundingBoxRef.current = new THREE.Box3().setFromObject(groupRef.current);
+    }
+  }, [rotation]);
 
   // Apply scale to the model
   useEffect(() => {
     if (groupRef.current) {
       groupRef.current.scale.set(scale, scale, scale);
+      // Update bounding box when scale changes
+      if (boundingBoxRef.current) {
+        boundingBoxRef.current = new THREE.Box3().setFromObject(groupRef.current);
+      }
     }
   }, [scale]);
 
-  // Handles when pointer hovers over the model
-  const handlePointerOver = (e: { nativeEvent: PointerEvent }): void => {
+  // Much more aggressive debouncing for pointer events
+  const handlePointerOver = useCallback((e: { nativeEvent: PointerEvent }): void => {
     if (e.nativeEvent) e.nativeEvent.stopPropagation?.();
-    setHovered(true);
-    document.body.style.cursor = 'pointer';
-  };
+    
+    // Clear any existing timer
+    if (pointerTimerRef.current !== null) {
+      window.clearTimeout(pointerTimerRef.current);
+      pointerTimerRef.current = null;
+    }
+    
+    // Only process if enough time has passed since last raycast
+    const now = performance.now();
+    if (now - lastRaycastTime.current < RAY_THROTTLE) return;
+    lastRaycastTime.current = now;
+    
+    // More aggressive debounce (150ms instead of 50ms)
+    pointerTimerRef.current = window.setTimeout(() => {
+      setHovered(true);
+      document.body.style.cursor = 'pointer';
+    }, 150);
+  }, []);
 
-  // Handles when pointer leaves the model
-  const handlePointerOut = (e: { nativeEvent: PointerEvent }): void => {
+  // Debounced pointer leave with longer delay
+  const handlePointerOut = useCallback((e: { nativeEvent: PointerEvent }): void => {
     if (e.nativeEvent) e.nativeEvent.stopPropagation?.();
-    setHovered(false);
-    document.body.style.cursor = 'auto';
-  };
+    
+    // Clear any existing timer
+    if (pointerTimerRef.current !== null) {
+      window.clearTimeout(pointerTimerRef.current);
+      pointerTimerRef.current = null;
+    }
+    
+    // More aggressive debounce
+    pointerTimerRef.current = window.setTimeout(() => {
+      setHovered(false);
+      document.body.style.cursor = 'auto';
+    }, 200);
+  }, []);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (pointerTimerRef.current !== null) {
+        window.clearTimeout(pointerTimerRef.current);
+      }
+    };
+  }, []);
 
   // Handle click to select this model
-  const handleClick = (e: { nativeEvent: MouseEvent }): void => {
+  const handleClick = useCallback((e: { nativeEvent: MouseEvent }): void => {
     if (e.nativeEvent) e.nativeEvent.stopPropagation?.();
     if (onSelect) {
       onSelect(id);
     }
-  };
+  }, [id, onSelect]);
 
-  // Control Panel component for the model
-  const ControlPanel: React.FC = () => (
-    <Html
-      transform
-      distanceFactor={8}
-      position={[0, 2, 0]}
-      style={{ 
-        backgroundColor: 'rgba(0,0,0,0.7)', 
-        padding: '8px',
-        borderRadius: '4px',
-        color: 'white',
-        whiteSpace: 'nowrap',
-        display: 'flex',
-        gap: '8px',
-        alignItems: 'center',
-        pointerEvents: 'auto',
-        userSelect: 'none',
-      }}
-    >
-      <button
-        onClick={(e: React.MouseEvent) => {
-          e.stopPropagation();
-          setShowControls(!showControls);
+  // Memoize the position update function to reduce rerenders
+  const handleObjectChange = useCallback(() => {
+    if (groupRef.current) {
+      // Update model data
+      onUpdate({
+        ...modelData,
+        position: [
+          groupRef.current.position.x,
+          groupRef.current.position.y,
+          groupRef.current.position.z
+        ] as [number, number, number],
+        rotation: [
+          groupRef.current.rotation.x,
+          groupRef.current.rotation.y,
+          groupRef.current.rotation.z
+        ] as [number, number, number]
+      });
+      
+      // Update bounding box
+      if (boundingBoxRef.current) {
+        boundingBoxRef.current = new THREE.Box3().setFromObject(groupRef.current);
+      }
+    }
+  }, [modelData, onUpdate]);
+
+  // Highly optimized raycast function using cached bounding box and throttling
+  const optimizedRaycast = useCallback((raycaster: THREE.Raycaster, intersects: THREE.Intersection[]) => {
+    // Skip if not visible
+    if (!groupRef.current?.visible) return;
+    
+    // Only process if enough time has passed since last raycast
+    const now = performance.now();
+    if (now - lastRaycastTime.current < RAY_THROTTLE) return;
+    lastRaycastTime.current = now;
+    
+    // Use cached bounding box if available, otherwise create a new one
+    const box = boundingBoxRef.current || new THREE.Box3().setFromObject(groupRef.current);
+    
+    // Check if ray intersects bounding box
+    if (raycaster.ray.intersectsBox(box)) {
+      // Add a single intersection at the center of the bounding box
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+      
+      const distance = raycaster.ray.origin.distanceTo(center);
+      intersects.push({
+        distance,
+        point: raycaster.ray.at(distance, new THREE.Vector3()),
+        object: groupRef.current
+      });
+    }
+  }, [groupRef]);
+
+  // Only render control panel when needed
+  const controlPanelVisible = hovered || selected;
+  
+  // Load and initialize control panel only when it's going to be visible
+  const ControlPanel = useMemo(() => {
+    if (!controlPanelVisible) return null;
+    
+    const MemoizedControlPanel = () => (
+      <Html
+        transform
+        distanceFactor={8}
+        position={[0, 2, 0]}
+        style={{ 
+          backgroundColor: 'rgba(0,0,0,0.7)', 
+          padding: '8px',
+          borderRadius: '4px',
+          color: 'white',
+          whiteSpace: 'nowrap',
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+          pointerEvents: 'auto',
+          userSelect: 'none',
         }}
-        style={controlButtonStyle}
       >
-        {showControls ? <Lock size={16} /> : <Unlock size={16} />}
-      </button>
+        <button
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            setShowControls(!showControls);
+          }}
+          style={controlButtonStyle}
+        >
+          {showControls ? <Lock size={16} /> : <Unlock size={16} />}
+        </button>
 
-      <button
-        onClick={(e: React.MouseEvent) => {
-          e.stopPropagation();
-          if (showControls) {
-            setTransformMode(transformMode === 'translate' ? 'rotate' : 'translate');
-          }
-        }}
-        style={{
-          ...controlButtonStyle,
-          opacity: showControls ? 1 : 0.5,
-          cursor: showControls ? 'pointer' : 'not-allowed'
-        }}
-      >
-        {transformMode === 'translate' ? <Move size={16} /> : <RotateCw size={16} />}
-      </button>
+        <button
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            if (showControls) {
+              setTransformMode(transformMode === 'translate' ? 'rotate' : 'translate');
+            }
+          }}
+          style={{
+            ...controlButtonStyle,
+            opacity: showControls ? 1 : 0.5,
+            cursor: showControls ? 'pointer' : 'not-allowed'
+          }}
+        >
+          {transformMode === 'translate' ? <Move size={16} /> : <RotateCw size={16} />}
+        </button>
 
-      <button
-        onClick={(e: React.MouseEvent) => {
-          e.stopPropagation();
-          const newScale = Math.min(scale + 0.1, 5);
-          setScale(newScale);
-          onUpdate({
-            ...modelData,
-            scale: newScale
-          });
-        }}
-        style={controlButtonStyle}
-      >
-        <Plus size={16} />
-      </button>
-
-      <button
-        onClick={(e: React.MouseEvent) => {
-          e.stopPropagation();
-          const newScale = Math.max(scale - 0.1, 0.1);
-          setScale(newScale);
-          onUpdate({
-            ...modelData,
-            scale: newScale
-          });
-        }}
-        style={controlButtonStyle}
-      >
-        <Minus size={16} />
-      </button>
-
-      <button
-        onClick={(e: React.MouseEvent) => {
-          e.stopPropagation();
-          
-          // Position in front of camera
-          const direction = new THREE.Vector3();
-          camera.getWorldDirection(direction);
-          
-          const newPosition = camera.position.clone().add(
-            direction.multiplyScalar(3)
-          );
-          
-          if (groupRef.current) {
-            groupRef.current.position.copy(newPosition);
-            
-            // Look at camera
-            const lookAtPosition = camera.position.clone();
-            groupRef.current.lookAt(lookAtPosition);
-            
-            // Update model data
+        <button
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            const newScale = Math.min(scale + 0.1, 5);
+            setScale(newScale);
             onUpdate({
               ...modelData,
-              position: [newPosition.x, newPosition.y, newPosition.z] as [number, number, number],
-              rotation: [
-                groupRef.current.rotation.x,
-                groupRef.current.rotation.y,
-                groupRef.current.rotation.z
-              ] as [number, number, number]
+              scale: newScale
             });
-          }
-        }}
-        style={controlButtonStyle}
-      >
-        <MapPin size={16} />
-      </button>
+          }}
+          style={controlButtonStyle}
+        >
+          <Plus size={16} />
+        </button>
 
-      <button
-        onClick={(e: React.MouseEvent) => {
-          e.stopPropagation();
-          onRemove(id);
-        }}
-        style={{...controlButtonStyle, color: '#ff4d4d'}}
-      >
-        <Trash2 size={16} />
-      </button>
-    </Html>
-  );
+        <button
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            const newScale = Math.max(scale - 0.1, 0.1);
+            setScale(newScale);
+            onUpdate({
+              ...modelData,
+              scale: newScale
+            });
+          }}
+          style={controlButtonStyle}
+        >
+          <Minus size={16} />
+        </button>
 
-  return (
-    <>
-      {/* Transform controls */}
-      {showControls && selected && groupRef.current && (
-        <TransformControls
-          object={groupRef.current}
-          mode={transformMode}
-          size={0.75}
-          space="local"
-          onObjectChange={() => {
+        <button
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            
+            // Position in front of camera
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+            
+            const newPosition = camera.position.clone().add(
+              direction.multiplyScalar(3)
+            );
+            
             if (groupRef.current) {
+              groupRef.current.position.copy(newPosition);
+              
+              // Look at camera
+              const lookAtPosition = camera.position.clone();
+              groupRef.current.lookAt(lookAtPosition);
+              
+              // Update model data
               onUpdate({
                 ...modelData,
-                position: [
-                  groupRef.current.position.x,
-                  groupRef.current.position.y,
-                  groupRef.current.position.z
-                ] as [number, number, number],
+                position: [newPosition.x, newPosition.y, newPosition.z] as [number, number, number],
                 rotation: [
                   groupRef.current.rotation.x,
                   groupRef.current.rotation.y,
@@ -425,6 +508,37 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
               });
             }
           }}
+          style={controlButtonStyle}
+        >
+          <MapPin size={16} />
+        </button>
+
+        <button
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            onRemove(id);
+          }}
+          style={{...controlButtonStyle, color: '#ff4d4d'}}
+        >
+          <Trash2 size={16} />
+        </button>
+      </Html>
+    );
+    
+    MemoizedControlPanel.displayName = 'ModelControlPanel';
+    return MemoizedControlPanel;
+  }, [controlPanelVisible, showControls, transformMode, scale, camera, id, modelData, onRemove, onUpdate]);
+
+  return (
+    <>
+      {/* Transform controls - only render when needed */}
+      {showControls && selected && groupRef.current && (
+        <TransformControls
+          object={groupRef.current}
+          mode={transformMode}
+          size={0.75}
+          space="local"
+          onObjectChange={handleObjectChange}
         />
       )}
 
@@ -436,20 +550,23 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         onClick={handleClick}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
-        userData={{ type: 'model', id: id }}
+        userData={{ type: 'model', id }}
         name={`model-${id}`}
       >
-        {/* Add invisible mesh for raycasting */}
-        <mesh name={`model-collider-${id}`}>
-          <boxGeometry args={[5, 5, 5]} />
+        {/* Add simple collider with optimized raycast */}
+        <mesh 
+          name={`model-collider-${id}`} 
+          raycast={optimizedRaycast}
+        >
+          <boxGeometry args={[3, 3, 3]} />
           <meshBasicMaterial 
             visible={false} 
             transparent={true} 
             opacity={0} 
-            side={THREE.DoubleSide}
             alphaTest={0.5}
           />
         </mesh>
+        
         {/* Use Suspense and ErrorBoundary for model loading */}
         <ModelErrorBoundary 
           fallback={<ModelFallback fileName={fileName} scale={scale} />}
@@ -470,12 +587,12 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
           </Suspense>
         </ModelErrorBoundary>
 
-        {/* Only show controls when hovered or selected */}
-        {(hovered || selected) && <ControlPanel />}
+        {/* Only render control panel if visible - lazy loading */}
+        {controlPanelVisible && ControlPanel && <ControlPanel />}
       </group>
     </>
   );
-}
+};
 
 const controlButtonStyle: React.CSSProperties = {
   background: 'transparent',

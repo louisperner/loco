@@ -296,12 +296,19 @@ export const useInventory = (
         if (document.pointerLockElement === null) {
           const canvas = document.querySelector('canvas');
           if (canvas) {
-            const clickEvent = new MouseEvent('click', {
-              bubbles: true,
-              cancelable: true,
-              view: window
-            });
-            canvas.dispatchEvent(clickEvent);
+            // Create click event in a cross-browser compatible way
+            try {
+              // Modern approach for most browsers
+              canvas.dispatchEvent(new Event('click', {
+                bubbles: true,
+                cancelable: true
+              }));
+            } catch (error) {
+              // Fallback for older browsers or environments where Event constructor isn't available
+              const clickEvent = document.createEvent('MouseEvents');
+              clickEvent.initEvent('click', true, true);
+              canvas.dispatchEvent(clickEvent);
+            }
           }
         }
 
