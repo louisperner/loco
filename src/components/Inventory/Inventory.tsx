@@ -137,6 +137,7 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
               handleDragEnd={handleDragEnd}
               handleConfirmSelection={handleConfirmSelection}
               handleRemoveItem={handleRemoveItem}
+              reloadInventory={loadItemsFromDisk}
             />
           </div>
         </div>

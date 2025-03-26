@@ -26,6 +26,7 @@ interface InventoryGridProps {
   handleDragEnd: (e: React.DragEvent<HTMLDivElement>) => void;
   handleConfirmSelection: () => void;
   handleRemoveItem: (itemId: string, e: React.MouseEvent) => void;
+  reloadInventory?: () => void;
 }
 
 const InventoryGrid: React.FC<InventoryGridProps> = ({
@@ -41,7 +42,8 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
   handleDragStart,
   handleDragEnd,
   handleConfirmSelection,
-  handleRemoveItem
+  handleRemoveItem,
+  reloadInventory
 }) => {
   if (loading) {
     return (
@@ -63,6 +65,12 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
     return (
       <div className="flex justify-center items-center flex-col h-full text-white/60 text-center p-5">
         <p>No items found. Drag and drop images or 3D models to add them to your inventory.</p>
+        {/* <button 
+          onClick={() => reloadInventory?.()}
+          className="mt-4 bg-blue-500/70 text-white rounded-md px-6 py-2.5 text-base cursor-pointer transition-all duration-200 hover:bg-blue-500/90"
+        >
+          Refresh Inventory
+        </button> */}
       </div>
     );
   }
@@ -71,7 +79,14 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
     <>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 p-5 overflow-y-auto flex-1 
         [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full 
-        [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-black/30">
+        [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-black/30 relative">
+        <button 
+          onClick={() => reloadInventory?.()}
+          className="absolute top-2 right-2 bg-blue-500/70 text-white text-xs rounded-md px-2 py-1 hover:bg-blue-500/90"
+          title="Refresh inventory"
+        >
+          Refresh
+        </button>
         {items.map((item) => {
           const isInHotbar = hotbarItems.some(hotbarItem => hotbarItem && hotbarItem.id === item.id);
           

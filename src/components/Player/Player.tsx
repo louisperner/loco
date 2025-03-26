@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Sky, Stars } from '@react-three/drei';
 import * as THREE from 'three';
@@ -203,7 +203,18 @@ const Player: React.FC = () => {
     handleDrop,
     handleModelDrop,
     handleImageDrop
-  } = useFileHandling(cameraRef);
+  } = useFileHandling(cameraRef, () => {
+    // Reload inventory when files are dropped
+    console.log('File drop callback triggered, attempting to reload inventory');
+    setTimeout(() => {
+      if (inventoryRef.current) {
+        console.log('Reloading inventory after file drop');
+        inventoryRef.current.reloadInventory();
+      } else {
+        console.warn('inventoryRef.current is null, cannot reload inventory');
+      }
+    }, 100); // Small delay to ensure component is ready
+  });
 
   // @ts-ignore
   const [selectedObject, setSelectedObject] = useState<any | null>(null);
@@ -364,8 +375,6 @@ const Player: React.FC = () => {
     }
   };
 
-
-
   const handleToggleHelp = (): void => {
     setShowHelp(!showHelp);
     setMovementEnabled(showHelp);
@@ -386,8 +395,6 @@ const Player: React.FC = () => {
   const handleCloseFrame = (frameId: number): void => {
     setFrames(prevFrames => prevFrames.filter(frame => frame.id !== frameId));
   };
-
-
 
   const handleRestoreFramePosition = (frameId: number): void => {
     setFrames(prevFrames => prevFrames.map(frame => {
@@ -534,12 +541,14 @@ const Player: React.FC = () => {
             
             if (fileName.endsWith('.glb') || fileName.endsWith('.gltf')) {
               handleModelDrop(file);
+              // No need to reload inventory manually as it's handled by the hook callback
             } else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || 
                       fileName.endsWith('.png') || fileName.endsWith('.webp') || 
                       fileName.endsWith('.gif')) {
               handleImageDrop(file);
+              // No need to reload inventory manually as it's handled by the hook callback
             } else {
-              alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, PNG, WEBP, GIF`);
+              alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, JPEG, PNG, WEBP, GIF`);
             }
             
             e.target.value = '';

@@ -28,7 +28,10 @@ interface FileHandlingHook {
   handleImageDrop: (file: File) => void;
 }
 
-export const useFileHandling = (cameraRef: RefObject<THREE.Camera>): FileHandlingHook => {
+export const useFileHandling = (
+  cameraRef: RefObject<THREE.Camera>,
+  onSuccessfulFileDrop?: () => void
+): FileHandlingHook => {
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const addImage = useImageStore(state => state.addImage);
   const updateImage = useImageStore(state => state.updateImage);
@@ -108,12 +111,23 @@ export const useFileHandling = (cameraRef: RefObject<THREE.Camera>): FileHandlin
             } catch (e) {
               console.error('Error revoking blob URL:', e);
             }
+            
+            // Call the callback after successful save
+            if (onSuccessfulFileDrop) {
+              console.log('Calling file drop callback after model save');
+              onSuccessfulFileDrop();
+            }
           }).catch((error: Error) => {
             console.error('Error saving model file:', error);
             alert(`Error saving model file: ${error.message}`);
           });
         } else {
           console.info('Running in browser environment, using blob URL for model storage');
+          // Call the callback for browser environment
+          if (onSuccessfulFileDrop) {
+            console.log('Calling file drop callback for browser environment');
+            setTimeout(onSuccessfulFileDrop, 500);
+          }
         }
         
         return;
@@ -166,18 +180,29 @@ export const useFileHandling = (cameraRef: RefObject<THREE.Camera>): FileHandlin
           } catch (e) {
             console.error('Error revoking blob URL:', e);
           }
+          
+          // Call the callback after successful save
+          if (onSuccessfulFileDrop) {
+            console.log('Calling file drop callback after model save');
+            onSuccessfulFileDrop();
+          }
         }).catch((error: Error) => {
           console.error('Error saving model file:', error);
           alert(`Error saving model file: ${error.message}`);
         });
       } else {
         console.info('Running in browser environment, using blob URL for model storage');
+        // Call the callback for browser environment
+        if (onSuccessfulFileDrop) {
+          console.log('Calling file drop callback for browser environment');
+          setTimeout(onSuccessfulFileDrop, 500);
+        }
       }
     } catch (error) {
       console.error('Error handling model drop:', error);
       alert(`Error loading 3D model: ${(error as Error).message}`);
     }
-  }, [addModel, updateModel, cameraRef]);
+  }, [addModel, updateModel, cameraRef, onSuccessfulFileDrop]);
 
   const handleImageDrop = useCallback((file: File): void => {
     try {
@@ -209,12 +234,23 @@ export const useFileHandling = (cameraRef: RefObject<THREE.Camera>): FileHandlin
             // Update image with the new file path
             updateImage(imageId, { src: savedPath });
             console.log(`Saved image to disk: ${savedPath}`);
+            
+            // Call the callback after successful save
+            if (onSuccessfulFileDrop) {
+              console.log('Calling file drop callback after image save');
+              onSuccessfulFileDrop();
+            }
           }).catch((error: Error) => {
             console.error('Error saving image file:', error);
             alert(`Error saving image file: ${error.message}`);
           });
         } else {
           console.info('Running in browser environment, using blob URL for image storage');
+          // Call the callback for browser environment
+          if (onSuccessfulFileDrop) {
+            console.log('Calling file drop callback for browser environment');
+            setTimeout(onSuccessfulFileDrop, 500);
+          }
         }
         
         return;
@@ -260,12 +296,23 @@ export const useFileHandling = (cameraRef: RefObject<THREE.Camera>): FileHandlin
             // Update image with the new file path
             updateImage(imageId, { src: savedPath });
             console.log(`Saved image to disk: ${savedPath}`);
+            
+            // Call the callback after successful save
+            if (onSuccessfulFileDrop) {
+              console.log('Calling file drop callback after image save');
+              onSuccessfulFileDrop();
+            }
           }).catch((error: Error) => {
             console.error('Error saving image file:', error);
             alert(`Error saving image file: ${error.message}`);
           });
         } else {
           console.info('Running in browser environment, using blob URL for image storage');
+          // Call the callback for browser environment
+          if (onSuccessfulFileDrop) {
+            console.log('Calling file drop callback for browser environment');
+            setTimeout(onSuccessfulFileDrop, 500);
+          }
         }
       };
       
@@ -290,12 +337,23 @@ export const useFileHandling = (cameraRef: RefObject<THREE.Camera>): FileHandlin
             // Update image with the new file path
             updateImage(imageId, { src: savedPath });
             console.log(`Saved image to disk: ${savedPath}`);
+            
+            // Call the callback after successful save
+            if (onSuccessfulFileDrop) {
+              console.log('Calling file drop callback after image save');
+              onSuccessfulFileDrop();
+            }
           }).catch((error: Error) => {
             console.error('Error saving image file:', error);
             alert(`Error saving image file: ${error.message}`);
           });
         } else {
           console.info('Running in browser environment, using blob URL for image storage');
+          // Call the callback for browser environment
+          if (onSuccessfulFileDrop) {
+            console.log('Calling file drop callback for browser environment');
+            setTimeout(onSuccessfulFileDrop, 500);
+          }
         }
       };
       
@@ -304,7 +362,7 @@ export const useFileHandling = (cameraRef: RefObject<THREE.Camera>): FileHandlin
       console.error('Error handling image drop:', error);
       alert(`Error loading image: ${(error as Error).message}`);
     }
-  }, [addImage, updateImage, cameraRef]);
+  }, [addImage, updateImage, cameraRef, onSuccessfulFileDrop]);
 
   interface InventoryItem {
     type: string;
@@ -445,7 +503,7 @@ export const useFileHandling = (cameraRef: RefObject<THREE.Camera>): FileHandlin
       console.log('Unsupported file type:', fileName);
       alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, PNG, WEBP, GIF`);
     }
-  }, [handleModelDrop, handleImageDrop, addImage, addModel, cameraRef]);
+  }, [handleModelDrop, handleImageDrop, addImage, addModel, cameraRef, onSuccessfulFileDrop]);
 
   return {
     isDragging,
