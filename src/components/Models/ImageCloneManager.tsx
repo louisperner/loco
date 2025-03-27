@@ -2,10 +2,10 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Html, TransformControls } from '@react-three/drei';
 import { useThree, useFrame, ThreeEvent } from '@react-three/fiber';
 import { useImageStore } from '../../store/useImageStore';
-import { BiSolidCameraHome, BiReset, BiBorderAll } from 'react-icons/bi';
-import { MdInvertColors, MdHideImage, MdDelete } from 'react-icons/md';
+import { BiSolidCameraHome, BiReset } from 'react-icons/bi';
+import { MdInvertColors, MdDelete } from 'react-icons/md';
 import { FaExpand, FaCompress, FaArrowsAlt } from 'react-icons/fa';
-import { TbRotate360, TbArrowBigUp, TbArrowBigDown, TbArrowBigLeft, TbArrowBigRight } from 'react-icons/tb';
+import { TbRotate360 } from 'react-icons/tb';
 import { BsArrowsMove } from 'react-icons/bs';
 import * as THREE from 'three';
 import { ImageDataType, ImageInSceneProps, ImageCloneManagerProps, TransformMode } from './types';
@@ -15,21 +15,15 @@ import { processImageUrl, revokeBlobUrl, iconButtonStyle } from './utils';
 const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpdate, onSelect }) => {
   const { 
     src, 
-    width = 300, 
-    height = 200, 
     position = [0, 0, -2],
     rotation = [0, 0, 0],
     lookAtUser: initialLookAtUser = false,
     invertColors: initialInvertColors = false,
-    removeBackground: initialRemoveBackground = false,
-    removeBorder: initialRemoveBorder = false,
     scale: initialScale = 1,
   } = imageData;
 
   const [lookAtUser, setLookAtUser] = useState<boolean>(initialLookAtUser);
   const [invertColors, setInvertColors] = useState<boolean>(initialInvertColors);
-  const [removeBackground, setRemoveBackground] = useState<boolean>(initialRemoveBackground);
-  const [removeBorder, setRemoveBorder] = useState<boolean>(initialRemoveBorder);
   const [showControls, setShowControls] = useState<boolean>(false);
   const [transformMode, setTransformMode] = useState<TransformMode>('translate');
   const [scale, setScale] = useState<number>(initialScale);
@@ -97,43 +91,33 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
     saveChanges({ invertColors: value });
   };
 
-  const handleRemoveBackground = (value: boolean): void => {
-    setRemoveBackground(value);
-    saveChanges({ removeBackground: value });
-  };
-
-  const handleRemoveBorder = (value: boolean): void => {
-    setRemoveBorder(value);
-    saveChanges({ removeBorder: value });
-  };
-
   const handleScale = (increase: boolean): void => {
     const newScale = increase ? scale * 1.2 : scale / 1.2;
     setScale(newScale);
     saveChanges({ scale: newScale });
   };
 
-  const handleFineTune = (type: 'position' | 'rotation', axis: 'x' | 'y' | 'z', value: number): void => {
-    if (groupRef.current) {
-      if (type === 'position') {
-        const currentPos = groupRef.current.position.toArray();
-        const axisIndex = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
-        currentPos[axisIndex] += value;
-        groupRef.current.position.fromArray(currentPos);
-        saveChanges({ position: currentPos as [number, number, number] });
-      } else if (type === 'rotation') {
-        const currentRot = [
-          groupRef.current.rotation.x,
-          groupRef.current.rotation.y,
-          groupRef.current.rotation.z
-        ];
-        const axisIndex = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
-        currentRot[axisIndex] += value;
-        groupRef.current.rotation.set(currentRot[0], currentRot[1], currentRot[2]);
-        saveChanges({ rotation: currentRot as [number, number, number] });
-      }
-    }
-  };
+  // const handleFineTune = (type: 'position' | 'rotation', axis: 'x' | 'y' | 'z', value: number): void => {
+  //   if (groupRef.current) {
+  //     if (type === 'position') {
+  //       const currentPos = groupRef.current.position.toArray();
+  //       const axisIndex = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
+  //       currentPos[axisIndex] += value;
+  //       groupRef.current.position.fromArray(currentPos);
+  //       saveChanges({ position: currentPos as [number, number, number] });
+  //     } else if (type === 'rotation') {
+  //       const currentRot = [
+  //         groupRef.current.rotation.x,
+  //         groupRef.current.rotation.y,
+  //         groupRef.current.rotation.z
+  //       ];
+  //       const axisIndex = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
+  //       currentRot[axisIndex] += value;
+  //       groupRef.current.rotation.set(currentRot[0], currentRot[1], currentRot[2]);
+  //       saveChanges({ rotation: currentRot as [number, number, number] });
+  //     }
+  //   }
+  // };
 
   // Save position and rotation when changed via TransformControls
   useEffect(() => {
@@ -256,28 +240,6 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
       </button>
       
       <button 
-        onClick={() => handleRemoveBackground(!removeBackground)}
-        style={{
-          ...iconButtonStyle,
-          backgroundColor: removeBackground ? '#4a90e2' : '#444',
-        }}
-        title="Remove background"
-      >
-        <MdHideImage size={16} />
-      </button>
-      
-      <button 
-        onClick={() => handleRemoveBorder(!removeBorder)}
-        style={{
-          ...iconButtonStyle,
-          backgroundColor: removeBorder ? '#4a90e2' : '#444',
-        }}
-        title="Remove border"
-      >
-        <BiBorderAll size={16} />
-      </button>
-      
-      <button 
         onClick={() => handleScale(true)}
         style={iconButtonStyle}
         title="Scale up"
@@ -335,121 +297,6 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
     </div>
   );
 
-  const FineTuneControls: React.FC = () => (
-    <div
-      style={{
-        position: 'absolute',
-        top: '-120px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        padding: '8px',
-        borderRadius: '8px',
-        color: 'white',
-        fontSize: '12px',
-        zIndex: 1000,
-        opacity: isHovered ? 1 : 0,
-        visibility: isHovered ? 'visible' : 'hidden',
-        transition: 'all 0.3s ease-in-out',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '4px',
-      }}
-    >
-      <div style={{ textAlign: 'center', marginBottom: '4px' }}>
-        Fine Tune Controls
-      </div>
-      
-      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-        <button
-          onClick={() => handleFineTune('position', 'y', 0.2)}
-          style={iconButtonStyle}
-          title="Move up"
-        >
-          <TbArrowBigUp size={16} />
-        </button>
-      </div>
-      
-      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-        <button
-          onClick={() => handleFineTune('position', 'x', -0.2)}
-          style={iconButtonStyle}
-          title="Move left"
-        >
-          <TbArrowBigLeft size={16} />
-        </button>
-        
-        <button
-          onClick={() => handleFineTune('position', 'z', 0.2)}
-          style={iconButtonStyle}
-          title="Move forward"
-        >
-          ↓
-        </button>
-        
-        <button
-          onClick={() => handleFineTune('position', 'z', -0.2)}
-          style={iconButtonStyle}
-          title="Move backward"
-        >
-          ↑
-        </button>
-        
-        <button
-          onClick={() => handleFineTune('position', 'x', 0.2)}
-          style={iconButtonStyle}
-          title="Move right"
-        >
-          <TbArrowBigRight size={16} />
-        </button>
-      </div>
-      
-      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-        <button
-          onClick={() => handleFineTune('position', 'y', -0.2)}
-          style={iconButtonStyle}
-          title="Move down"
-        >
-          <TbArrowBigDown size={16} />
-        </button>
-      </div>
-      
-      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '8px' }}>
-        <button
-          onClick={() => handleFineTune('rotation', 'y', -0.1)}
-          style={iconButtonStyle}
-          title="Rotate left"
-        >
-          ↶
-        </button>
-        
-        <button
-          onClick={() => handleFineTune('rotation', 'x', 0.1)}
-          style={iconButtonStyle}
-          title="Rotate up"
-        >
-          ↷↑
-        </button>
-        
-        <button
-          onClick={() => handleFineTune('rotation', 'x', -0.1)}
-          style={iconButtonStyle}
-          title="Rotate down"
-        >
-          ↷↓
-        </button>
-        
-        <button
-          onClick={() => handleFineTune('rotation', 'y', 0.1)}
-          style={iconButtonStyle}
-          title="Rotate right"
-        >
-          ↷
-        </button>
-      </div>
-    </div>
-  );
-
   const ImageContainer: React.FC = () => (
     <div 
       style={{ 
@@ -460,7 +307,6 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <FineTuneControls />
       <div style={{
         position: 'relative',
         marginBottom: '5px',
@@ -472,11 +318,11 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
             width: '100%',
             height: '100%',
             objectFit: 'contain',
-            border: removeBorder ? 'none' : '2px solid white',
-            borderRadius: removeBorder ? '0' : '4px',
-            boxShadow: removeBorder ? 'none' : '0 0 10px rgba(0,0,0,0.5)',
-            backgroundColor: removeBackground ? 'transparent' : 'rgba(255,255,255,0.8)',
-            padding: removeBorder ? '0' : '8px',
+            border: 'none',
+            borderRadius: '0',
+            boxShadow: 'none',
+            backgroundColor: 'transparent',
+            padding: '0',
             filter: invertColors ? 'invert(1)' : 'none',
             transition: 'all 0.3s ease-in-out',
             transform: isHovered ? 'scale(1.02)' : 'scale(1)',
@@ -533,9 +379,12 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
         userData={{ type: 'image', id: imageData.id }}
         name={`image-${imageData.id}`}
       >
-        {/* Add invisible mesh for raycasting */}
-        <mesh name={`image-collider-${imageData.id}`}>
-          <planeGeometry args={[1.2, 0.7]} />
+        {/* Add invisible mesh for raycasting with args relative to image size */}
+        <mesh 
+          name={`image-collider-${imageData.id}`} 
+          position={[0, -0.2, 0]} 
+        >
+          <planeGeometry args={[1, 1]} />
           <meshBasicMaterial 
             visible={false} 
             transparent={true} 
@@ -548,8 +397,6 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
           transform
           distanceFactor={1.5}
           style={{
-            width: `${width}px`,
-            height: `${height}px`,
             pointerEvents: 'auto',
             userSelect: 'none',
             marginTop: '30px',
