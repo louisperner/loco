@@ -20,12 +20,9 @@ const App: React.FC = () => {
     initializeApp();
   }, []);
 
-  if (isLoading) {
-    return <SplashScreen />;
-  }
-
   return (
     <div className="relative w-full h-full">
+      {isLoading && <SplashScreen />}
       <Player />
     </div>
   );

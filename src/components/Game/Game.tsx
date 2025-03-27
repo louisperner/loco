@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Sky, Stars } from '@react-three/drei';
 import * as THREE from 'three';
@@ -13,8 +13,6 @@ import ModelManager from '../Models/ModelManager';
 import { SettingsPanel } from '@/components/Settings';
 import { useThemeStore } from '../../store/ThemeStore';
 import Inventory from '../Inventory/Inventory';
-
-// TODO: Replace 'any' with proper types throughout this component
 
 // Import separated components
 import { 
@@ -33,66 +31,12 @@ import {
 // Import hooks
 import { useFileHandling } from '../../hooks/useFileHandling';
 
-// Define types
-export interface WebFrame {
-  id: number;
-  url: string;
-  position: [number, number, number];
-  rotation: [number, number, number];
-  originalPosition: [number, number, number];
-  originalRotation: [number, number, number];
-}
-
-export interface CrosshairSettings {
-  visible: boolean;
-  size: number;
-  color: string;
-  thickness: number;
-  style: string;
-}
-
-export interface VisibilitySettings {
-  floorVisible: boolean;
-  gridVisible: boolean;
-  floorPlaneVisible: boolean;
-  backgroundVisible: boolean;
-}
-
-export interface EnvironmentSettings {
-  skyVisible: boolean;
-  skyDistance: number;
-  skySunPosition: [number, number, number];
-  skyInclination: number;
-  skyAzimuth: number;
-  skyTurbidity: number;
-  skyRayleigh: number;
-  skyOpacity: number;
-  starsVisible: boolean;
-  starsRadius: number;
-  starsDepth: number;
-  starsCount: number;
-  starsFactor: number;
-  starsSaturation: number;
-  starsFade: boolean;
-}
-
-export interface HotbarItem {
-  id: string;
-  name: string;
-  type: string;
-  [key: string]: unknown;
-}
-
-export interface HotbarContextType {
-  selectedHotbarItem: HotbarItem | null;
-  setSelectedHotbarItem: (item: HotbarItem | null) => void;
-}
-
-// Create a context for the hotbar selection
-export const HotbarContext = React.createContext<HotbarContextType>({
-  selectedHotbarItem: null,
-  setSelectedHotbarItem: () => {},
-});
+// Import game store
+import {
+  useGameStore,
+  HotbarContext,
+  EnvironmentSettings
+} from '../../store/useGameStore';
 
 // Define Frame interface for WebFrames component
 interface Frame {
@@ -127,72 +71,73 @@ const Player: React.FC = () => {
   }
   const inventoryRef = useRef<InventoryRefHandle>(null);
   
-  // UI visibility state
-  const [uiVisible, setUiVisible] = useState<boolean>(true);
+  // Game store state and actions
+  const uiVisible = useGameStore(state => state.uiVisible);
+  const setUiVisible = useGameStore(state => state.setUiVisible);
   
-  // Hotbar state
-  const [selectedHotbarItem, setSelectedHotbarItem] = useState<HotbarItem | null>(null);
+  const showCatalog = useGameStore(state => state.showCatalog);
+  const setShowCatalog = useGameStore(state => state.setShowCatalog);
   
+  const showHelp = useGameStore(state => state.showHelp);
   
-  // States
-  const [frames, setFrames] = useState<WebFrame[]>([]);
-  const [showPreview, setShowPreview] = useState<boolean>(false);
-  const [confirmedPosition, setConfirmedPosition] = useState<[number, number, number] | null>(null);
-  const [confirmedRotation, setConfirmedRotation] = useState<[number, number, number] | null>(null);
-  const [currentMode, setCurrentMode] = useState<string>('live');
-  const [showCatalog, setShowCatalog] = useState<boolean>(false);
-  const [movementEnabled, setMovementEnabled] = useState<boolean>(true);
-  const [showHelp, setShowHelp] = useState<boolean>(false);
-  const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [showInventory, setShowInventory] = useState<boolean>(false);
-  const [pendingWebsiteUrl, setPendingWebsiteUrl] = useState<string | null>(null);
-  // @ts-ignore
-  const [selectedFrame, setSelectedFrame] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('cores');
-  const [isResetAnimating, setIsResetAnimating] = useState<boolean>(false);
-  const [colorChanged, setColorChanged] = useState<string | null>(null);
-  const [canvasInteractive, setCanvasInteractive] = useState<boolean>(true);
-  const [showColorPicker, setShowColorPicker] = useState<string | null>(null);
-  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
-  // @ts-ignore
-  const [mouseOverSettings, setMouseOverSettings] = useState<boolean>(false);
-  const [isSpotlightOpen, setIsSpotlightOpen] = useState<boolean>(false);
+  const showSettings = useGameStore(state => state.showSettings);
+  const setShowSettings = useGameStore(state => state.setShowSettings);
   
-  // Visibility states
-  const [floorVisible, setFloorVisible] = useState<boolean>(true);
-  const [gridVisible, setGridVisible] = useState<boolean>(true);
-  const [floorPlaneVisible, setFloorPlaneVisible] = useState<boolean>(true);
-  const [backgroundVisible, setBackgroundVisible] = useState<boolean>(true);
+  const showInventory = useGameStore(state => state.showInventory);
+  const setShowInventory = useGameStore(state => state.setShowInventory);
   
-  // Crosshair states
-  const [showCrosshair, setShowCrosshair] = useState<boolean>(true);
-  const [crosshairSize, setCrosshairSize] = useState<number>(10);
-  const [crosshairColor, setCrosshairColor] = useState<string>('white');
-  const [crosshairThickness, setCrosshairThickness] = useState<number>(2);
-  const [crosshairStyle, setCrosshairStyle] = useState<string>('circle');
+  const isSpotlightOpen = useGameStore(state => state.isSpotlightOpen);
   
-  // Ground states
-  const [gravityEnabled, setGravityEnabled] = useState<boolean>(false);
-  const [groundShape, setGroundShape] = useState<string>('circle');
+  const currentMode = useGameStore(state => state.currentMode);
+  const movementEnabled = useGameStore(state => state.movementEnabled);
   
-  // Environment settings
-  const [environmentSettings, setEnvironmentSettings] = useState<EnvironmentSettings>({
-    skyVisible: false,
-    skyDistance: 450000,
-    skySunPosition: [0, 1, 0],
-    skyInclination: 0,
-    skyAzimuth: 0.25,
-    skyTurbidity: 10,
-    skyRayleigh: 2.5,
-    skyOpacity: 1,
-    starsVisible: true,
-    starsRadius: 100,
-    starsDepth: 50,
-    starsCount: 5000,
-    starsFactor: 4,
-    starsSaturation: 0,
-    starsFade: true
-  });
+  const frames = useGameStore(state => state.frames);
+  
+  const showPreview = useGameStore(state => state.showPreview);
+  const confirmedPosition = useGameStore(state => state.confirmedPosition);
+  
+  const pendingWebsiteUrl = useGameStore(state => state.pendingWebsiteUrl);
+  
+  const activeTab = useGameStore(state => state.activeTab);
+  const setActiveTab = useGameStore(state => state.setActiveTab);
+  
+  const isResetAnimating = useGameStore(state => state.isResetAnimating);
+  const colorChanged = useGameStore(state => state.colorChanged);
+  const canvasInteractive = useGameStore(state => state.canvasInteractive);
+  const setCanvasInteractive = useGameStore(state => state.setCanvasInteractive);
+  
+  const showColorPicker = useGameStore(state => state.showColorPicker);
+  const setShowColorPicker = useGameStore(state => state.setShowColorPicker);
+  
+  const selectedTheme = useGameStore(state => state.selectedTheme);
+  
+  const { crosshairSettings, visibilitySettings, gravityEnabled, groundShape, environmentSettings } = useGameStore();
+  const { 
+    setCrosshairSetting, 
+    setVisibilitySetting, 
+    setGravityEnabled, 
+    setGroundShape, 
+    setEnvironmentSetting 
+  } = useGameStore();
+  
+  const selectedHotbarItem = useGameStore(state => state.selectedHotbarItem);
+  const setSelectedHotbarItem = useGameStore(state => state.setSelectedHotbarItem);
+  
+  const { 
+    handleModeChange, 
+    handleToggleHelp, 
+    handleCancel, 
+    handlePositionConfirm, 
+    handleSpotlightVisibility, 
+    addFrame, 
+    removeFrame, 
+    restoreFramePosition, 
+    updateFrameUrl, 
+    setIsResetAnimating, 
+    setColorChanged,
+    setSelectedFrame,
+    resetCrosshairAndVisibilitySettings
+  } = useGameStore();
 
   // Get theme store functions and states
   const { 
@@ -227,10 +172,8 @@ const Player: React.FC = () => {
     handleImageDrop
   } = useFileHandling(cameraRef, () => {
     // Reload inventory when files are dropped
-    // console.log('File drop callback triggered, attempting to reload inventory');
     setTimeout(() => {
       if (inventoryRef.current) {
-        // console.log('Reloading inventory after file drop');
         inventoryRef.current.reloadInventory();
       } else {
         console.warn('inventoryRef.current is null, cannot reload inventory');
@@ -239,195 +182,6 @@ const Player: React.FC = () => {
   });
 
   const addImage = useImageStore(state => state.addImage);
-
-  // Load saved settings on mount
-  useEffect(() => {
-    // Load frames
-    const savedFrames = localStorage.getItem('webview-frames');
-    if (savedFrames) {
-      try {
-        const parsedFrames = JSON.parse(savedFrames);
-        setFrames(parsedFrames);
-      } catch (error) {
-        console.error('Error loading frames from localStorage:', error);
-      }
-    }
-    
-    // Load ground shape
-    const savedGroundShape = localStorage.getItem('ground-shape');
-    if (savedGroundShape) {
-      setGroundShape(savedGroundShape);
-    }
-    
-    // Load gravity setting
-    const savedGravity = localStorage.getItem('gravity-enabled');
-    if (savedGravity !== null) {
-      setGravityEnabled(savedGravity === 'true');
-    }
-    
-    // Load crosshair settings
-    const savedCrosshairSettings = localStorage.getItem('crosshair-settings');
-    if (savedCrosshairSettings) {
-      try {
-        const parsedSettings = JSON.parse(savedCrosshairSettings);
-        setShowCrosshair(parsedSettings.visible);
-        setCrosshairSize(parsedSettings.size);
-        setCrosshairColor(parsedSettings.color);
-        setCrosshairThickness(parsedSettings.thickness);
-        setCrosshairStyle(parsedSettings.style);
-      } catch (error) {
-        console.error('Error loading crosshair settings:', error);
-      }
-    }
-    
-    // Load visibility settings
-    const savedVisibility = localStorage.getItem('visibility-settings');
-    if (savedVisibility) {
-      try {
-        const parsedVisibility = JSON.parse(savedVisibility);
-        setFloorVisible(parsedVisibility.floorVisible);
-        setGridVisible(parsedVisibility.gridVisible);
-        setFloorPlaneVisible(parsedVisibility.floorPlaneVisible);
-        setBackgroundVisible(parsedVisibility.backgroundVisible);
-      } catch (error) {
-        console.error('Error loading visibility settings:', error);
-      }
-    }
-    
-    // Load selected theme
-    const savedTheme = localStorage.getItem('selected-theme');
-    if (savedTheme) {
-      setSelectedTheme(savedTheme);
-    }
-  }, []);
-
-  // Save settings when they change
-  useEffect(() => {
-    localStorage.setItem('webview-frames', JSON.stringify(frames));
-  }, [frames]);
-
-  useEffect(() => {
-    localStorage.setItem('ground-shape', groundShape);
-  }, [groundShape]);
-
-  useEffect(() => {
-    localStorage.setItem('gravity-enabled', gravityEnabled.toString());
-  }, [gravityEnabled]);
-
-  useEffect(() => {
-    const crosshairSettings: CrosshairSettings = {
-      visible: showCrosshair,
-      size: crosshairSize,
-      color: crosshairColor,
-      thickness: crosshairThickness,
-      style: crosshairStyle
-    };
-    localStorage.setItem('crosshair-settings', JSON.stringify(crosshairSettings));
-  }, [showCrosshair, crosshairSize, crosshairColor, crosshairThickness, crosshairStyle]);
-
-  useEffect(() => {
-    const visibilitySettings: VisibilitySettings = {
-      floorVisible,
-      gridVisible,
-      floorPlaneVisible,
-      backgroundVisible
-    };
-    localStorage.setItem('visibility-settings', JSON.stringify(visibilitySettings));
-  }, [floorVisible, gridVisible, floorPlaneVisible, backgroundVisible]);
-
-  // Handlers with useCallback to prevent dependency changes on every render
-  const handleModeChange = useCallback((mode: string): void => {
-    setCurrentMode(mode);
-    setMovementEnabled(mode === 'live');
-    
-    if (mode === 'build') {
-      setShowPreview(true);
-      setConfirmedPosition(null);
-      setConfirmedRotation(null);
-    } else {
-      setShowPreview(false);
-      if (pendingWebsiteUrl) {
-        setPendingWebsiteUrl(null);
-      }
-      setConfirmedPosition(null);
-      setConfirmedRotation(null);
-    }
-  }, [pendingWebsiteUrl]);
-
-  const handleToggleHelp = useCallback((): void => {
-    setShowHelp(!showHelp);
-    setMovementEnabled(showHelp);
-  }, [showHelp]);
-
-  const handleCancel = useCallback((): void => {
-    if (currentMode === 'build') {
-      if (pendingWebsiteUrl) {
-        setPendingWebsiteUrl(null);
-        setConfirmedPosition(null);
-        setConfirmedRotation(null);
-      } else {
-        handleModeChange('live');
-      }
-    }
-  }, [currentMode, pendingWebsiteUrl, handleModeChange]);
-
-  const handleAddFrame = (url: string, pos?: [number, number, number], rot?: [number, number, number]): void => {
-    const position = pos || confirmedPosition;
-    const rotation = rot || confirmedRotation;
-    
-    if (!position || !rotation) return;
-
-    setFrames(prevFrames => [...prevFrames, {
-      id: Date.now(),
-      url: url,
-      position: position,
-      rotation: rotation,
-      originalPosition: position,
-      originalRotation: rotation
-    }]);
-    
-    setConfirmedPosition(null);
-    setConfirmedRotation(null);
-    setShowPreview(false);
-    setPendingWebsiteUrl(null);
-  };
-
-  const handleSpotlightVisibility = (isVisible: boolean): void => {
-    setShowPreview(isVisible);
-    setIsSpotlightOpen(isVisible);
-    if (!isVisible) {
-      setConfirmedPosition(null);
-      setConfirmedRotation(null);
-    }
-  };
-
-  const handlePositionConfirm = (position: [number, number, number], rotation: [number, number, number]): void => {
-    setConfirmedPosition(position);
-    setConfirmedRotation(rotation);
-    
-    if (pendingWebsiteUrl) {
-      setTimeout(() => {
-        handleAddFrame(pendingWebsiteUrl, position, rotation);
-      }, 300);
-    }
-  };
-
-  const handleCloseFrame = (frameId: number): void => {
-    setFrames(prevFrames => prevFrames.filter(frame => frame.id !== frameId));
-  };
-
-  const handleRestoreFramePosition = (frameId: number): void => {
-    setFrames(prevFrames => prevFrames.map(frame => {
-      if (frame.id === frameId && frame.originalPosition && frame.originalRotation) {
-        return {
-          ...frame,
-          position: frame.originalPosition,
-          rotation: frame.originalRotation
-        };
-      }
-      return frame;
-    }));
-  };
 
   const handleColorChange = (type: string, color: { r: number; g: number; b: number; a: number } | string): void => {
     // If color is an RgbaColor object, convert it to string
@@ -444,7 +198,7 @@ const Player: React.FC = () => {
       setBackgroundColor(colorValue);
       setBackgroundOpacity(Math.round(opacity * 100));
     } else if (type === 'crosshair') {
-      setCrosshairColor(colorValue);
+      setCrosshairSetting('color', colorValue);
     }
     
     setColorChanged(type);
@@ -453,6 +207,7 @@ const Player: React.FC = () => {
 
   const handleResetColors = (): void => {
     resetColors();
+    resetCrosshairAndVisibilitySettings();
     setIsResetAnimating(true);
     setColorChanged('all');
     setTimeout(() => {
@@ -477,13 +232,6 @@ const Player: React.FC = () => {
     }
   };
 
-  const handleEnvironmentSettingChange = (setting: keyof EnvironmentSettings, value: number | boolean | string | [number, number, number]): void => {
-    setEnvironmentSettings(prev => ({
-      ...prev,
-      [setting]: value
-    }));
-  };
-
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
@@ -494,13 +242,12 @@ const Player: React.FC = () => {
       
       if (e.metaKey && e.key === 'b') {
         e.preventDefault();
-        setShowCatalog(prev => !prev);
-        setMovementEnabled(!showCatalog);
+        setShowCatalog(!showCatalog);
       }
       
       if (e.key === 'Tab') {
         e.preventDefault();
-        setUiVisible(prev => !prev);
+        setUiVisible(!uiVisible);
       }
       
       if (e.key === 'F1') {
@@ -519,13 +266,28 @@ const Player: React.FC = () => {
       // Handle inventory toggle with E key
       if ((e.key === 'e' || e.key === 'E') && !pendingWebsiteUrl && !showCatalog && !isSpotlightOpen) {
         e.preventDefault();
-        setShowInventory(prev => !prev);
+        // Acessa o estado atual diretamente da store em vez de usar o valor capturado no escopo do useEffect
+        const isInventoryOpen = useGameStore.getState().showInventory;
+        setShowInventory(!isInventoryOpen);
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showCatalog, showHelp, currentMode, pendingWebsiteUrl, isSpotlightOpen, handleCancel, handleModeChange, handleToggleHelp]);
+  }, [
+    showCatalog, 
+    showHelp, 
+    currentMode, 
+    pendingWebsiteUrl, 
+    isSpotlightOpen, 
+    uiVisible, 
+    setShowCatalog, 
+    setUiVisible, 
+    setShowInventory, 
+    handleCancel, 
+    handleModeChange, 
+    handleToggleHelp
+  ]);
 
   return (
     <HotbarContext.Provider value={{ selectedHotbarItem, setSelectedHotbarItem }}>
@@ -533,7 +295,7 @@ const Player: React.FC = () => {
         ref={canvasContainerRef}
         className="w-screen h-screen relative"
         style={{ 
-          backgroundColor: backgroundVisible ? getColorWithOpacity(backgroundColor, backgroundOpacity) : 'transparent'
+          backgroundColor: visibilitySettings.backgroundVisible ? getColorWithOpacity(backgroundColor, backgroundOpacity) : 'transparent'
         }}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
@@ -636,12 +398,10 @@ const Player: React.FC = () => {
               ...frame,
               id: frame.id.toString()
             })) as unknown as Frame[]}
-            onCloseFrame={(frameId: string) => handleCloseFrame(Number(frameId))}
-            onRestorePosition={(frameId: string) => handleRestoreFramePosition(Number(frameId))}
+            onCloseFrame={(frameId: string) => removeFrame(Number(frameId))}
+            onRestorePosition={(frameId: string) => restoreFramePosition(Number(frameId))}
             onUpdateFrameUrl={(frameId, newUrl) => {
-              setFrames(prevFrames => prevFrames.map(frame => 
-                frame.id === Number(frameId) ? { ...frame, url: newUrl } : frame
-              ));
+              updateFrameUrl(Number(frameId), newUrl);
             }}
           />
 
@@ -657,8 +417,8 @@ const Player: React.FC = () => {
           <MessageManager />
           
           <Floor 
-            gridVisible={gridVisible} 
-            floorPlaneVisible={floorPlaneVisible} 
+            gridVisible={visibilitySettings.gridVisible} 
+            floorPlaneVisible={visibilitySettings.floorPlaneVisible} 
             groundSize={groundSize}
             isInfinite={isGroundInfinite}
             groundShape={groundShape as "circle" | "square" | "hexagon"}
@@ -670,10 +430,9 @@ const Player: React.FC = () => {
           <div 
             ref={settingsPanelRef}
             className={`settings-panel-container ${showSettings ? 'active' : ''}`}
-            onMouseEnter={() => setMouseOverSettings(true)}
+            onMouseEnter={() => setCanvasInteractive(false)}
             onMouseLeave={() => {
               if (!showColorPicker) {
-                setMouseOverSettings(false);
                 setCanvasInteractive(true);
               }
             }}
@@ -683,15 +442,8 @@ const Player: React.FC = () => {
                 if (!isOpen) {
                   setCanvasInteractive(true);
                   setShowColorPicker(null);
-                  setMouseOverSettings(false);
-                  // Reload inventory when settings panel is closed
-                  if (inventoryRef.current && 'reloadInventory' in inventoryRef.current) {
-                    const inventoryWithReload = inventoryRef.current as { reloadInventory: () => void };
-                    inventoryWithReload.reloadInventory();
-                  }
                 } else {
                   setCanvasInteractive(false);
-                  setMouseOverSettings(true);
                 }
               }}
               isOpen={showSettings}
@@ -716,7 +468,7 @@ const Player: React.FC = () => {
                 grid: gridColor,
                 floorPlane: floorPlaneColor,
                 background: backgroundColor,
-                crosshair: crosshairColor
+                crosshair: crosshairSettings.color
               }}
               opacities={{
                 grid: gridOpacity,
@@ -737,40 +489,43 @@ const Player: React.FC = () => {
               gridPattern="lines"
               onGridPatternChange={() => {}}
               crosshairSettings={{
-                visible: showCrosshair,
-                size: crosshairSize,
-                thickness: crosshairThickness,
-                style: crosshairStyle as "dot" | "cross" | "plus" | "classic"
+                visible: crosshairSettings.visible,
+                size: crosshairSettings.size,
+                thickness: crosshairSettings.thickness,
+                style: crosshairSettings.style as "dot" | "cross" | "plus" | "classic"
               }}
               onCrosshairSettingChange={(setting: string, value: unknown) => {
-                if (setting === 'visible') setShowCrosshair(value as boolean);
-                else if (setting === 'size') setCrosshairSize(value as number);
-                else if (setting === 'thickness') setCrosshairThickness(value as number);
-                else if (setting === 'style') setCrosshairStyle(value as string);
+                if (setting === 'visible') setCrosshairSetting('visible', value as boolean);
+                else if (setting === 'size') setCrosshairSetting('size', value as number);
+                else if (setting === 'thickness') setCrosshairSetting('thickness', value as number);
+                else if (setting === 'style') setCrosshairSetting('style', value as string);
               }}
               visibilitySettings={{
-                floor: floorVisible,
-                grid: gridVisible,
-                floorPlane: floorPlaneVisible,
-                background: backgroundVisible
+                floor: visibilitySettings.floorVisible,
+                grid: visibilitySettings.gridVisible,
+                floorPlane: visibilitySettings.floorPlaneVisible,
+                background: visibilitySettings.backgroundVisible
               }}
               onVisibilityChange={(setting: string, value: boolean) => {
-                if (setting === 'floor') setFloorVisible(value);
-                else if (setting === 'grid') setGridVisible(value);
-                else if (setting === 'floorPlane') setFloorPlaneVisible(value);
-                else if (setting === 'background') setBackgroundVisible(value);
+                if (setting === 'floor') setVisibilitySetting('floorVisible', value);
+                else if (setting === 'grid') setVisibilitySetting('gridVisible', value);
+                else if (setting === 'floorPlane') setVisibilitySetting('floorPlaneVisible', value);
+                else if (setting === 'background') setVisibilitySetting('backgroundVisible', value);
               }}
               gravityEnabled={gravityEnabled}
               onGravityToggle={setGravityEnabled}
               selectedTheme={selectedTheme ?? ''}
               onThemeSelect={(theme: string) => {
-                setSelectedTheme(theme);
+                useGameStore.getState().setSelectedTheme(theme);
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 setTheme(theme as any);
               }}
               environmentSettings={environmentSettings}
               onEnvironmentSettingChange={(setting: string, value: unknown) => 
-                handleEnvironmentSettingChange(setting as keyof EnvironmentSettings, value as number | boolean | string | [number, number, number])
+                setEnvironmentSetting(
+                  setting as keyof typeof environmentSettings, 
+                  value as EnvironmentSettings[keyof EnvironmentSettings]
+                )
               }
             />
           </div>
@@ -805,18 +560,18 @@ const Player: React.FC = () => {
         {/* Crosshair */}
         {uiVisible && (
           <Crosshair 
-            visible={showCrosshair} 
-            size={crosshairSize} 
-            color={crosshairColor} 
-            thickness={crosshairThickness} 
-            style={crosshairStyle as "circle" | "dot" | "cross" | "plus" | "classic"}
+            visible={crosshairSettings.visible} 
+            size={crosshairSettings.size} 
+            color={crosshairSettings.color} 
+            thickness={crosshairSettings.thickness} 
+            style={crosshairSettings.style as "circle" | "dot" | "cross" | "plus" | "classic"}
           />
         )}
 
         {/* Spotlight */}
         {uiVisible && (
           <Spotlight 
-            onAddFrame={handleAddFrame}
+            onAddFrame={addFrame}
             onVisibilityChange={handleSpotlightVisibility}
             showInput={true}
           />

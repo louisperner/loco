@@ -10,12 +10,11 @@ import {
   SlidePanelFooter,
   SlidePanelClose,
 } from '@/components/ui/slide-panel';
-import { FaCog, FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaMagic, FaDatabase } from 'react-icons/fa';
+import { FaCog, FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaMagic } from 'react-icons/fa';
 import { ColorsTab } from './tabs/ColorsTab';
 import { GroundTab } from './tabs/GroundTab';
 import { CrosshairTab } from './tabs/CrosshairTab';
 import { EnvironmentTab } from './tabs/EnvironmentTab';
-import { DataManagementTab } from './tabs/DataManagementTab';
 import { SettingsPanelProps, SettingsTab } from './types';
 import { loadSettings, saveSettings } from './utils';
 
@@ -327,14 +326,6 @@ export function SettingsPanel({
           gravityEnabled={gravityEnabled}
           onGravityToggle={onGravityToggle || (() => {})}
         />
-      )
-    },
-    {
-      id: 'data',
-      label: 'Data',
-      icon: <FaDatabase className="w-4 h-4" />,
-      content: (
-        <DataManagementTab />
       )
     }
   ];
