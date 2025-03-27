@@ -3,6 +3,7 @@ import { useInventory, InventoryItem } from '../../hooks/useInventory';
 import Hotbar from './Hotbar';
 import InventoryGrid from './InventoryGrid';
 import InventoryHeader from './InventoryHeader';
+import { useGameStore } from '../../store/useGameStore';
 
 interface InventoryProps {
   onSelectImage: (imageData: InventoryItem) => void;
@@ -22,6 +23,7 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
 ) => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const prevIsOpenRef = useRef(isOpen);
+  const setCanvasInteractive = useGameStore(state => state.setCanvasInteractive);
   
   const inventoryHook = useInventory(onSelectImage, onSelectModel, onClose, isOpen, onRemoveObject);
   
@@ -66,6 +68,13 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
     prevIsOpenRef.current = isOpen;
   }, [isOpen]);
 
+  // Restore canvas interactivity when inventory is closed
+  useEffect(() => {
+    if (!isOpen && prevIsOpenRef.current) {
+      setCanvasInteractive(true);
+    }
+  }, [isOpen, setCanvasInteractive]);
+
   // Expose the loadItemsFromDisk function to parent components
   React.useImperativeHandle(ref, () => ({
     reloadInventory: loadItemsFromDisk
@@ -102,7 +111,11 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
   return (
     <>
       {showFullInventory && (
-        <div className="fixed inset-0 z-40" onClick={onClose}></div>
+        <div className="fixed inset-0 z-40" onClick={(e) => {
+          e.preventDefault();
+          onClose();
+          setCanvasInteractive(true);
+        }}></div>
       )}
       
       {hotbarComponent}

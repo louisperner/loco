@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, MouseEvent, KeyboardEvent, DragEvent } from 'react';
 import { useImageStore } from '../store/useImageStore';
 import { useModelStore } from '../store/useModelStore';
+import { useGameStore } from '../store/useGameStore';
 import { HOTBAR_STORAGE_KEY, getImageCategory, getModelCategory, showAddedToCanvasIndicator } from '../utils/inventoryUtils';
 
 // Note: Window interface with electron API is defined in src/types/global.d.ts
@@ -352,6 +353,70 @@ export const useInventory = (
     }
   }, [onSelectImage, onSelectModel]);
 
+  // Global keyboard handler for hotbar selection and item deselection
+  useEffect(() => {
+    const handleGlobalHotkeys = (e: KeyboardEvent): void => {
+      // Skip if we're focused in an input element
+      const activeElement = document.activeElement;
+      if (
+        activeElement?.tagName === 'INPUT' || 
+        activeElement?.tagName === 'TEXTAREA' || 
+        activeElement?.tagName === 'SELECT'
+      ) {
+        return;
+      }
+
+      // Handle Q key to clear selection globally
+      if (e.key === 'q' || e.key === 'Q') {
+        e.preventDefault();
+        // eslint-disable-next-line no-console
+        console.log('Q key pressed, clearing selection globally');
+        setSelectedItem(null);
+        setSelectedHotbarSlot(null);
+        return;
+      }
+
+      // Handle number keys 1-9 for hotbar selection (top row number keys)
+      if (e.key >= '1' && e.key <= '9') {
+        // Get slot index (0-8) from key (1-9)
+        const slotIndex = parseInt(e.key, 10) - 1;
+        
+        // Always prevent default browser behavior for number keys
+        e.preventDefault();
+        
+        // Debug information
+        // eslint-disable-next-line no-console
+        // console.log(`Number key ${e.key} pressed, selecting hotbar slot ${slotIndex}`);
+        
+        // Always select the slot regardless of content
+        setSelectedHotbarSlot(slotIndex);
+        
+        // Set selected item based on hotbar contents
+        if (hotbarItems[slotIndex]) {
+          // eslint-disable-next-line no-console
+          // console.log(`Found item in slot ${slotIndex}:`, hotbarItems[slotIndex]?.fileName);
+          setSelectedItem(hotbarItems[slotIndex]!);
+        } else {
+          // eslint-disable-next-line no-console
+          // console.log(`No item in slot ${slotIndex}, clearing item selection`);
+          setSelectedItem(null);
+        }
+      }
+    };
+
+    // eslint-disable-next-line no-console
+    console.log("Global hotbar and deselection keyboard handler initialized");
+    
+    // Use true for capture to ensure this handler runs before others
+    document.addEventListener('keydown', handleGlobalHotkeys as unknown as EventListener, true);
+    
+    return () => {
+      document.removeEventListener('keydown', handleGlobalHotkeys as unknown as EventListener, true);
+      // eslint-disable-next-line no-console
+      // console.log("Global hotbar keyboard handler removed");
+    };
+  }, [hotbarItems, setSelectedItem, setSelectedHotbarSlot]);
+
   // Keyboard handling for inventory view
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
@@ -375,15 +440,9 @@ export const useInventory = (
         console.log('Escape key pressed, closing inventory');
         setShowFullInventory(false);
         setSelectedItem(null);
-      }
-      
-      // Handle Q key to clear selection
-      if (e.key === 'q' || e.key === 'Q') {
-        e.preventDefault();
-        // eslint-disable-next-line no-console
-        console.log('Q key pressed, clearing selection');
-        setSelectedItem(null);
-        setSelectedHotbarSlot(null);
+        
+        // Restore canvas interactivity
+        useGameStore.getState().setCanvasInteractive(true);
       }
       
       // Handle B key to toggle adding items to hotbar
@@ -482,6 +541,10 @@ export const useInventory = (
     } else if (selectedItem.type === 'model' && onSelectModel) {
       onSelectModel(selectedItem);
     }
+    
+    // Restore canvas interactivity - the simulation of canvas click is
+    // handled by the UI components that call this function
+    useGameStore.getState().setCanvasInteractive(true);
     
     if (onClose) onClose();
   };
@@ -794,60 +857,6 @@ export const useInventory = (
       setSelectedItem(null);
     }
   }, [items, selectedItem, onRemoveObject]);
-
-  // Global keyboard handler for hotbar selection
-  useEffect(() => {
-    const handleGlobalHotkeys = (e: KeyboardEvent): void => {
-      // Skip if we're focused in an input element
-      const activeElement = document.activeElement;
-      if (
-        activeElement?.tagName === 'INPUT' || 
-        activeElement?.tagName === 'TEXTAREA' || 
-        activeElement?.tagName === 'SELECT'
-      ) {
-        return;
-      }
-
-      // Handle number keys 1-9 for hotbar selection (top row number keys)
-      if (e.key >= '1' && e.key <= '9') {
-        // Get slot index (0-8) from key (1-9)
-        const slotIndex = parseInt(e.key, 10) - 1;
-        
-        // Always prevent default browser behavior for number keys
-        e.preventDefault();
-        
-        // Debug information
-        // eslint-disable-next-line no-console
-        // console.log(`Number key ${e.key} pressed, selecting hotbar slot ${slotIndex}`);
-        
-        // Always select the slot regardless of content
-        setSelectedHotbarSlot(slotIndex);
-        
-        // Set selected item based on hotbar contents
-        if (hotbarItems[slotIndex]) {
-          // eslint-disable-next-line no-console
-          // console.log(`Found item in slot ${slotIndex}:`, hotbarItems[slotIndex]?.fileName);
-          setSelectedItem(hotbarItems[slotIndex]!);
-        } else {
-          // eslint-disable-next-line no-console
-          // console.log(`No item in slot ${slotIndex}, clearing item selection`);
-          setSelectedItem(null);
-        }
-      }
-    };
-
-    // eslint-disable-next-line no-console
-    console.log("Global hotbar keyboard handler initialized");
-    
-    // Use true for capture to ensure this handler runs before others
-    document.addEventListener('keydown', handleGlobalHotkeys as unknown as EventListener, true);
-    
-    return () => {
-      document.removeEventListener('keydown', handleGlobalHotkeys as unknown as EventListener, true);
-      // eslint-disable-next-line no-console
-      // console.log("Global hotbar keyboard handler removed");
-    };
-  }, [hotbarItems, setSelectedItem]);
 
   // Direct method to add an item to the hotbar (no event required)
   const addItemToHotbarDirect = useCallback((item: InventoryItem): void => {

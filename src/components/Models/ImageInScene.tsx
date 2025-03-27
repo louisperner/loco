@@ -6,7 +6,7 @@ import { InternalImageProps } from './types';
 import { processImageUrl, revokeBlobUrl } from './utils';
 
 // InternalImage component for loading images with proper handling of app-file:// URLs
-const InternalImage: React.FC<InternalImageProps> = ({ src, onLoad }) => {
+const ImageInScene: React.FC<InternalImageProps> = ({ src, onLoad }) => {
   const [imageSrc, setImageSrc] = useState<string>(src);
   
   // Handle loading app-file URLs
@@ -49,4 +49,4 @@ const InternalImage: React.FC<InternalImageProps> = ({ src, onLoad }) => {
 };
 
 // Export the InternalImage component
-export default InternalImage; 
+export default ImageInScene; 

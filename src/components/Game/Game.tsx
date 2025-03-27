@@ -1,8 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Sky, Stars } from '@react-three/drei';
 import * as THREE from 'three';
-import WebFrames from '../Models/WebFrames';
 import Spotlight from '../ui/Spotlight';
 import FPSControls from '../Scene/FPSControls';
 import ImageCloneManager from '../Models/ImageCloneManager';
@@ -37,16 +36,6 @@ import {
   HotbarContext,
   EnvironmentSettings
 } from '../../store/useGameStore';
-
-// Define Frame interface for WebFrames component
-interface Frame {
-  id: string;
-  url: string;
-  position: [number, number, number];
-  rotation: [number, number, number];
-  originalPosition: [number, number, number];
-  originalRotation: [number, number, number];
-}
 
 // Types for inventory
 interface InventoryItem {
@@ -91,8 +80,6 @@ const Player: React.FC = () => {
   const currentMode = useGameStore(state => state.currentMode);
   const movementEnabled = useGameStore(state => state.movementEnabled);
   
-  const frames = useGameStore(state => state.frames);
-  
   const showPreview = useGameStore(state => state.showPreview);
   const confirmedPosition = useGameStore(state => state.confirmedPosition);
   
@@ -130,9 +117,6 @@ const Player: React.FC = () => {
     handlePositionConfirm, 
     handleSpotlightVisibility, 
     addFrame, 
-    removeFrame, 
-    restoreFramePosition, 
-    updateFrameUrl, 
     setIsResetAnimating, 
     setColorChanged,
     setSelectedFrame,
@@ -232,7 +216,59 @@ const Player: React.FC = () => {
     }
   };
 
-  // Keyboard shortcuts
+  // Helper function to simulate a click on the canvas to restore focus
+  const simulateCanvasClick = useCallback((): void => {
+    setTimeout(() => {
+      const canvas = document.querySelector('canvas');
+      if (canvas) {
+        // Create and dispatch a click event
+        const clickEvent = new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          view: window
+        });
+        canvas.dispatchEvent(clickEvent);
+      }
+    }, 50); // Small delay to ensure UI updates first
+  }, []);
+
+  // Handle inventory opening and closing
+  const handleInventoryToggle = useCallback((isOpen: boolean): void => {
+    setShowInventory(isOpen);
+    setCanvasInteractive(!isOpen);
+    
+    if (isOpen && document.pointerLockElement) {
+      document.exitPointerLock();
+    } else if (!isOpen) {
+      // When closing inventory, simulate click on canvas to regain focus
+      simulateCanvasClick();
+    }
+  }, [setShowInventory, setCanvasInteractive, simulateCanvasClick]);
+  
+  // Handle settings opening and closing
+  const handleSettingsToggle = useCallback((isOpen: boolean): void => {
+    setShowSettings(isOpen);
+    setCanvasInteractive(!isOpen);
+    
+    if (!isOpen) {
+      // When closing settings, clear color picker and simulate canvas click
+      setShowColorPicker(null);
+      simulateCanvasClick();
+      
+      // Reload inventory when settings panel is closed
+      setTimeout(() => {
+        if (inventoryRef.current && 'reloadInventory' in inventoryRef.current) {
+          const inventoryWithReload = inventoryRef.current as { reloadInventory: () => void };
+          inventoryWithReload.reloadInventory();
+        }
+      }, 100);
+    } else if (isOpen && document.pointerLockElement) {
+      // When opening settings and pointer is locked, release it
+      document.exitPointerLock();
+    }
+  }, [setShowSettings, setCanvasInteractive, setShowColorPicker, simulateCanvasClick]);
+
+  // Modify the keyboard event handler to use the new function
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       // Skip if the target is an input field
@@ -240,23 +276,9 @@ const Player: React.FC = () => {
         return;
       }
       
-      if (e.metaKey && e.key === 'b') {
-        e.preventDefault();
-        setShowCatalog(!showCatalog);
-      }
-      
       if (e.key === 'Tab') {
         e.preventDefault();
         setUiVisible(!uiVisible);
-      }
-      
-      if (e.key === 'F1') {
-        e.preventDefault();
-        handleToggleHelp();
-      }
-      
-      if (e.key === '1') {
-        handleModeChange('live');
       }
       
       if (e.key === 'Escape') {
@@ -266,10 +288,18 @@ const Player: React.FC = () => {
       // Handle inventory toggle with E key
       if ((e.key === 'e' || e.key === 'E') && !pendingWebsiteUrl && !showCatalog && !isSpotlightOpen) {
         e.preventDefault();
-        // Acessa o estado atual diretamente da store em vez de usar o valor capturado no escopo do useEffect
+        // Access the current state directly from the store
         const isInventoryOpen = useGameStore.getState().showInventory;
-        setShowInventory(!isInventoryOpen);
+        handleInventoryToggle(!isInventoryOpen);
       }
+      
+      // // Handle settings toggle with S key
+      // if ((e.key === 's' || e.key === 'S') && !pendingWebsiteUrl && !showCatalog && !isSpotlightOpen && !showInventory) {
+      //   e.preventDefault();
+      //   // Access the current state directly from the store
+      //   const isSettingsOpen = useGameStore.getState().showSettings;
+      //   handleSettingsToggle(!isSettingsOpen);
+      // }
     };
     
     window.addEventListener('keydown', handleKeyDown);
@@ -281,12 +311,14 @@ const Player: React.FC = () => {
     pendingWebsiteUrl, 
     isSpotlightOpen, 
     uiVisible, 
+    showInventory,
     setShowCatalog, 
     setUiVisible, 
-    setShowInventory, 
     handleCancel, 
     handleModeChange, 
-    handleToggleHelp
+    handleToggleHelp,
+    handleInventoryToggle,
+    handleSettingsToggle
   ]);
 
   return (
@@ -393,17 +425,7 @@ const Player: React.FC = () => {
           <ImageCloneManager onSelect={() => {}} />
           <ModelManager onSelect={() => {}} />
           
-          <WebFrames 
-            frames={frames.map(frame => ({
-              ...frame,
-              id: frame.id.toString()
-            })) as unknown as Frame[]}
-            onCloseFrame={(frameId: string) => removeFrame(Number(frameId))}
-            onRestorePosition={(frameId: string) => restoreFramePosition(Number(frameId))}
-            onUpdateFrameUrl={(frameId, newUrl) => {
-              updateFrameUrl(Number(frameId), newUrl);
-            }}
-          />
+          {/* WebFrames component is currently not in use */}
 
           {showPreview && !confirmedPosition && (
             <PreviewFrame
@@ -438,23 +460,9 @@ const Player: React.FC = () => {
             }}
           >
             <SettingsPanel 
-              onToggle={(isOpen: boolean) => {
-                if (!isOpen) {
-                  setCanvasInteractive(true);
-                  setShowColorPicker(null);
-                } else {
-                  setCanvasInteractive(false);
-                }
-              }}
+              onToggle={(isOpen: boolean) => handleSettingsToggle(!isOpen)}
               isOpen={showSettings}
-              onClose={() => {
-                setShowSettings(false);
-                // Reload inventory when settings panel is closed
-                if (inventoryRef.current && 'reloadInventory' in inventoryRef.current) {
-                  const inventoryWithReload = inventoryRef.current as { reloadInventory: () => void };
-                  inventoryWithReload.reloadInventory();
-                }
-              }}
+              onClose={() => handleSettingsToggle(false)}
               activeTab={activeTab}
               onTabChange={setActiveTab}
               onColorChange={handleColorChange}
@@ -550,12 +558,6 @@ const Player: React.FC = () => {
             )}
           </div>
         )}
-        
-        {uiVisible && currentMode === 'build' && confirmedPosition && (
-          <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg">
-            {pendingWebsiteUrl ? "Website positioned! Choose another or press 1 to return to Live mode" : "Position confirmed!"}
-          </div>
-        )}
 
         {/* Crosshair */}
         {uiVisible && (
@@ -579,12 +581,12 @@ const Player: React.FC = () => {
 
         {/* Inventory component - always rendered, visibility controlled by isOpen prop */}
         {uiVisible && (
-          <Inventory 
+          <Inventory
             ref={inventoryRef}
             onSelectImage={(image: InventoryItem) => {
               // Add the selected image to the scene
               if (!image?.url) {
-                setShowInventory(false);
+                handleInventoryToggle(false);
                 return;
               }
               
@@ -635,12 +637,12 @@ const Player: React.FC = () => {
               }
               
               // Close the inventory
-              setShowInventory(false);
+              handleInventoryToggle(false);
             }}
             onSelectModel={(model: InventoryItem) => {
               // Add the selected model to the scene
               if (!model?.url) {
-                setShowInventory(false);
+                handleInventoryToggle(false);
                 return;
               }
               
@@ -677,9 +679,9 @@ const Player: React.FC = () => {
               });
               
               // Close the inventory
-              setShowInventory(false);
+              handleInventoryToggle(false);
             }}
-            onClose={() => setShowInventory(false)}
+            onClose={() => handleInventoryToggle(false)}
             isOpen={showInventory}
             onRemoveObject={(id?: string) => {
               if (id) {

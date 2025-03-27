@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import InventoryItem from './InventoryItem';
+import { useGameStore } from '../../store/useGameStore';
 
 // Define item interface based on what's used in the component
 interface InventoryItem {
@@ -51,6 +52,8 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
   handleRemoveItem,
   reloadInventory
 }) => {
+  const setCanvasInteractive = useGameStore(state => state.setCanvasInteractive);
+  
   if (loading) {
     return (
       <div className="flex justify-center items-center flex-col h-full text-white/60 text-center p-5">
@@ -119,7 +122,10 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
           <Button 
             className="bg-blue-500/70 text-white rounded-md px-6 py-2.5 text-base cursor-pointer transition-all duration-200 hover:bg-blue-500/90 hover:-translate-y-0.5 disabled:bg-white/50 disabled:cursor-not-allowed disabled:opacity-70"
             disabled={!selectedItem}
-            onClick={handleConfirmSelection}
+            onClick={() => {
+              handleConfirmSelection();
+              setCanvasInteractive(true);
+            }}
           >
             Add to Canvas
           </Button>
