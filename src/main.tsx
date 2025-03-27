@@ -62,7 +62,7 @@ const initializeWelcomeImage = () => {
         imageStore.addImage({
           src: welcomeImagePath,
           fileName: 'welcome.png',
-          position: [0, 4, -10],
+          position: [0, 5, -15],
           rotation: [0, 0, 0],
           scale: 2, 
           width: img.width,

@@ -280,11 +280,11 @@ export const useInventory = (
     }
   }, [isOpen, showFullInventory]);
 
-  // Load items when the component mounts only
+  // Load items when the component mounts or stores change
   useEffect(() => {
     loadItemsFromDisk();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // We depend on the function itself, and the underlying data it uses
+  }, [loadItemsFromDisk, storeImages, storeModels]);
   
   // Save hotbar to localStorage whenever it changes
   useEffect(() => {
@@ -740,27 +740,19 @@ export const useInventory = (
 
   // Filter items based on active tab and search term
   const filteredItems = useMemo(() => {
-    let result = [...items];
-    
-    // Filter by category/tab
-    if (activeTab === 'images') {
-      result = result.filter(item => item.type === 'image');
-    } else if (activeTab === 'models') {
-      result = result.filter(item => item.type === 'model');
-    } else if (activeTab !== 'all') {
-      result = result.filter(item => item.category === activeTab);
-    }
-    
-    // Filter by search term
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase().trim();
-      result = result.filter(item => 
-        item.fileName.toLowerCase().includes(searchLower) || 
-        (item.category && item.category.toLowerCase().includes(searchLower))
-      );
-    }
-    
-    return result;
+    return items
+      .filter(item => {
+        // Filter by active tab
+        if (activeTab === 'all') return true;
+        if (activeTab === 'images' && item.type === 'image') return true;
+        if (activeTab === 'models' && item.type === 'model') return true;
+        if (item.category === activeTab) return true;
+        return false;
+      })
+      .filter(item => {
+        // Filter by search term (case-insensitive)
+        return item.fileName.toLowerCase().includes(searchTerm.toLowerCase());
+      });
   }, [items, activeTab, searchTerm]);
 
   const handleRemoveItem = useCallback(async (itemId: string): Promise<void> => {
