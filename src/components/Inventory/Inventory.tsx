@@ -74,7 +74,7 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
   // Direct method to add an item to the hotbar without requiring an event
   const addItemToHotbarDirectly = useMemo(() => {
     return (item: InventoryItem) => {
-      console.log('Direct method to add item to hotbar:', item);
+      // console.log('Direct method to add item to hotbar:', item);
       
       // Use the new direct method from the hook
       addItemToHotbarDirect(item);

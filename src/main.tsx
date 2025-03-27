@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import Player from './components/Player/Player';
+import Player from './components/Game/Game';
 import SplashScreen from './components/SplashScreen/SplashScreen';
 
 const App: React.FC = () => {
