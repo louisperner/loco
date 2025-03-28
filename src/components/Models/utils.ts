@@ -151,8 +151,9 @@ export const revokeBlobUrl = (blobUrl: string, originalUrl: string): void => {
       // Check if this blob URL is in the cache before revoking
       const blobCache = window._blobUrlCache || {};
       const imageCache = window._imageBlobCache || {};
+      const videoCache = window._videoBlobCache || {};
       
-      if (!blobCache[blobUrl] && !imageCache[blobUrl]) {
+      if (!blobCache[blobUrl] && !imageCache[blobUrl] && !videoCache[blobUrl]) {
         URL.revokeObjectURL(blobUrl);
       }
     } catch (error) {
@@ -192,4 +193,75 @@ export const iconButtonStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   transition: 'background-color 0.2s',
+};
+
+/**
+ * Generates a thumbnail for a video by capturing a frame
+ * @param videoUrl The URL of the video to generate a thumbnail from
+ * @returns Promise with the thumbnail URL (data URL)
+ */
+export const generateVideoThumbnail = async (videoUrl: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (!videoUrl) {
+      reject(new Error('No video URL provided'));
+      return;
+    }
+
+    // Create a hidden video element
+    const video = document.createElement('video');
+    video.crossOrigin = 'anonymous'; // Handle CORS issues
+    video.preload = 'metadata';
+    video.playsInline = true;
+    video.muted = true;
+    
+    // Create a canvas to capture the frame
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) {
+      reject(new Error('Could not get canvas context'));
+      return;
+    }
+    
+    // Listen for metadata to load
+    video.addEventListener('loadedmetadata', () => {
+      // Set video to a specific time (4 seconds in, or middle of video if shorter)
+      video.currentTime = Math.min(4, video.duration / 2);
+    });
+    
+    // Once we can actually get a frame
+    video.addEventListener('seeked', () => {
+      // Set canvas size to match video dimensions (with max dimensions)
+      const maxWidth = 320;
+      const width = Math.min(video.videoWidth, maxWidth);
+      const aspectRatio = video.videoWidth / video.videoHeight;
+      
+      canvas.width = width;
+      canvas.height = width / aspectRatio;
+      
+      // Draw the video frame on the canvas
+      ctx.drawImage(video, 0, 0, width, canvas.height);
+      
+      // Convert canvas to data URL
+      try {
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        
+        // Clean up
+        video.removeAttribute('src');
+        video.load();
+        
+        resolve(dataUrl);
+      } catch (e) {
+        reject(new Error(`Failed to generate thumbnail: ${e instanceof Error ? e.message : String(e)}`));
+      }
+    });
+    
+    // Handle errors
+    video.addEventListener('error', () => {
+      reject(new Error(`Error loading video for thumbnail: ${video.error?.message || 'Unknown error'}`));
+    });
+    
+    // Set the source last
+    video.src = videoUrl;
+  });
 }; 

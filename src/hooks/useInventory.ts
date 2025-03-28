@@ -229,7 +229,7 @@ export const useInventory = (
           type: 'video' as const,
           fileName: videoFileName,
           url: video.src,
-          thumbnailUrl: video.src || '',
+          thumbnailUrl: video.thumbnailUrl || '',
           // Include these extra properties for restoration
           src: video.src,
           position: video.position,
@@ -833,6 +833,7 @@ export const useInventory = (
 
     const imageStore = useImageStore.getState();
     const modelStore = useModelStore.getState();
+    const videoStore = useVideoStore.getState();
 
     // Find all instances (originals and clones)
     const canvasImages = imageStore.images.filter(img => 
@@ -846,8 +847,14 @@ export const useInventory = (
       model.url === itemToDelete.url ||
       model.url === itemToDelete.filePath
     );
+    
+    const canvasVideos = videoStore.videos.filter(video => 
+      video.id === itemId ||
+      video.src === itemToDelete.url ||
+      video.src === itemToDelete.filePath
+    );
 
-    const totalInstances = canvasImages.length + canvasModels.length;
+    const totalInstances = canvasImages.length + canvasModels.length + canvasVideos.length;
 
     if (totalInstances > 0) {
       const confirmMessage = `Este item tem ${totalInstances} instância(s) no canvas (incluindo clones).\nDeseja remover TODAS?`;
@@ -868,6 +875,12 @@ export const useInventory = (
       canvasModels.forEach(model => {
         modelStore.removeModel(model.id);
         if (onRemoveObject) onRemoveObject(model.id);
+      });
+      
+      // Remove videos
+      canvasVideos.forEach(video => {
+        videoStore.removeVideo(video.id);
+        if (onRemoveObject) onRemoveObject(video.id);
       });
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -894,8 +907,10 @@ export const useInventory = (
     // Remove from global stores
     if (itemToDelete.type === 'image') {
       useImageStore.getState().removeImage(itemId);
-    } else {
+    } else if (itemToDelete.type === 'model') {
       useModelStore.getState().removeModel(itemId);
+    } else if (itemToDelete.type === 'video') {
+      useVideoStore.getState().removeVideo(itemId);
     }
 
     // Remove physical file (Electron)

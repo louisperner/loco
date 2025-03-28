@@ -66,6 +66,8 @@ export const useVideoStore = create<VideoStore>()(
         videos: state.videos.map(video => ({
           id: video.id,
           src: video.src,
+          fileName: video.fileName,
+          thumbnailUrl: video.thumbnailUrl,
           position: video.position,
           rotation: video.rotation,
           scale: video.scale,

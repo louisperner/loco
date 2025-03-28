@@ -4,33 +4,21 @@ import { useModelStore } from '../store/useModelStore';
 import { useVideoStore } from '../store/videoStore';
 import * as THREE from 'three';
 import { saveModelThumbnail } from '../utils/modelThumbnailGenerator';
+import { logError, logInfo } from '../utils/logging';
+import { generateVideoThumbnail } from '../components/Models/utils';
 
 // Note: Window interface with electron API is defined in src/types/global.d.ts
 
-// Custom logging function to replace console.error
-const logError = (message: string, error?: unknown): void => {
-  // In production, this could send to a monitoring service
-  // For now, we just directly log errors
-  // eslint-disable-next-line no-console
-  console.error(message, error);
-};
+// Remove the duplicated logging functions here - they're now in utils/logging.ts
 
-// Custom logging function for info messages
-const logInfo = (message: string): void => {
-  // In production, this would be a noop or send to a monitoring service
-  // eslint-disable-next-line no-console
-  console.info(message);
-};
-
-// Return type for the hook
-interface FileHandlingHook {
+export interface FileHandlingHook {
   isDragging: boolean;
   handleDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
   handleDragLeave: (e: React.DragEvent<HTMLDivElement>) => void;
   handleDrop: (e: React.DragEvent<HTMLDivElement>) => void;
   handleModelDrop: (file: File) => void;
   handleImageDrop: (file: File) => void;
-  handleVideoDrop: (file: File) => void;
+  handleVideoDrop: (file: File) => Promise<void>;
 }
 
 export const useFileHandling = (
@@ -374,10 +362,20 @@ export const useFileHandling = (
     }
   }, [addImage, updateImage, cameraRef, onSuccessfulFileDrop]);
 
-  const handleVideoDrop = useCallback((file: File): void => {
+  const handleVideoDrop = useCallback(async (file: File): Promise<void> => {
     try {
       // Create a Blob URL for the file
       const objectUrl = URL.createObjectURL(file);
+      
+      // Generate thumbnail 
+      let thumbnailUrl: string | undefined;
+      try {
+        thumbnailUrl = await generateVideoThumbnail(objectUrl);
+        logInfo('Generated video thumbnail successfully');
+      } catch (thumbnailError) {
+        logError('Error generating video thumbnail:', thumbnailError);
+        // Continue without thumbnail if generation fails
+      }
       
       // Check if we have access to the camera
       if (!cameraRef.current) {
@@ -385,6 +383,7 @@ export const useFileHandling = (
         const id = addVideo({
           src: objectUrl,
           fileName: file.name,
+          thumbnailUrl,
           position: [0, 1, 0], // Default position
           rotation: [0, 0, 0],
           scale: 1,
@@ -399,7 +398,8 @@ export const useFileHandling = (
             // Update video with the new file path
             updateVideo(id, { 
               src: savedPath,
-              fileName: file.name // Ensure filename is preserved
+              fileName: file.name, // Ensure filename is preserved
+              thumbnailUrl // Keep the generated thumbnail
             });
             
             // Call the callback after successful save
@@ -435,6 +435,7 @@ export const useFileHandling = (
       const id = addVideo({
         src: objectUrl,
         fileName: file.name,
+        thumbnailUrl,
         position: [position.x, position.y, position.z],
         rotation: [0, 0, 0],
         scale: 1,
@@ -449,7 +450,8 @@ export const useFileHandling = (
           // Update video with the new file path
           updateVideo(id, { 
             src: savedPath,
-            fileName: file.name // Ensure filename is preserved
+            fileName: file.name, // Ensure filename is preserved
+            thumbnailUrl // Keep the generated thumbnail
           });
           
           // Call the callback after successful save
@@ -569,6 +571,40 @@ export const useFileHandling = (
                 });
                 
                 // console.log(`Added model from inventory: ${item.fileName} with ID: ${modelId}`);
+                return; // Exit early since we've handled the drop
+              }
+            } else if (item.type === 'video') {
+              // Add the selected video to the scene
+              if (item && item.url) {
+                const position = new THREE.Vector3();
+                
+                // If camera is available, place in front of camera
+                if (cameraRef.current) {
+                  const camera = cameraRef.current;
+                  const direction = new THREE.Vector3(0, 0, -1);
+                  direction.applyQuaternion(camera.quaternion);
+                  
+                  position.copy(camera.position);
+                  direction.multiplyScalar(3); // Place 3 units in front of camera
+                  position.add(direction);
+                } else {
+                  // Default position if camera not available
+                  position.set(0, 1, 0);
+                }
+                
+                // Add video to the store
+                addVideo({
+                  src: item.url,
+                  fileName: item.fileName || 'Untitled Video',
+                  position: [position.x, position.y, position.z],
+                  rotation: [0, 0, 0],
+                  scale: 1,
+                  isPlaying: true,
+                  volume: 0.5,
+                  loop: true,
+                  isInScene: true
+                });
+                
                 return; // Exit early since we've handled the drop
               }
             }

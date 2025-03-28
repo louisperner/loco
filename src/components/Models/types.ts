@@ -99,6 +99,8 @@ export type TransformMode = 'translate' | 'rotate' | 'scale';
 export interface VideoDataType {
   id: string;
   src: string;
+  fileName?: string;
+  thumbnailUrl?: string;
   position?: [number, number, number];
   rotation?: [number, number, number];
   scale?: number;

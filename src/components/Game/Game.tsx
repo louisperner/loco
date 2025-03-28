@@ -764,32 +764,18 @@ const Player: React.FC = () => {
                 position.set(0, 1, -3);
               }
               
-              // Check if this video is already in the store
-              const existingVideo = useVideoStore.getState().videos.find(v => v.id === video.id);
-              
-              if (existingVideo) {
-                // If it exists, update it to be visible in the scene with the new position
-                // Preserve all the existing properties, just update position and isInScene
-                useVideoStore.getState().updateVideo(video.id, {
-                  ...existingVideo,
-                  position: [position.x, position.y, position.z],
-                  isInScene: true
-                });
-              } else {
-                // Add video to the store with all properties
-                useVideoStore.getState().addVideo({
-                  id: video.id,
-                  src: video.url,
-                  fileName: video.fileName,
-                  position: [position.x, position.y, position.z],
-                  rotation: video.rotation as [number, number, number] || [0, 0, 0],
-                  scale: video.scale as number || 1,
-                  isPlaying: video.isPlaying as boolean || true,
-                  volume: video.volume as number || 0.5,
-                  loop: video.loop as boolean || true,
-                  isInScene: true
-                });
-              }
+              // Always create a new video instance when adding from hotbar
+              useVideoStore.getState().addVideo({
+                src: video.url,
+                fileName: video.fileName,
+                position: [position.x, position.y, position.z],
+                rotation: video.rotation as [number, number, number] || [0, 0, 0],
+                scale: video.scale as number || 1,
+                isPlaying: video.isPlaying as boolean || true,
+                volume: video.volume as number || 0.5,
+                loop: video.loop as boolean || true,
+                isInScene: true
+              });
               
               // Close the inventory
               handleInventoryToggle(false);

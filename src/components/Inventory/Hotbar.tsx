@@ -6,7 +6,7 @@ import TopNavBar from '../ui/TopNavBar';
 // Define the item interface based on what's used in the component
 interface HotbarItem {
   id: string;
-  type: 'model' | 'image';
+  type: 'model' | 'image' | 'video';
   fileName: string;
   url: string;
   thumbnailUrl?: string;

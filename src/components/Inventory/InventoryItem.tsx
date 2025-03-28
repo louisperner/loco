@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { generateVideoThumbnail } from '../Models/utils';
 
 interface InventoryItemProps {
   item: {
@@ -39,6 +40,25 @@ const InventoryItem: React.FC<InventoryItemProps> = ({
   handleDragEnd,
   handleRemoveItem
 }) => {
+  const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
+  
+  // Generate thumbnail for videos if needed
+  useEffect(() => {
+    if (item.type === 'video' && !item.thumbnailUrl && item.url) {
+      const loadThumbnail = async () => {
+        try {
+          const thumbnail = await generateVideoThumbnail(item.url);
+          setVideoThumbnail(thumbnail);
+        } catch (error) {
+          console.error('Failed to generate video thumbnail:', error);
+          // Keep videoThumbnail as null, will use icon instead
+        }
+      };
+      
+      loadThumbnail();
+    }
+  }, [item.type, item.thumbnailUrl, item.url]);
+  
   // Determine the icon to show based on item type
   const getItemIcon = () => {
     if (item.type === 'model') {
@@ -70,8 +90,21 @@ const InventoryItem: React.FC<InventoryItemProps> = ({
             alt={item.fileName}
             className="max-w-full max-h-full object-contain"
           />
+        ) : item.type === 'video' && (item.thumbnailUrl || videoThumbnail) ? (
+          <div className="relative w-full h-full flex items-center justify-center">
+            <img
+              src={item.thumbnailUrl || videoThumbnail!}
+              alt={item.fileName}
+              className="max-w-full max-h-full object-contain rounded"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors duration-200 rounded">
+              <div className="bg-black/60 rounded-full w-8 h-8 flex items-center justify-center">
+                <span className="text-white">▶</span>
+              </div>
+            </div>
+          </div>
         ) : (
-          <div className="w-10 h-10 mb-1">
+          <div className="w-10 h-10 mb-1 flex items-center justify-center">
             {item.thumbnailUrl ? (
               <img
                 src={item.thumbnailUrl}
@@ -79,15 +112,9 @@ const InventoryItem: React.FC<InventoryItemProps> = ({
                 className="w-full h-full object-contain"
               />
             ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="w-full h-full animate-spin-slow"
-              >
-                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12v4.7c0 4.67-3.13 8.42-7 9.88-3.87-1.45-7-5.2-7-9.88V6.3l7-3.12z" />
-                <path d="M12 6.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-              </svg>
+              <div className="text-2xl">
+                {getItemIcon()}
+              </div>
             )}
           </div>
         )}
@@ -96,9 +123,6 @@ const InventoryItem: React.FC<InventoryItemProps> = ({
       {/* Item Details */}
       <div className="flex flex-col justify-between h-full w-full p-2">
         <div className="flex items-center">
-          <span className="mr-1 text-lg">
-            {getItemIcon()}
-          </span>
           <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate" title={item.fileName}>
             {item.fileName}
           </p>

@@ -21,32 +21,51 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
   loop = true, 
   onLoad
 }) => {
-  const [videoSrc, setVideoSrc] = useState<string>(src);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoSrc, setVideoSrc] = useState<string>('');
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const videoTexture = useRef<THREE.VideoTexture | null>(null);
   const [textureLoaded, setTextureLoaded] = useState(false);
   const [videoAspect, setVideoAspect] = useState<number>(16/9); // Default 16:9 aspect ratio
+  const playStateRef = useRef<boolean>(isPlaying);
+  
+  // Update ref when props change to avoid stale closures
+  useEffect(() => {
+    playStateRef.current = isPlaying;
+  }, [isPlaying]);
   
   // Load the video with proper URL processing
   useEffect(() => {
+    let isMounted = true;
+    
     const loadVideo = async () => {
       try {
         console.log('Processing video URL:', src);
         const processedUrl = await processVideoUrl(src);
         console.log('Processed video URL:', processedUrl);
-        setVideoSrc(processedUrl);
+        if (isMounted && processedUrl) {
+          setVideoSrc(processedUrl);
+        }
       } catch (error) {
         console.error('Error processing video URL:', error);
-        setVideoSrc(src);
+        if (isMounted && src) {
+          setVideoSrc(src);
+        }
       }
     };
     
     loadVideo();
     
     return () => {
+      isMounted = false;
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
+      if (videoTexture.current) {
+        videoTexture.current.dispose();
+      }
       if (videoSrc !== src && videoSrc.startsWith('blob:')) {
         try {
-          URL.revokeObjectURL(videoSrc);
+          revokeBlobUrl(videoSrc, src);
         } catch (error) {
           console.error('Error revoking video blob URL:', error);
         }
@@ -59,25 +78,37 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
     if (!videoSrc) return;
     
     console.log('Creating video element with source:', videoSrc);
+    
+    // Clean up previous video/texture if they exist
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.src = '';
+      videoRef.current.load();
+    }
+    
+    if (videoTexture.current) {
+      videoTexture.current.dispose();
+      videoTexture.current = null;
+    }
+    
+    // Create new video element
     const video = document.createElement('video');
     video.crossOrigin = 'anonymous';
     video.loop = loop;
-    video.muted = volume === 0; // Mute based on volume setting
+    video.muted = volume === 0;
     video.volume = volume;
     video.playsInline = true;
-    video.src = videoSrc;
     
-    // When metadata is loaded, calculate and set aspect ratio
-    video.addEventListener('loadedmetadata', () => {
+    // Handle events first before setting src
+    const handleMetadata = () => {
       console.log('Video metadata loaded:', video.videoWidth, video.videoHeight);
       if (video.videoWidth && video.videoHeight) {
         const aspect = video.videoWidth / video.videoHeight;
         setVideoAspect(aspect);
       }
-    });
+    };
     
-    // When video can actually play, create the texture
-    video.addEventListener('canplay', () => {
+    const handleCanPlay = () => {
       console.log('Video can play, creating texture');
       
       // Create texture
@@ -93,43 +124,78 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
         onLoad(video);
       }
       
-      // Start playing the video if needed
-      if (isPlaying) {
-        video.play().catch(e => console.error('Error playing video:', e));
+      // Play video if needed - use a timeout to avoid race conditions
+      if (playStateRef.current) {
+        setTimeout(() => {
+          if (playStateRef.current && video.paused) {
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(e => {
+                if (e.name !== 'AbortError') {
+                  console.error('Error playing video:', e);
+                }
+              });
+            }
+          }
+        }, 50);
       }
-    });
+    };
     
-    // Handle errors
-    video.addEventListener('error', (e) => {
+    const handleError = (e: Event) => {
       console.error('Error loading video:', video.error, e);
-    });
+    };
+    
+    video.addEventListener('loadedmetadata', handleMetadata);
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('error', handleError);
     
     // Save the video element reference
     videoRef.current = video;
     
-    // Always load the video to trigger events
+    // Set src and load
+    video.src = videoSrc;
     video.load();
     
     return () => {
+      // Remove event listeners
+      video.removeEventListener('loadedmetadata', handleMetadata);
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('error', handleError);
+      
       // Cleanup
-      if (videoTexture.current) {
-        videoTexture.current.dispose();
-      }
       video.pause();
       video.src = '';
       video.load();
-    };
-  }, [videoSrc, loop, volume, isPlaying, onLoad]);
-  
-  // Control video playback when isPlaying changes
-  useEffect(() => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        console.log('Attempting to play video');
-        videoRef.current.play().catch(e => console.error('Error playing video:', e));
-      } else {
-        videoRef.current.pause();
+      
+      if (videoTexture.current) {
+        videoTexture.current.dispose();
+        videoTexture.current = null;
       }
+    };
+  }, [videoSrc, loop, volume, onLoad]);
+  
+  // Handle changes to isPlaying
+  useEffect(() => {
+    if (!videoRef.current) return;
+    
+    if (isPlaying) {
+      console.log('Attempting to play video');
+      
+      // Use timeout to avoid race conditions with creation/loading
+      setTimeout(() => {
+        if (videoRef.current && videoRef.current.paused) {
+          const playPromise = videoRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(e => {
+              if (e.name !== 'AbortError') {
+                console.error('Error playing video:', e);
+              }
+            });
+          }
+        }
+      }, 50);
+    } else {
+      videoRef.current.pause();
     }
   }, [isPlaying]);
   
@@ -140,6 +206,13 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
       videoRef.current.muted = volume === 0;
     }
   }, [volume]);
+  
+  // Handle loop changes
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.loop = loop;
+    }
+  }, [loop]);
   
   return (
     <>
@@ -204,6 +277,7 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
       updateRotation();
       return () => {};
     }
+    return undefined;
   }, [camera, lookAtUser, position]);
 
   // Function to save changes
@@ -308,7 +382,7 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
   }, [showControls, videoData, scale, onUpdate]);
 
   // Update position and rotation in useFrame to ensure synchronization
-  useFrame(() => {
+  useFrame((): null => {
     if (groupRef.current && lookAtUser) {
       const lookAtPosition = new THREE.Vector3();
       camera.getWorldPosition(lookAtPosition);
@@ -328,6 +402,7 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
         });
       }
     }
+    return null; // Return a value to satisfy TypeScript
   });
 
   const handleClick = (e: ThreeEvent<MouseEvent>): void => {
