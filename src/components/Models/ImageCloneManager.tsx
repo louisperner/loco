@@ -10,6 +10,7 @@ import { BsArrowsMove } from 'react-icons/bs';
 import * as THREE from 'three';
 import { ImageDataType, ImageInSceneProps, ImageCloneManagerProps, TransformMode } from './types';
 import { processImageUrl, revokeBlobUrl, iconButtonStyle } from './utils';
+import LoadingIndicator from '../Scene/LoadingIndicator';
 
 // Component to render a single image in 3D space
 const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpdate, onSelect }) => {
@@ -29,6 +30,7 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
   const [scale, setScale] = useState<number>(initialScale);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [imageSrc, setImageSrc] = useState<string>(src);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   
   const groupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
@@ -36,12 +38,25 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
   // Handle app-file URLs
   useEffect(() => {
     const loadImage = async (): Promise<void> => {
+      setIsLoading(true);
       try {
         const processedUrl = await processImageUrl(src);
         setImageSrc(processedUrl);
+        
+        // Create an image element to detect when the image is loaded
+        const img = new Image();
+        img.onload = () => {
+          setIsLoading(false);
+        };
+        img.onerror = () => {
+          console.error('Error loading image');
+          setIsLoading(false);
+        };
+        img.src = processedUrl;
       } catch (error) {
         console.error('Error processing image URL:', error);
         setImageSrc(src);
+        setIsLoading(false);
       }
     };
     
@@ -379,31 +394,37 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
         userData={{ type: 'image', id: imageData.id }}
         name={`image-${imageData.id}`}
       >
-        {/* Add invisible mesh for raycasting with args relative to image size */}
-        <mesh 
-          name={`image-collider-${imageData.id}`} 
-          position={[0, -0.2, 0]} 
-        >
-          <planeGeometry args={[1, 1]} />
-          <meshBasicMaterial 
-            visible={false} 
-            transparent={true} 
-            opacity={0} 
-            side={THREE.DoubleSide}
-            alphaTest={0.5}
-          />
-        </mesh>
-        <Html
-          transform
-          distanceFactor={1.5}
-          style={{
-            pointerEvents: 'auto',
-            userSelect: 'none',
-            marginTop: '30px',
-          }}
-        >
-          <ImageContainer />
-        </Html>
+        {isLoading ? (
+          <LoadingIndicator message="Loading image..." />
+        ) : (
+          <>
+            {/* Add invisible mesh for raycasting with args relative to image size */}
+            <mesh 
+              name={`image-collider-${imageData.id}`} 
+              position={[0, -0.2, 0]} 
+            >
+              <planeGeometry args={[1, 1]} />
+              <meshBasicMaterial 
+                visible={false} 
+                transparent={true} 
+                opacity={0} 
+                side={THREE.DoubleSide}
+                alphaTest={0.5}
+              />
+            </mesh>
+            <Html
+              transform
+              distanceFactor={1.5}
+              style={{
+                pointerEvents: 'auto',
+                userSelect: 'none',
+                marginTop: '30px',
+              }}
+            >
+              <ImageContainer />
+            </Html>
+          </>
+        )}
       </group>
     </>
   );

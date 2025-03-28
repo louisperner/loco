@@ -58,7 +58,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     // Create a sphere to visualize the raycaster range
     const sphereGeometry = new THREE.SphereGeometry(0.05, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0xff0000,
+      color: 0x310041,
       transparent: true,
       opacity: 0.9
     });

@@ -12,6 +12,7 @@ import { BsArrowsMove } from 'react-icons/bs';
 import { TbRotate360 } from 'react-icons/tb';
 import { BiReset } from 'react-icons/bi';
 import { TbVolume, TbVolumeOff } from 'react-icons/tb';
+import LoadingIndicator from '../Scene/LoadingIndicator';
 
 // Internal video component for handling the actual video display
 const InternalVideo: React.FC<InternalVideoProps> = ({ 
@@ -219,44 +220,7 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
   
   return (
     <>
-      {isLoading && (
-        <group ref={loadingRef} scale={1}>
-          <mesh>
-            <torusGeometry args={[0.5, 0.01, 16, 32]} />
-            <meshStandardMaterial color="#F3C7F1" opacity={1} transparent emissive="#F3C7F1" emissiveIntensity={2} />
-          </mesh>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.5, 0.01, 16, 32]} />
-            <meshStandardMaterial color="#F3C7F1" opacity={1} transparent emissive="#F3C7F1" emissiveIntensity={2} />
-          </mesh>
-          <mesh rotation={[0, Math.PI / 2, 0]}>
-            <torusGeometry args={[0.5, 0.01, 16, 32]} />
-            <meshStandardMaterial color="#F3C7F1" opacity={1} transparent emissive="#F3C7F1" emissiveIntensity={2} />
-          </mesh>
-          <mesh>
-            <torusGeometry args={[0.1, 0.01, 16, 32]} />
-            <meshStandardMaterial color="#F3C7F1" opacity={1} transparent emissive="#F3C7F1" emissiveIntensity={2} />
-          </mesh>
-          <Html center position={[0, 0, 0]}>
-            <div style={{
-              color: 'white',
-              fontFamily: 'Arial, sans-serif',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              padding: '8px 12px',
-              background: 'rgba(0,0,0,0.7)',
-              borderRadius: '6px',
-              border: '1px solid rgba(74, 144, 226, 0.5)',
-              marginTop: '190px',
-              textAlign: 'center',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 0 10px rgba(74, 144, 226, 0.5)'
-            }}>
-              Loading...
-            </div>
-          </Html>
-        </group>
-      )}
+      {isLoading && <LoadingIndicator />}
       {textureLoaded && videoTexture.current && (
         <mesh>
           <planeGeometry args={[1, 1/videoAspect]} />

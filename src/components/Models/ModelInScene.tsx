@@ -10,6 +10,7 @@ import {
 } from './types';
 import ErrorBoundary from './ErrorBoundary';
 import { processFileUrl, controlButtonStyle } from './utils';
+import LoadingIndicator from '../Scene/LoadingIndicator';
 
 // Separate model component to use with Suspense and ErrorBoundary
 const Model: React.FC<ModelProps> = ({ url, scale }) => {
@@ -59,7 +60,7 @@ const Model: React.FC<ModelProps> = ({ url, scale }) => {
   
   // Show loading indicator if still converting URL
   if (isConverting) {
-    return null; // Let Suspense fallback handle it
+    return <LoadingIndicator message="Converting..." />;
   }
   
   // Return the actual model component with the processed URL
@@ -452,18 +453,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         <ErrorBoundary 
           fallback={<ModelFallback fileName={fileName} scale={scale} />}
         >
-          <Suspense fallback={<Box args={[0.8, 0.8, 0.8]} scale={scale}>
-            <meshStandardMaterial color="#3b82f6" wireframe />
-            <Html
-              position={[0, 1.5, 0]}
-              center
-              style={{ color: 'white', background: 'rgba(0,0,0,0.7)', padding: '5px 10px', borderRadius: '4px' }}
-            >
-              <div style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>
-                Loading model...
-              </div>
-            </Html>
-          </Box>}>
+          <Suspense fallback={<LoadingIndicator message="Loading model..." />}>
             <Model url={url} scale={scale} />
           </Suspense>
         </ErrorBoundary>

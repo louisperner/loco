@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Sky, Sparkles, Stars } from '@react-three/drei';
+import { Sky, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import Spotlight from '../ui/Spotlight';
 import FPSControls from '../Scene/FPSControls';
@@ -14,7 +14,7 @@ import ModelManager from '../Models/ModelManager';
 import { SettingsPanel } from '@/components/Settings';
 import { useThemeStore } from '../../store/ThemeStore';
 import Inventory from '../Inventory/Inventory';
-import { Bloom, DepthOfField, EffectComposer, Noise, Vignette } from '@react-three/postprocessing'
+import { Bloom, EffectComposer } from '@react-three/postprocessing'
 
 // Import separated components
 import { 
@@ -456,20 +456,18 @@ const Player: React.FC = () => {
         >
           {/* <Sparkles count={10000} size={1} position={[0, 0.9, 0]} scale={100} speed={0.3} /> */}
 
-          <directionalLight 
+          {/* <directionalLight 
             position={[10, 10, 5]} 
             intensity={Math.PI * 2} 
             castShadow
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
           />
-          {/* Add a secondary fill light from opposite direction */}
           <directionalLight 
             position={[-5, 5, -2]} 
             intensity={Math.PI} 
             color="#8088ff"
-          />
-          {/* Add a ground fill light for better overall illumination */}
+          /> */}
           <hemisphereLight
             args={["#ffffff", "#8888ff", 0.7]} 
             position={[0, 10, 0]}
@@ -537,7 +535,7 @@ const Player: React.FC = () => {
 
           <EffectComposer>
             {/* <DepthOfField focusDistance={-50} focalLength={0.02} bokehScale={2} height={480} /> */}
-            <Bloom luminanceThreshold={1} luminanceSmoothing={0.5} height={300} />
+            <Bloom luminanceThreshold={0.1} luminanceSmoothing={7} height={300} />
             {/* <Noise opacity={0.02} /> */}
             {/* <Vignette eskil={false} offset={0.1} darkness={1.1} /> */}
           </EffectComposer>
