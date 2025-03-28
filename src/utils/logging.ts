@@ -8,8 +8,10 @@
  * @param error Optional error object to log
  */
 export const logError = (message: string, error?: unknown): void => {
-  // In production, this could send to a monitoring service
-  console.error(message, error);
+  // Only log in development
+  if (process.env.NODE_ENV === 'development') {
+    console.error(message, error);
+  }
 };
 
 /**
@@ -17,8 +19,10 @@ export const logError = (message: string, error?: unknown): void => {
  * @param message Info message to log
  */
 export const logInfo = (message: string): void => {
-  // In production, this would be conditionally logged based on log level
-  console.log(message);
+  // Only log in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log(message);
+  }
 };
 
 /**
@@ -26,7 +30,10 @@ export const logInfo = (message: string): void => {
  * @param message Warning message to log
  */
 export const logWarning = (message: string): void => {
-  console.warn(message);
+  // Only log in development
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(message);
+  }
 };
 
 /**
@@ -35,7 +42,7 @@ export const logWarning = (message: string): void => {
  * @param data Optional data to log
  */
 export const logDebug = (message: string, data?: unknown): void => {
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV === 'development') {
     console.debug(message, data);
   }
 }; 

@@ -118,7 +118,7 @@ export function SettingsPanel({
     skyInclination: 0,
     skyAzimuth: 0.25,
     skyTurbidity: 10,
-    skyRayleigh: 2,
+    skyRayleigh: 0,
     skyOpacity: 1,
     starsVisible: true,
     starsRadius: 100,

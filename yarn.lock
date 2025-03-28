@@ -1542,6 +1542,15 @@
     use-sync-external-store "^1.4.0"
     zustand "^5.0.3"
 
+"@react-three/postprocessing@^3.0.4":
+  version "3.0.4"
+  resolved "https://registry.yarnpkg.com/@react-three/postprocessing/-/postprocessing-3.0.4.tgz#e2379eb0b953d1cc0c4b8ac94dc76256f4c07062"
+  integrity sha512-e4+F5xtudDYvhxx3y0NtWXpZbwvQ0x1zdOXWTbXMK6fFLVDd4qucN90YaaStanZGS4Bd5siQm0lGL/5ogf8iDQ==
+  dependencies:
+    maath "^0.6.0"
+    n8ao "^1.9.4"
+    postprocessing "^6.36.6"
+
 "@rollup/rollup-android-arm-eabi@4.37.0":
   version "4.37.0"
   resolved "https://registry.yarnpkg.com/@rollup/rollup-android-arm-eabi/-/rollup-android-arm-eabi-4.37.0.tgz#9bedc746a97fe707154086365f269ced92ff4aa9"
@@ -4461,6 +4470,11 @@ maath@^0.10.8:
   resolved "https://registry.yarnpkg.com/maath/-/maath-0.10.8.tgz#cf647544430141bf6982da6e878abb6c4b804e24"
   integrity sha512-tRvbDF0Pgqz+9XUa4jjfgAQ8/aPKmQdWXilFu2tMy4GWj4NOsx99HlULO4IeREfbO3a0sA145DZYyvXPkybm0g==
 
+maath@^0.6.0:
+  version "0.6.0"
+  resolved "https://registry.yarnpkg.com/maath/-/maath-0.6.0.tgz#7841d0fb95bbb37d19b08b7c5458ef70190950d2"
+  integrity sha512-dSb2xQuP7vDnaYqfoKzlApeRcR2xtN8/f7WV/TMAkBC8552TwTLtOO0JTcSygkYMjNDPoo6V01jTw/aPi4JrMw==
+
 make-fetch-happen@^10.2.1:
   version "10.2.1"
   resolved "https://registry.yarnpkg.com/make-fetch-happen/-/make-fetch-happen-10.2.1.tgz#f5e3835c5e9817b617f2770870d9492d28678164"
@@ -4686,6 +4700,11 @@ mz@^2.7.0:
     any-promise "^1.0.0"
     object-assign "^4.0.1"
     thenify-all "^1.0.0"
+
+n8ao@^1.9.4:
+  version "1.9.4"
+  resolved "https://registry.yarnpkg.com/n8ao/-/n8ao-1.9.4.tgz#be222531fddcb5099614be452fc492db98a2947d"
+  integrity sha512-gbpAorQecZn2oGK/rheHxPTNwOxVsEC6216+Jr9tXHUk9L5VCE2q/uxsSrQpfNkZDoCmQHf7oSg3SYFWCAt0wg==
 
 nanoid@^3.3.8:
   version "3.3.11"
@@ -5147,6 +5166,11 @@ postject@^1.0.0-alpha.6:
   integrity sha512-b9Eb8h2eVqNE8edvKdwqkrY6O7kAwmI8kcnBv1NScolYJbo59XUF0noFq+lxbC1yN20bmC0WBEbDC5H/7ASb0A==
   dependencies:
     commander "^9.4.0"
+
+postprocessing@^6.36.6:
+  version "6.37.1"
+  resolved "https://registry.yarnpkg.com/postprocessing/-/postprocessing-6.37.1.tgz#643c9acf1d4addc4f98f91dc1ee578a258b462f3"
+  integrity sha512-fZszlSB8j+PaxtS8g4qMxdj+ifzvoCPnbHSOjclTlr4mbhd6/huQqOViM6lhhPIrW2fiZc+IRcnReoKYvyMwNg==
 
 potpack@^1.0.1:
   version "1.0.2"

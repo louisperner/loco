@@ -27,6 +27,16 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
   const [textureLoaded, setTextureLoaded] = useState(false);
   const [videoAspect, setVideoAspect] = useState<number>(16/9); // Default 16:9 aspect ratio
   const playStateRef = useRef<boolean>(isPlaying);
+  const [isLoading, setIsLoading] = useState(true);
+  const loadingRef = useRef<THREE.Group>(null);
+  
+  // Animate loading indicator
+  useFrame(() => {
+    if (loadingRef.current && isLoading) {
+      loadingRef.current.rotation.y += 0.03;
+      loadingRef.current.rotation.x += 0.01;
+    }
+  });
   
   // Update ref when props change to avoid stale closures
   useEffect(() => {
@@ -36,17 +46,15 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
   // Load the video with proper URL processing
   useEffect(() => {
     let isMounted = true;
+    setIsLoading(true);
     
     const loadVideo = async () => {
       try {
-        console.log('Processing video URL:', src);
         const processedUrl = await processVideoUrl(src);
-        console.log('Processed video URL:', processedUrl);
         if (isMounted && processedUrl) {
           setVideoSrc(processedUrl);
         }
       } catch (error) {
-        console.error('Error processing video URL:', error);
         if (isMounted && src) {
           setVideoSrc(src);
         }
@@ -67,7 +75,6 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
         try {
           revokeBlobUrl(videoSrc, src);
         } catch (error) {
-          console.error('Error revoking video blob URL:', error);
         }
       }
     };
@@ -76,8 +83,6 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
   // Create the video element and texture
   useEffect(() => {
     if (!videoSrc) return;
-    
-    console.log('Creating video element with source:', videoSrc);
     
     // Clean up previous video/texture if they exist
     if (videoRef.current) {
@@ -101,7 +106,6 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
     
     // Handle events first before setting src
     const handleMetadata = () => {
-      console.log('Video metadata loaded:', video.videoWidth, video.videoHeight);
       if (video.videoWidth && video.videoHeight) {
         const aspect = video.videoWidth / video.videoHeight;
         setVideoAspect(aspect);
@@ -109,8 +113,6 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
     };
     
     const handleCanPlay = () => {
-      console.log('Video can play, creating texture');
-      
       // Create texture
       const texture = new THREE.VideoTexture(video);
       texture.minFilter = THREE.LinearFilter;
@@ -119,6 +121,7 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
       
       videoTexture.current = texture;
       setTextureLoaded(true);
+      setIsLoading(false);
       
       if (onLoad) {
         onLoad(video);
@@ -132,7 +135,6 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
             if (playPromise !== undefined) {
               playPromise.catch(e => {
                 if (e.name !== 'AbortError') {
-                  console.error('Error playing video:', e);
                 }
               });
             }
@@ -141,13 +143,8 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
       }
     };
     
-    const handleError = (e: Event) => {
-      console.error('Error loading video:', video.error, e);
-    };
-    
     video.addEventListener('loadedmetadata', handleMetadata);
     video.addEventListener('canplay', handleCanPlay);
-    video.addEventListener('error', handleError);
     
     // Save the video element reference
     videoRef.current = video;
@@ -156,11 +153,20 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
     video.src = videoSrc;
     video.load();
     
+    // Set a timeout to mark loading as false after a maximum wait time
+    const timeout = setTimeout(() => {
+      if (setIsLoading) {
+        setIsLoading(false);
+      }
+    }, 10000); // 10 seconds maximum loading time
+    
     return () => {
       // Remove event listeners
       video.removeEventListener('loadedmetadata', handleMetadata);
       video.removeEventListener('canplay', handleCanPlay);
-      video.removeEventListener('error', handleError);
+      
+      // Clear timeout
+      clearTimeout(timeout);
       
       // Cleanup
       video.pause();
@@ -179,8 +185,6 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
     if (!videoRef.current) return;
     
     if (isPlaying) {
-      console.log('Attempting to play video');
-      
       // Use timeout to avoid race conditions with creation/loading
       setTimeout(() => {
         if (videoRef.current && videoRef.current.paused) {
@@ -188,7 +192,6 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
           if (playPromise !== undefined) {
             playPromise.catch(e => {
               if (e.name !== 'AbortError') {
-                console.error('Error playing video:', e);
               }
             });
           }
@@ -216,6 +219,44 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
   
   return (
     <>
+      {isLoading && (
+        <group ref={loadingRef} scale={1}>
+          <mesh>
+            <torusGeometry args={[0.5, 0.01, 16, 32]} />
+            <meshStandardMaterial color="#F3C7F1" opacity={1} transparent emissive="#F3C7F1" emissiveIntensity={2} />
+          </mesh>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.5, 0.01, 16, 32]} />
+            <meshStandardMaterial color="#F3C7F1" opacity={1} transparent emissive="#F3C7F1" emissiveIntensity={2} />
+          </mesh>
+          <mesh rotation={[0, Math.PI / 2, 0]}>
+            <torusGeometry args={[0.5, 0.01, 16, 32]} />
+            <meshStandardMaterial color="#F3C7F1" opacity={1} transparent emissive="#F3C7F1" emissiveIntensity={2} />
+          </mesh>
+          <mesh>
+            <torusGeometry args={[0.1, 0.01, 16, 32]} />
+            <meshStandardMaterial color="#F3C7F1" opacity={1} transparent emissive="#F3C7F1" emissiveIntensity={2} />
+          </mesh>
+          <Html center position={[0, 0, 0]}>
+            <div style={{
+              color: 'white',
+              fontFamily: 'Arial, sans-serif',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              padding: '8px 12px',
+              background: 'rgba(0,0,0,0.7)',
+              borderRadius: '6px',
+              border: '1px solid rgba(74, 144, 226, 0.5)',
+              marginTop: '190px',
+              textAlign: 'center',
+              whiteSpace: 'nowrap',
+              boxShadow: '0 0 10px rgba(74, 144, 226, 0.5)'
+            }}>
+              Loading...
+            </div>
+          </Html>
+        </group>
+      )}
       {textureLoaded && videoTexture.current && (
         <mesh>
           <planeGeometry args={[1, 1/videoAspect]} />

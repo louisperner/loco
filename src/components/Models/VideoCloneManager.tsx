@@ -15,7 +15,7 @@ const VideoCloneManager: React.FC<VideoCloneManagerProps> = ({ onSelect }) => {
       // Fix any videos with undefined isInScene values
       videos.forEach(video => {
         if (video.isInScene === undefined) {
-          console.log('Fixing video with undefined isInScene:', video.id);
+          // console.log('Fixing video with undefined isInScene:', video.id);
           updateVideo(video.id, { isInScene: true });
         }
       });
@@ -29,7 +29,7 @@ const VideoCloneManager: React.FC<VideoCloneManagerProps> = ({ onSelect }) => {
       
       // When a video is removed via right-click, update its isInScene property
       if (type === 'video' && id) {
-        console.log('Received removeObject event for video:', id);
+        // console.log('Received removeObject event for video:', id);
         updateVideo(id, { isInScene: false });
       }
     };
@@ -45,8 +45,8 @@ const VideoCloneManager: React.FC<VideoCloneManagerProps> = ({ onSelect }) => {
 
   // For debugging
   useEffect(() => {
-    console.log('VideoCloneManager - Current videos in store:', 
-      videos.map(v => ({ id: v.id, isInScene: v.isInScene })));
+    // console.log('VideoCloneManager - Current videos in store:', 
+    //   videos.map(v => ({ id: v.id, isInScene: v.isInScene })));
   }, [videos]);
 
   // Render each video from the store
@@ -55,7 +55,7 @@ const VideoCloneManager: React.FC<VideoCloneManagerProps> = ({ onSelect }) => {
       {videos
         .filter(video => video.isInScene !== false) // Only render videos that are in scene
         .map((video: Partial<VideoDataType> & { id: string }, index: number) => {
-          console.log('Rendering video:', video.id, 'isInScene:', video.isInScene);
+          // console.log('Rendering video:', video.id, 'isInScene:', video.isInScene);
           // Type assertion to convert video to VideoDataType
           const typedVideo = video as unknown as VideoDataType;
           return (
@@ -63,7 +63,7 @@ const VideoCloneManager: React.FC<VideoCloneManagerProps> = ({ onSelect }) => {
               key={`video-${video.id || index}`} 
               videoData={typedVideo}
               onRemove={() => {
-                console.log('onRemove called for video:', video.id);
+                // console.log('onRemove called for video:', video.id);
                 updateVideo(video.id, { isInScene: false });
               }}
               onUpdate={(updatedData) => updateVideo(video.id, updatedData)}

@@ -27,7 +27,6 @@ export const useVideoStore = create<VideoStore>()(
           id, 
           isInScene: video.isInScene === undefined ? true : video.isInScene 
         };
-        console.log('Adding video:', id, newVideo);
         set((state) => ({
           videos: [...state.videos, newVideo]
         }));
@@ -35,14 +34,12 @@ export const useVideoStore = create<VideoStore>()(
       },
       
       removeVideo: (id) => {
-        console.log('Removing video completely:', id);
         set((state) => ({
           videos: state.videos.filter(video => video.id !== id)
         }));
       },
       
       updateVideo: (id, data) => {
-        console.log('Updating video:', id, data);
         set((state) => ({
           videos: state.videos.map(video => 
             video.id === id ? { ...video, ...data } : video
@@ -55,7 +52,6 @@ export const useVideoStore = create<VideoStore>()(
       },
       
       clearVideos: () => {
-        console.log('Clearing all videos');
         set({ videos: [] });
       }
     }),

@@ -67,7 +67,7 @@ const defaultTheme: Theme = {
   skyInclination: 0,
   skyAzimuth: 0.25,
   skyTurbidity: 10,
-  skyRayleigh: 2,
+  skyRayleigh: 0,
   skyOpacity: 1,
   
   // Stars settings
