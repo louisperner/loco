@@ -370,7 +370,7 @@ export const useInventory = (
       if (e.key === 'q' || e.key === 'Q') {
         e.preventDefault();
         // eslint-disable-next-line no-console
-        console.log('Q key pressed, clearing selection globally');
+        // console.log('Q key pressed, clearing selection globally');
         setSelectedItem(null);
         setSelectedHotbarSlot(null);
         return;
@@ -405,7 +405,7 @@ export const useInventory = (
     };
 
     // eslint-disable-next-line no-console
-    console.log("Global hotbar and deselection keyboard handler initialized");
+    // console.log("Global hotbar and deselection keyboard handler initialized");
     
     // Use true for capture to ensure this handler runs before others
     document.addEventListener('keydown', handleGlobalHotkeys as unknown as EventListener, true);
@@ -437,7 +437,7 @@ export const useInventory = (
       if (e.key === 'Escape') {
         e.preventDefault();
         // eslint-disable-next-line no-console
-        console.log('Escape key pressed, closing inventory');
+        // console.log('Escape key pressed, closing inventory');
         setShowFullInventory(false);
         setSelectedItem(null);
         
@@ -449,7 +449,7 @@ export const useInventory = (
       if (e.key === 'b' || e.key === 'B') {
         e.preventDefault();
         // eslint-disable-next-line no-console
-        console.log('B key pressed, toggling add to hotbar mode');
+        // console.log('B key pressed, toggling add to hotbar mode');
         setIsAddingToHotbar(!isAddingToHotbar);
       }
       
@@ -460,13 +460,12 @@ export const useInventory = (
     const inventoryKeydownListener = handleKeyDown as unknown as EventListener;
     document.addEventListener('keydown', inventoryKeydownListener);
     
-    // eslint-disable-next-line no-console
-    console.log("Inventory-specific keyboard handler initialized");
+    // console.log("Inventory-specific keyboard handler initialized");
     
     return () => {
       document.removeEventListener('keydown', inventoryKeydownListener);
       // eslint-disable-next-line no-console
-      console.log("Inventory-specific keyboard handler removed");
+      //console.log("Inventory-specific keyboard handler removed");
     };
   }, [
     showFullInventory, 
@@ -489,25 +488,24 @@ export const useInventory = (
         if (e.button === 0 && selectedHotbarSlot !== null && hotbarItems[selectedHotbarSlot]) {
           // Debug information
           // eslint-disable-next-line no-console
-          console.log(`Left click on canvas with hotbar slot ${selectedHotbarSlot} selected, placing item:`, 
-            hotbarItems[selectedHotbarSlot]?.fileName);
+          // console.log(`Left click on canvas with hotbar slot ${selectedHotbarSlot} selected, placing item:`, 
+          //   hotbarItems[selectedHotbarSlot]?.fileName);
           
           // Add the selected item to the canvas
           handleAddToCanvas(hotbarItems[selectedHotbarSlot]!);
         } 
         // Right click and we have a remove handler
         else if (e.button === 2 && typeof onRemoveObject === 'function') {
-          // eslint-disable-next-line no-console
-          console.log('Right click on canvas, removing object');
+          // console.log('Right click on canvas, removing object');
           onRemoveObject();
         }
         else {
           // eslint-disable-next-line no-console
-          console.log('Click on canvas but no action taken', { 
-            button: e.button, 
-            selectedHotbarSlot, 
-            hasItem: selectedHotbarSlot !== null ? !!hotbarItems[selectedHotbarSlot] : false 
-          });
+          // console.log('Click on canvas but no action taken', { 
+          //   button: e.button, 
+          //   selectedHotbarSlot, 
+          //   hasItem: selectedHotbarSlot !== null ? !!hotbarItems[selectedHotbarSlot] : false 
+          // });
         }
       }
     };
@@ -522,14 +520,12 @@ export const useInventory = (
     document.addEventListener('mousedown', handleMouseClick as unknown as EventListener);
     document.addEventListener('contextmenu', preventContextMenu as unknown as EventListener);
     
-    // eslint-disable-next-line no-console
-    console.log("Mouse click handler initialized");
+    // console.log("Mouse click handler initialized");
 
     return () => {
       document.removeEventListener('mousedown', handleMouseClick as unknown as EventListener);
       document.removeEventListener('contextmenu', preventContextMenu as unknown as EventListener);
-      // eslint-disable-next-line no-console
-      console.log("Mouse click handler removed");
+      // console.log("Mouse click handler removed");
     };
   }, [selectedHotbarSlot, hotbarItems, onRemoveObject, handleAddToCanvas]);
 

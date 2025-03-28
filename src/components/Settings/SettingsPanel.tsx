@@ -10,7 +10,7 @@ import {
   SlidePanelFooter,
   SlidePanelClose,
 } from '@/components/ui/slide-panel';
-import { FaCog, FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaMagic } from 'react-icons/fa';
+import { FaCog, FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaGlobeAmericas } from 'react-icons/fa';
 import { ColorsTab } from './tabs/ColorsTab';
 import { GroundTab } from './tabs/GroundTab';
 import { CrosshairTab } from './tabs/CrosshairTab';
@@ -34,7 +34,7 @@ const TabsContent: React.FC<TabsContentProps> = ({ tabs, activeTab, onTabChange 
   return (
     <div className="space-y-4">
       {/* Tabs navigation */}
-      <div className="flex mb-2 p-1 bg-white/10 rounded-lg">
+      <div className="flex mb-2 p-1 bg-white/10 rounded-lg z-50">
         {tabs.map((tab) => (
           <Button 
             key={tab.id}
@@ -42,7 +42,7 @@ const TabsContent: React.FC<TabsContentProps> = ({ tabs, activeTab, onTabChange 
             className={`flex-1 py-1 px-2 text-xs font-medium ${
               activeTab === tab.id 
                 ? 'bg-white text-black shadow-sm' 
-                : 'text-white/70 hover:text-white/90 hover:bg-white/10'
+                : 'text-white/70 hover:text-white hover:bg-white/10'
             }`}
             onClick={() => onTabChange(tab.id)}
           >
@@ -51,7 +51,7 @@ const TabsContent: React.FC<TabsContentProps> = ({ tabs, activeTab, onTabChange 
                 {tab.icon}
               </span>
             )}
-            {tab.label}
+            {/* {tab.label} */}
           </Button>
         ))}
       </div>
@@ -318,7 +318,7 @@ export function SettingsPanel({
     {
       id: 'environment',
       label: 'Environment',
-      icon: <FaMagic className="w-4 h-4" />,
+      icon: <FaGlobeAmericas className="w-4 h-4" />,
       content: (
         <EnvironmentTab 
           environmentSettings={environmentSettings}
