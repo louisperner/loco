@@ -94,3 +94,38 @@ export interface InternalImageProps {
 }
 
 export type TransformMode = 'translate' | 'rotate' | 'scale'; 
+
+// Video types
+export interface VideoDataType {
+  id: string;
+  src: string;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number;
+  lookAtUser?: boolean;
+  isPlaying?: boolean;
+  volume?: number;
+  loop?: boolean;
+  isInScene?: boolean;
+  [key: string]: unknown;
+}
+
+export interface VideoInSceneProps {
+  videoData: VideoDataType;
+  onRemove: () => void;
+  onUpdate: (data: VideoDataType) => void;
+  onSelect?: (data: VideoDataType & { type: string }) => void;
+}
+
+export interface VideoCloneManagerProps {
+  onSelect?: (data: VideoDataType & { type: string }) => void;
+}
+
+export interface InternalVideoProps {
+  src: string;
+  isPlaying?: boolean;
+  volume?: number;
+  loop?: boolean;
+  onLoad?: (video: HTMLVideoElement) => void;
+  onError?: (error: ErrorEvent) => void;
+} 

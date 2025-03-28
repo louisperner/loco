@@ -7,7 +7,7 @@ import { useGameStore } from '../../store/useGameStore';
 interface InventoryItem {
   id: string;
   fileName: string;
-  type: 'model' | 'image';
+  type: 'model' | 'image' | 'video';
   url: string;
   thumbnailUrl?: string;
   position?: [number, number, number];
@@ -20,10 +20,23 @@ interface InventoryItem {
 }
 
 interface InventoryGridProps {
-  items: InventoryItem[];
+  items: {
+    id: string;
+    fileName: string;
+    type: 'model' | 'image' | 'video';
+    url: string;
+    thumbnailUrl?: string;
+    position?: [number, number, number];
+    rotation?: [number, number, number];
+    scale?: number;
+    width?: number;
+    height?: number;
+    aspectRatio?: number;
+    [key: string]: unknown;
+  }[];
   loading: boolean;
   error: string | null;
-  selectedItem: InventoryItem | null;
+  selectedItem: any;
   hotbarItems: (InventoryItem | null)[];
   isAddingToHotbar: boolean;
   selectedHotbarSlot: number | null;
@@ -34,6 +47,8 @@ interface InventoryGridProps {
   handleConfirmSelection: () => void;
   handleRemoveItem: (itemId: string, e: React.MouseEvent) => void;
   reloadInventory?: () => void;
+  showHotbarButton?: boolean;
+  onAddToHotbar?: (item: InventoryItem) => void;
 }
 
 const InventoryGrid: React.FC<InventoryGridProps> = ({
@@ -50,7 +65,9 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
   handleDragEnd,
   handleConfirmSelection,
   handleRemoveItem,
-  reloadInventory
+  reloadInventory,
+  showHotbarButton,
+  onAddToHotbar
 }) => {
   const setCanvasInteractive = useGameStore(state => state.setCanvasInteractive);
   

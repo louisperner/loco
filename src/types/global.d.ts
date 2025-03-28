@@ -34,6 +34,11 @@ declare global {
         url?: string; 
         error?: string 
       }>;
+      loadVideoFromAppFile?: (url: string) => Promise<{
+        success: boolean;
+        url?: string;
+        error?: string;
+      }>;
       
       // Inventory operations
       listImagesFromDisk?: () => Promise<{ 
@@ -45,6 +50,11 @@ declare global {
         success: boolean; 
         models: InventoryItem[]; 
         error?: string 
+      }>;
+      listVideosFromDisk?: () => Promise<{
+        success: boolean;
+        videos: InventoryItem[];
+        error?: string
       }>;
       
       // File cleanup
@@ -60,9 +70,10 @@ declare global {
     };
     
     // Global caches
-    _modelFileCache?: Record<string, unknown>;
-    _blobUrlCache?: Record<string, unknown>;
-    _imageBlobCache?: Record<string, string>;
+    _modelFileCache?: Record<string, File>;
+    _blobUrlCache?: Record<string, any>;
+    _imageBlobCache?: Record<string, any>;
+    _videoBlobCache?: Record<string, any>;
     
     // Other global properties
     mainCamera?: THREE.Camera;

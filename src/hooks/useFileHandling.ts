@@ -1,6 +1,7 @@
 import { useState, useCallback, RefObject } from 'react';
 import { useImageStore } from '../store/useImageStore';
 import { useModelStore } from '../store/useModelStore';
+import { useVideoStore } from '../store/videoStore';
 import * as THREE from 'three';
 import { saveModelThumbnail } from '../utils/modelThumbnailGenerator';
 
@@ -29,6 +30,7 @@ interface FileHandlingHook {
   handleDrop: (e: React.DragEvent<HTMLDivElement>) => void;
   handleModelDrop: (file: File) => void;
   handleImageDrop: (file: File) => void;
+  handleVideoDrop: (file: File) => void;
 }
 
 export const useFileHandling = (
@@ -40,6 +42,8 @@ export const useFileHandling = (
   const updateImage = useImageStore(state => state.updateImage);
   const addModel = useModelStore(state => state.addModel);
   const updateModel = useModelStore(state => state.updateModel);
+  const addVideo = useVideoStore(state => state.addVideo);
+  const updateVideo = useVideoStore(state => state.updateVideo);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
     e.preventDefault();
@@ -370,6 +374,105 @@ export const useFileHandling = (
     }
   }, [addImage, updateImage, cameraRef, onSuccessfulFileDrop]);
 
+  const handleVideoDrop = useCallback((file: File): void => {
+    try {
+      // Create a Blob URL for the file
+      const objectUrl = URL.createObjectURL(file);
+      
+      // Check if we have access to the camera
+      if (!cameraRef.current) {
+        // Add video at origin if camera not available
+        const id = addVideo({
+          src: objectUrl,
+          fileName: file.name,
+          position: [0, 1, 0], // Default position
+          rotation: [0, 0, 0],
+          scale: 1,
+          isPlaying: true,
+          volume: 0.5,
+          loop: true,
+        });
+        
+        // Save the file to disk using Electron's IPC
+        if (window.electron && window.electron.saveVideoFile) {
+          window.electron.saveVideoFile(file, file.name).then((savedPath: string) => {
+            // Update video with the new file path
+            updateVideo(id, { 
+              src: savedPath,
+              fileName: file.name // Ensure filename is preserved
+            });
+            
+            // Call the callback after successful save
+            if (onSuccessfulFileDrop) {
+              onSuccessfulFileDrop();
+            }
+          }).catch((error: Error) => {
+            logError('Error saving video file:', error);
+            alert(`Error saving video file: ${error.message}`);
+          });
+        } else {
+          logInfo('Running in browser environment, using blob URL for video storage');
+          // Call the callback for browser environment
+          if (onSuccessfulFileDrop) {
+            setTimeout(onSuccessfulFileDrop, 500);
+          }
+        }
+        
+        return;
+      }
+      
+      // Use the camera reference to get position and direction
+      const camera = cameraRef.current;
+      const direction = new THREE.Vector3(0, 0, -1);
+      direction.applyQuaternion(camera.quaternion);
+      
+      const position = new THREE.Vector3();
+      position.copy(camera.position);
+      direction.multiplyScalar(3); // Place 3 units in front of camera
+      position.add(direction);
+      
+      // Add video to the store
+      const id = addVideo({
+        src: objectUrl,
+        fileName: file.name,
+        position: [position.x, position.y, position.z],
+        rotation: [0, 0, 0],
+        scale: 1,
+        isPlaying: true,
+        volume: 0.5,
+        loop: true,
+      });
+      
+      // Save the file to disk using Electron's IPC
+      if (window.electron && window.electron.saveVideoFile) {
+        window.electron.saveVideoFile(file, file.name).then((savedPath: string) => {
+          // Update video with the new file path
+          updateVideo(id, { 
+            src: savedPath,
+            fileName: file.name // Ensure filename is preserved
+          });
+          
+          // Call the callback after successful save
+          if (onSuccessfulFileDrop) {
+            onSuccessfulFileDrop();
+          }
+        }).catch((error: Error) => {
+          logError('Error saving video file:', error);
+          alert(`Error saving video file: ${error.message}`);
+        });
+      } else {
+        logInfo('Running in browser environment, using blob URL for video storage');
+        // Call the callback for browser environment
+        if (onSuccessfulFileDrop) {
+          setTimeout(onSuccessfulFileDrop, 500);
+        }
+      }
+    } catch (error) {
+      logError('Error handling video drop:', error);
+      alert(`Error loading video: ${(error as Error).message}`);
+    }
+  }, [addVideo, updateVideo, cameraRef, onSuccessfulFileDrop]);
+
   interface InventoryItem {
     type: string;
     url: string;
@@ -505,11 +608,17 @@ export const useFileHandling = (
              fileName.endsWith('.gif')) {
       // console.log('Processing as image file');
       handleImageDrop(file);
+    }
+    // Handle video files
+    else if (fileName.endsWith('.mp4') || fileName.endsWith('.webm') || 
+             fileName.endsWith('.mov') || fileName.endsWith('.avi') ||
+             fileName.endsWith('.mkv')) {
+      handleVideoDrop(file);
     } else {
       // console.log('Unsupported file type:', fileName);
-      alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, PNG, WEBP, GIF`);
+      alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, PNG, WEBP, GIF, MP4, WEBM, MOV, AVI, MKV`);
     }
-  }, [handleModelDrop, handleImageDrop, setIsDragging, addImage, addModel, cameraRef]);
+  }, [handleModelDrop, handleImageDrop, handleVideoDrop, setIsDragging, addImage, addModel, cameraRef]);
 
   return {
     isDragging,
@@ -517,6 +626,7 @@ export const useFileHandling = (
     handleDragLeave,
     handleDrop,
     handleModelDrop,
-    handleImageDrop
+    handleImageDrop,
+    handleVideoDrop
   };
 }; 

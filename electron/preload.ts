@@ -4,6 +4,7 @@ import { contextBridge, ipcRenderer, IpcRenderer } from 'electron';
 declare global {
   interface Window {
     _imageBlobCache: Record<string, string>;
+    _videoBlobCache: Record<string, string>;
   }
 }
 
@@ -139,6 +140,73 @@ contextBridge.exposeInMainWorld('electron', {
     } catch (error) {
       console.error('Error loading image from app-file:', error);
       return { success: false, error: error.message, url: appFilePath };
+    }
+  },
+  
+  // Helper function to load videos from app-file URLs
+  loadVideoFromAppFile: async (appFilePath) => {
+    try {
+      // If it's already a blob URL, just return it
+      if (appFilePath.startsWith('blob:')) {
+        return { success: true, url: appFilePath };
+      }
+      
+      // If it's an app-file URL, convert it to a blob URL
+      if (appFilePath.startsWith('app-file://') || appFilePath.startsWith('file://')) {
+        const prefix = appFilePath.startsWith('app-file://') ? 'app-file://' : 'file://';
+        const path = appFilePath.substring(prefix.length); // Remove prefix
+        const fileBuffer = await ipcRenderer.invoke('read-file-as-buffer', decodeURI(path));
+        
+        // Determine MIME type based on file extension
+        const ext = path.split('.').pop().toLowerCase();
+        let mimeType = 'application/octet-stream';
+        
+        if (ext === 'mp4') mimeType = 'video/mp4';
+        else if (ext === 'webm') mimeType = 'video/webm';
+        else if (ext === 'mov') mimeType = 'video/quicktime';
+        else if (ext === 'avi') mimeType = 'video/x-msvideo';
+        else if (ext === 'mkv') mimeType = 'video/x-matroska';
+        
+        // Create a blob with the correct MIME type
+        const blob = new Blob([fileBuffer], { type: mimeType });
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Cache the blob URL to prevent garbage collection
+        window._videoBlobCache = window._videoBlobCache || {};
+        window._videoBlobCache[appFilePath] = blobUrl;
+        
+        return { success: true, url: blobUrl };
+      }
+      
+      // If it's a regular URL, just return it
+      return { success: true, url: appFilePath };
+    } catch (error) {
+      console.error('Error loading video from app-file:', error);
+      return { success: false, error: error.message, url: appFilePath };
+    }
+  },
+  
+  // Save a video file to disk
+  saveVideoFile: async (fileData, fileName) => {
+    try {
+      const fileBlob = new Blob([fileData]);
+      const buffer = await fileBlob.arrayBuffer();
+      const result = await ipcRenderer.invoke('save-video-file', new Uint8Array(buffer), fileName);
+      return result;
+    } catch (error) {
+      console.error('Error saving video file:', error);
+      throw error;
+    }
+  },
+  
+  // List all videos from disk
+  listVideosFromDisk: async () => {
+    try {
+      const result = await ipcRenderer.invoke('list-videos-from-disk');
+      return result;
+    } catch (error) {
+      console.error('Error listing videos from disk:', error);
+      return { success: false, videos: [], error: error.message };
     }
   }
 });

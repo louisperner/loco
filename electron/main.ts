@@ -2,19 +2,25 @@ import { app, screen, BrowserWindow, ipcMain, dialog, protocol, session } from '
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import os from 'os';
 
-// Define diretórios para armazenamento de arquivos
-const ASSETS_DIR = path.join(app.getPath('userData'), 'assets');
-const MODELS_DIR = path.join(ASSETS_DIR, 'models');
-const IMAGES_DIR = path.join(ASSETS_DIR, 'images');
+// Define paths for storing app data
+const APP_DIR = path.join(os.homedir(), '.loco');
+const MODELS_DIR = path.join(APP_DIR, 'models');
+const IMAGES_DIR = path.join(APP_DIR, 'images');
+const VIDEOS_DIR = path.join(APP_DIR, 'videos');
 
 // Garante que os diretórios existam
 function ensureDirectoriesExist() {
-  [ASSETS_DIR, MODELS_DIR, IMAGES_DIR].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  });
+  try {
+    // Create app directory and subdirectories if they don't exist
+    if (!fs.existsSync(APP_DIR)) fs.mkdirSync(APP_DIR);
+    if (!fs.existsSync(MODELS_DIR)) fs.mkdirSync(MODELS_DIR);
+    if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR);
+    if (!fs.existsSync(VIDEOS_DIR)) fs.mkdirSync(VIDEOS_DIR);
+  } catch (error) {
+    console.error('Error creating app directories:', error);
+  }
 }
 
 app.whenReady().then(() => {
@@ -255,6 +261,61 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error('Error saving image file:', error);
       throw error;
+    }
+  });
+
+  ipcMain.handle('save-video-file', async (event, fileBuffer, fileName) => {
+    try {
+      // Generate a unique filename
+      const uniqueFileName = `${uuidv4()}-${fileName}`;
+      const filePath = path.join(VIDEOS_DIR, uniqueFileName);
+      
+      // Write the file to disk
+      fs.writeFileSync(filePath, Buffer.from(fileBuffer));
+      
+      // Return the file path with app-file protocol
+      return `app-file://${filePath}`;
+    } catch (error) {
+      console.error('Error saving video file:', error);
+      throw error;
+    }
+  });
+
+  // Handler to list all video files from the videos directory
+  ipcMain.handle('list-videos-from-disk', async (event) => {
+    try {
+      const files = fs.readdirSync(VIDEOS_DIR);
+      const videoFiles = files.filter(file => {
+        const ext = path.extname(file).toLowerCase();
+        return ['.mp4', '.webm', '.mov', '.avi', '.mkv'].includes(ext);
+      });
+      
+      const videos = videoFiles.map(file => {
+        const filePath = path.join(VIDEOS_DIR, file);
+        const stats = fs.statSync(filePath);
+        
+        // Get original file name (after the UUID)
+        const fileName = file.includes('-') ? file.substring(file.indexOf('-') + 1) : file;
+        
+        // Create a basic thumbnail for videos (could be improved with real thumbnails)
+        
+        return {
+          id: uuidv4(), // Generate a new ID for each video
+          fileName: fileName,
+          url: `app-file://${filePath}`,
+          thumbnailUrl: '', // No thumbnail for now
+          filePath: filePath,
+          fileSize: stats.size,
+          createdAt: stats.birthtime.toISOString(),
+          modifiedAt: stats.mtime.toISOString(),
+          type: 'video'
+        };
+      });
+      
+      return { success: true, videos };
+    } catch (error) {
+      console.error('Error listing videos from disk:', error);
+      return { success: false, videos: [], error: error.message };
     }
   });
 

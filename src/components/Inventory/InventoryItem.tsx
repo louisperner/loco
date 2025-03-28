@@ -5,7 +5,7 @@ interface InventoryItemProps {
   item: {
     id: string;
     fileName: string;
-    type: 'model' | 'image';
+    type: 'model' | 'image' | 'video';
     url: string;
     thumbnailUrl?: string;
     position?: [number, number, number];
@@ -14,6 +14,7 @@ interface InventoryItemProps {
     width?: number;
     height?: number;
     aspectRatio?: number;
+    [key: string]: unknown;
   };
   isSelected: boolean;
   isInHotbar: boolean;
@@ -38,6 +39,18 @@ const InventoryItem: React.FC<InventoryItemProps> = ({
   handleDragEnd,
   handleRemoveItem
 }) => {
+  // Determine the icon to show based on item type
+  const getItemIcon = () => {
+    if (item.type === 'model') {
+      return '📦'; // Cube emoji for 3D models
+    } else if (item.type === 'image') {
+      return '🖼️'; // Picture emoji for images
+    } else if (item.type === 'video') {
+      return '🎬'; // Clapper board emoji for videos
+    }
+    return '📄'; // Default document emoji
+  };
+
   return (
     <div
       className={cn(
@@ -80,48 +93,53 @@ const InventoryItem: React.FC<InventoryItemProps> = ({
         )}
       </div>
 
-      {/* Item name */}
-      <div className="text-white/90 text-xs mt-1 text-center truncate w-full">
-        {item.fileName.length > 18
-          ? `${item.fileName.substring(0, 15)}...`
-          : item.fileName}
-      </div>
+      {/* Item Details */}
+      <div className="flex flex-col justify-between h-full w-full p-2">
+        <div className="flex items-center">
+          <span className="mr-1 text-lg">
+            {getItemIcon()}
+          </span>
+          <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate" title={item.fileName}>
+            {item.fileName}
+          </p>
+        </div>
+        
+        {/* Action buttons */}
+        <div className="absolute top-0 right-0 flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {/* Add to hotbar button */}
+          {!isInHotbar && (
+            <button
+              className="w-[18px] h-[18px] bg-blue-500/70 text-white rounded-bl-md text-xs flex justify-center items-center hover:bg-blue-500/90 transition-colors duration-200 p-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddToHotbar(item);
+              }}
+              title="Add to hotbar"
+            >
+              +
+            </button>
+          )}
 
-      {/* Action buttons */}
-      <div className="absolute top-0 right-0 flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        {/* Add to hotbar button */}
-        {!isInHotbar && (
+          {/* Remove button */}
           <button
-            className="w-[18px] h-[18px] bg-blue-500/70 text-white rounded-bl-md text-xs flex justify-center items-center hover:bg-blue-500/90 transition-colors duration-200 p-0"
+            className="w-[18px] h-[18px] bg-red-500/70 text-white rounded-bl-md text-xs flex justify-center items-center hover:bg-red-500/90 transition-colors duration-200 p-0"
             onClick={(e) => {
               e.stopPropagation();
-              handleAddToHotbar(item);
+              handleRemoveItem(item.id, e);
             }}
-            title="Add to hotbar"
+            title="Remove item"
           >
-            +
+            ×
           </button>
-        )}
-
-        {/* Remove button */}
-        <button
-          className="w-[18px] h-[18px] bg-red-500/70 text-white rounded-bl-md text-xs flex justify-center items-center hover:bg-red-500/90 transition-colors duration-200 p-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleRemoveItem(item.id, e);
-          }}
-          title="Remove item"
-        >
-          ×
-        </button>
-      </div>
-
-      {/* "Add to Hotbar" indicator */}
-      {isAddingToHotbar && isSelected && selectedHotbarSlot !== null && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white text-sm">
-          Add to slot {selectedHotbarSlot + 1}
         </div>
-      )}
+
+        {/* "Add to Hotbar" indicator */}
+        {isAddingToHotbar && isSelected && selectedHotbarSlot !== null && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white text-sm">
+            Add to slot {selectedHotbarSlot + 1}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

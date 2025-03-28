@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback, useMemo, MouseEvent, KeyboardEvent, DragEvent } from 'react';
 import { useImageStore } from '../store/useImageStore';
 import { useModelStore } from '../store/useModelStore';
+import { useVideoStore } from '../store/videoStore';
 import { useGameStore } from '../store/useGameStore';
-import { HOTBAR_STORAGE_KEY, getImageCategory, getModelCategory, showAddedToCanvasIndicator } from '../utils/inventoryUtils';
+import { HOTBAR_STORAGE_KEY, getImageCategory, getModelCategory, getVideoCategory, showAddedToCanvasIndicator } from '../utils/inventoryUtils';
 
 // Note: Window interface with electron API is defined in src/types/global.d.ts
 
 export interface InventoryItem {
   id: string;
-  type: 'image' | 'model';
+  type: 'image' | 'model' | 'video';
   fileName: string;
   url: string;
   thumbnailUrl?: string;
@@ -24,6 +25,7 @@ export interface InventoryItem {
 export interface InventoryHookProps {
   onSelectImage?: (item: InventoryItem) => void;
   onSelectModel?: (item: InventoryItem) => void;
+  onSelectVideo?: (item: InventoryItem) => void;
   onClose?: () => void;
   isOpen?: boolean;
   onRemoveObject?: (id?: string) => void;
@@ -65,8 +67,9 @@ export interface InventoryHookResult {
 export const useInventory = (
   onSelectImage?: (item: InventoryItem) => void,
   onSelectModel?: (item: InventoryItem) => void,
+  onSelectVideo?: (item: InventoryItem) => void,
   onClose?: () => void,
-  isOpen?: boolean,
+  isOpen = false,
   onRemoveObject?: (id?: string) => void
 ): InventoryHookResult => {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -85,6 +88,7 @@ export const useInventory = (
 
   const storeImages = useImageStore(state => state.images);
   const storeModels = useModelStore(state => state.models);
+  const storeVideos = useVideoStore(state => state.videos);
 
   const loadItemsFromDisk = useCallback(async (): Promise<void> => {
     try {
@@ -149,6 +153,45 @@ export const useInventory = (
           // eslint-disable-next-line no-console
           console.error('Error loading models from disk:', error);
         }
+        
+        try {
+          const electron = window.electron;
+          if (electron && electron.listVideosFromDisk) {
+            const videoResult = await electron.listVideosFromDisk();
+            
+            if (videoResult.success) {
+              const videoItems = videoResult.videos.map((video) => {
+                const fileName = typeof video.fileName === 'string' ? video.fileName : 'Unknown Video';
+                const videoFileName = fileName || 'Unknown Video';
+                
+                // Create a complete inventory item with all video properties
+                return {
+                  id: String((video as Record<string, unknown>).id || ''),
+                  type: 'video' as const,
+                  fileName: videoFileName,
+                  url: String((video as Record<string, unknown>).url || ''),
+                  thumbnailUrl: String((video as Record<string, unknown>).thumbnailUrl || ''),
+                  // Include these extra properties for restoration
+                  src: String((video as Record<string, unknown>).url || ''),
+                  position: (video as Record<string, unknown>).position as string | undefined,
+                  rotation: (video as Record<string, unknown>).rotation as string | undefined,
+                  scale: (video as Record<string, unknown>).scale as string | undefined,
+                  isInScene: (video as Record<string, unknown>).isInScene as boolean | undefined,
+                  isPlaying: (video as Record<string, unknown>).isPlaying as boolean | undefined,
+                  volume: (video as Record<string, unknown>).volume as number | undefined,
+                  loop: (video as Record<string, unknown>).loop as boolean | undefined,
+                  createdAt: (video as Record<string, unknown>).createdAt as string | undefined,
+                  modifiedAt: (video as Record<string, unknown>).modifiedAt as string | undefined,
+                  category: getVideoCategory(videoFileName)
+                } as InventoryItem;
+              });
+              allItems = [...allItems, ...videoItems];
+            }
+          }
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error('Error loading videos from disk:', error);
+        }
       }
       
       // Always include items from store
@@ -176,9 +219,36 @@ export const useInventory = (
       }));
       allItems = [...allItems, ...storeModelItems];
       
+      const storeVideoItems = storeVideos.map(video => {
+        const fileName = typeof video.fileName === 'string' ? video.fileName : 'Unknown Video';
+        const videoFileName = fileName || 'Unknown Video';
+        
+        // Create a complete inventory item with all video properties
+        return {
+          id: video.id,
+          type: 'video' as const,
+          fileName: videoFileName,
+          url: video.src,
+          thumbnailUrl: video.src || '',
+          // Include these extra properties for restoration
+          src: video.src,
+          position: video.position,
+          rotation: video.rotation,
+          scale: video.scale,
+          isInScene: video.isInScene,
+          isPlaying: video.isPlaying,
+          volume: video.volume,
+          loop: video.loop,
+          createdAt: new Date().toISOString(),
+          modifiedAt: new Date().toISOString(),
+          category: getVideoCategory(videoFileName)
+        } as InventoryItem;
+      });
+      allItems = [...allItems, ...storeVideoItems];
+      
       // Extract unique categories
       const uniqueCategories = [...new Set(allItems.map(item => item.category))].filter(Boolean) as string[];
-      setCategories(['all', 'images', 'models', ...uniqueCategories.filter(cat => cat !== 'images' && cat !== 'models')]);
+      setCategories(['all', 'images', 'models', 'videos', ...uniqueCategories.filter(cat => cat !== 'images' && cat !== 'models' && cat !== 'videos')]);
       
       // Deduplication logic
       const uniqueItems: InventoryItem[] = [];
@@ -270,7 +340,7 @@ export const useInventory = (
     } finally {
       setLoading(false);
     }
-  }, [storeImages, storeModels]);
+  }, [storeImages, storeModels, storeVideos]);
 
   // Update showFullInventory when isOpen prop changes
   useEffect(() => {
@@ -284,7 +354,7 @@ export const useInventory = (
   useEffect(() => {
     loadItemsFromDisk();
     // We depend on the function itself, and the underlying data it uses
-  }, [loadItemsFromDisk, storeImages, storeModels]);
+  }, [loadItemsFromDisk, storeImages, storeModels, storeVideos]);
   
   // Save hotbar to localStorage whenever it changes
   useEffect(() => {
@@ -350,8 +420,11 @@ export const useInventory = (
     } else if (item.type === 'model' && onSelectModel) {
       onSelectModel(item);
       showAddedToCanvasIndicator(item);
+    } else if (item.type === 'video' && onSelectVideo) {
+      onSelectVideo(item);
+      showAddedToCanvasIndicator(item);
     }
-  }, [onSelectImage, onSelectModel]);
+  }, [onSelectImage, onSelectModel, onSelectVideo]);
 
   // Global keyboard handler for hotbar selection and item deselection
   useEffect(() => {
@@ -536,6 +609,8 @@ export const useInventory = (
       onSelectImage(selectedItem);
     } else if (selectedItem.type === 'model' && onSelectModel) {
       onSelectModel(selectedItem);
+    } else if (selectedItem.type === 'video' && onSelectVideo) {
+      onSelectVideo(selectedItem);
     }
     
     // Restore canvas interactivity - the simulation of canvas click is
@@ -742,6 +817,7 @@ export const useInventory = (
         if (activeTab === 'all') return true;
         if (activeTab === 'images' && item.type === 'image') return true;
         if (activeTab === 'models' && item.type === 'model') return true;
+        if (activeTab === 'videos' && item.type === 'video') return true;
         if (item.category === activeTab) return true;
         return false;
       })

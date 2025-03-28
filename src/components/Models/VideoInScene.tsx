@@ -337,6 +337,21 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
     }
   };
 
+  // Add context menu handler for right-click deletion
+  const handleContextMenu = (e: ThreeEvent<MouseEvent>): void => {
+    e.stopPropagation();
+    e.nativeEvent.preventDefault();
+    
+    // Dispatch removeObject event for right-click deletion
+    const removeEvent = new CustomEvent('removeObject', {
+      detail: {
+        type: 'video',
+        id: videoData.id
+      }
+    });
+    window.dispatchEvent(removeEvent);
+  };
+
   // Updated Control Panel to match ImageInScene style
   const ControlPanel: React.FC = () => (
     <div
@@ -532,6 +547,7 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
         rotation={new THREE.Euler(...rotation)} 
         scale={scale}
         onClick={handleClick}
+        onContextMenu={handleContextMenu}
         onPointerOver={() => setIsHovered(true)}
         onPointerOut={() => setIsHovered(false)}
         userData={{ type: 'video', id: videoData.id }}

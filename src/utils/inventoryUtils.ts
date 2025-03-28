@@ -1,10 +1,10 @@
 // Helper function to determine image category based on filename
 export const getImageCategory = (fileName: string): string => {
   const lowerFileName = fileName.toLowerCase();
-  if (lowerFileName.includes('texture') || lowerFileName.includes('pattern')) return 'textures';
-  if (lowerFileName.includes('background') || lowerFileName.includes('bg')) return 'backgrounds';
-  if (lowerFileName.includes('icon')) return 'icons';
-  return 'images';
+  if (lowerFileName.endsWith('.jpg') || lowerFileName.endsWith('.jpeg') || lowerFileName.endsWith('.png') || lowerFileName.endsWith('.webp') || lowerFileName.endsWith('.gif')) {
+    return 'images';
+  }
+  return 'other';
 };
 
 // Helper function to determine model category based on filename
@@ -14,6 +14,18 @@ export const getModelCategory = (fileName: string): string => {
   if (lowerFileName.includes('furniture') || lowerFileName.includes('chair') || lowerFileName.includes('table')) return 'furniture';
   if (lowerFileName.includes('vehicle') || lowerFileName.includes('car')) return 'vehicles';
   return 'models';
+};
+
+// Helper function to determine video category based on filename
+export const getVideoCategory = (fileName: string): string => {
+  const lowerFileName = fileName.toLowerCase();
+  if (lowerFileName.endsWith('.mp4') || lowerFileName.endsWith('.webm') || lowerFileName.endsWith('.mov') || lowerFileName.endsWith('.avi') || lowerFileName.endsWith('.mkv')) {
+    if (lowerFileName.includes('tutorial')) return 'tutorials';
+    if (lowerFileName.includes('animation')) return 'animations';
+    if (lowerFileName.includes('background')) return 'backgrounds';
+    return 'videos';
+  }
+  return 'other';
 };
 
 // Create a key for localStorage

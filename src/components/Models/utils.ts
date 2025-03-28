@@ -94,6 +94,53 @@ export const processImageUrl = async (src: string): Promise<string> => {
 };
 
 /**
+ * Processes a video URL specifically for handling app-file:// protocol
+ * @param src The video source URL
+ * @returns Promise with the processed video URL
+ */
+export const processVideoUrl = async (src: string): Promise<string> => {
+  if (src && (src.startsWith('app-file://') || src.startsWith('file://'))) {
+    try {
+      if (window.electron && window.electron.loadVideoFromAppFile) {
+        const result = await window.electron.loadVideoFromAppFile(src);
+        if (result.success && result.url) {
+          window._videoBlobCache = window._videoBlobCache || {};
+          window._videoBlobCache[result.url] = result.url;
+          return result.url;
+        } else {
+          console.error('Failed to load video from app-file URL:', result.error);
+          return src; // Fallback to original source
+        }
+      } else if (window.electron && window.electron.loadImageFromAppFile) {
+        // Fall back to the image loader if video loader is not available
+        // This might work for some video formats in Electron
+        const result = await window.electron.loadImageFromAppFile(src);
+        if (result.success && result.url) {
+          window._videoBlobCache = window._videoBlobCache || {};
+          window._videoBlobCache[result.url] = result.url;
+          return result.url;
+        } else {
+          console.error('Failed to load video using image loader:', result.error);
+          return src;
+        }
+      } else {
+        console.warn('No suitable video loader available, using original src');
+        return src;
+      }
+    } catch (error) {
+      console.error('Error loading video from app-file URL:', error);
+      return src;
+    }
+  } else if (src.startsWith('blob:')) {
+    window._videoBlobCache = window._videoBlobCache || {};
+    window._videoBlobCache[src] = src;
+    return src;
+  } else {
+    return src;
+  }
+};
+
+/**
  * Cleanly revokes a blob URL if it's no longer needed
  * @param blobUrl The blob URL to revoke
  * @param originalUrl The original URL for comparison

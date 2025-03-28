@@ -102,6 +102,57 @@ electron.contextBridge.exposeInMainWorld("electron", {
       console.error("Error loading image from app-file:", error);
       return { success: false, error: error.message, url: appFilePath };
     }
+  },
+  // Helper function to load videos from app-file URLs
+  loadVideoFromAppFile: async (appFilePath) => {
+    try {
+      if (appFilePath.startsWith("blob:")) {
+        return { success: true, url: appFilePath };
+      }
+      if (appFilePath.startsWith("app-file://") || appFilePath.startsWith("file://")) {
+        const prefix = appFilePath.startsWith("app-file://") ? "app-file://" : "file://";
+        const path = appFilePath.substring(prefix.length);
+        const fileBuffer = await electron.ipcRenderer.invoke("read-file-as-buffer", decodeURI(path));
+        const ext = path.split(".").pop().toLowerCase();
+        let mimeType = "application/octet-stream";
+        if (ext === "mp4") mimeType = "video/mp4";
+        else if (ext === "webm") mimeType = "video/webm";
+        else if (ext === "mov") mimeType = "video/quicktime";
+        else if (ext === "avi") mimeType = "video/x-msvideo";
+        else if (ext === "mkv") mimeType = "video/x-matroska";
+        const blob = new Blob([fileBuffer], { type: mimeType });
+        const blobUrl = URL.createObjectURL(blob);
+        window._videoBlobCache = window._videoBlobCache || {};
+        window._videoBlobCache[appFilePath] = blobUrl;
+        return { success: true, url: blobUrl };
+      }
+      return { success: true, url: appFilePath };
+    } catch (error) {
+      console.error("Error loading video from app-file:", error);
+      return { success: false, error: error.message, url: appFilePath };
+    }
+  },
+  // Save a video file to disk
+  saveVideoFile: async (fileData, fileName) => {
+    try {
+      const fileBlob = new Blob([fileData]);
+      const buffer = await fileBlob.arrayBuffer();
+      const result = await electron.ipcRenderer.invoke("save-video-file", new Uint8Array(buffer), fileName);
+      return result;
+    } catch (error) {
+      console.error("Error saving video file:", error);
+      throw error;
+    }
+  },
+  // List all videos from disk
+  listVideosFromDisk: async () => {
+    try {
+      const result = await electron.ipcRenderer.invoke("list-videos-from-disk");
+      return result;
+    } catch (error) {
+      console.error("Error listing videos from disk:", error);
+      return { success: false, videos: [], error: error.message };
+    }
   }
 });
 function withPrototype(obj) {

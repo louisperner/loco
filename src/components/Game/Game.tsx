@@ -5,8 +5,10 @@ import * as THREE from 'three';
 import Spotlight from '../ui/Spotlight';
 import FPSControls from '../Scene/FPSControls';
 import ImageCloneManager from '../Models/ImageCloneManager';
+import VideoCloneManager from '../Models/VideoCloneManager';
 import MessageManager from '../Scene/MessageManager';
 import { useImageStore } from '../../store/useImageStore';
+import { useVideoStore } from '../../store/videoStore';
 import { useModelStore } from '../../store/useModelStore';
 import ModelManager from '../Models/ModelManager';
 import { SettingsPanel } from '@/components/Settings';
@@ -40,7 +42,7 @@ import {
 // Types for inventory
 interface InventoryItem {
   id: string;
-  type: 'image' | 'model';
+  type: 'image' | 'model' | 'video';
   fileName: string;
   url: string;
   thumbnailUrl?: string;
@@ -153,7 +155,8 @@ const Player: React.FC = () => {
     handleDragLeave,
     handleDrop,
     handleModelDrop,
-    handleImageDrop
+    handleImageDrop,
+    handleVideoDrop
   } = useFileHandling(cameraRef, () => {
     // Reload inventory when files are dropped
     setTimeout(() => {
@@ -321,6 +324,53 @@ const Player: React.FC = () => {
     handleSettingsToggle
   ]);
 
+  const onRemoveObject = useCallback((dataOrId?: { type: string; id: string } | string): void => {
+    // If no parameter is provided, exit early
+    if (!dataOrId) return;
+    
+    // Handle both formats: object with type and id, or just the id string
+    let type: string | undefined;
+    let id: string;
+    
+    if (typeof dataOrId === 'string') {
+      // If just an ID is passed, we need to figure out what type it is
+      id = dataOrId;
+      
+      // Check which store contains this ID
+      const isImage = useImageStore.getState().images.some(img => img.id === id);
+      const isModel = useModelStore.getState().models.some(model => model.id === id);
+      const isVideo = useVideoStore.getState().videos.some(video => video.id === id);
+      
+      if (isImage) type = 'image';
+      else if (isModel) type = 'model';
+      else if (isVideo) type = 'video';
+    } else {
+      // Object format with type and id
+      type = dataOrId.type;
+      id = dataOrId.id;
+    }
+    
+    if (!id || !type) return;
+    
+    // Find and update state for image, model or video
+    if (type === 'image') {
+      const targetImage = useImageStore.getState().images.find(img => img.id === id);
+      if (targetImage) {
+        useImageStore.getState().updateImage(id, { isInScene: false });
+      }
+    } else if (type === 'model') {
+      const targetModel = useModelStore.getState().models.find(model => model.id === id);
+      if (targetModel) {
+        useModelStore.getState().updateModel(id, { isInScene: false });
+      }
+    } else if (type === 'video') {
+      const targetVideo = useVideoStore.getState().videos.find(video => video.id === id);
+      if (targetVideo) {
+        useVideoStore.getState().updateVideo(id, { isInScene: false });
+      }
+    }
+  }, []);
+
   return (
     <HotbarContext.Provider value={{ selectedHotbarItem, setSelectedHotbarItem }}>
       <div 
@@ -361,13 +411,18 @@ const Player: React.FC = () => {
                       fileName.endsWith('.gif')) {
               handleImageDrop(file);
               // No need to reload inventory manually as it's handled by the hook callback
+            } else if (fileName.endsWith('.mp4') || fileName.endsWith('.webm') || 
+                      fileName.endsWith('.mov') || fileName.endsWith('.avi') ||
+                      fileName.endsWith('.mkv')) {
+              handleVideoDrop(file);
+              // No need to reload inventory manually as it's handled by the hook callback
             } else {
-              alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, JPEG, PNG, WEBP, GIF`);
+              alert(`Unsupported file type: ${fileName}\nSupported formats: GLB, GLTF, JPG, JPEG, PNG, WEBP, GIF, MP4, WEBM, MOV, AVI, MKV`);
             }
             
             e.target.value = '';
           }} 
-          accept=".glb,.gltf,.jpg,.jpeg,.png,.webp,.gif" 
+          accept=".glb,.gltf,.jpg,.jpeg,.png,.webp,.gif,.mp4,.webm,.mov,.avi,.mkv" 
           style={{ display: 'none' }} 
         />
         
@@ -423,6 +478,7 @@ const Player: React.FC = () => {
           )}
           
           <ImageCloneManager onSelect={() => {}} />
+          <VideoCloneManager onSelect={() => {}} />
           <ModelManager onSelect={() => {}} />
           
           {/* WebFrames component is currently not in use */}
@@ -681,20 +737,66 @@ const Player: React.FC = () => {
               // Close the inventory
               handleInventoryToggle(false);
             }}
+            onSelectVideo={(video: InventoryItem) => {
+              // Add the selected video to the scene
+              if (!video?.url) {
+                handleInventoryToggle(false);
+                return;
+              }
+              
+              // Calculate position in front of camera
+              const position = new THREE.Vector3();
+              
+              if (cameraRef.current) {
+                const camera = cameraRef.current;
+                const direction = new THREE.Vector3();
+                
+                // Get camera position and direction
+                position.copy(camera.position);
+                camera.getWorldDirection(direction);
+                
+                // Place video at a comfortable distance in front of camera
+                const distance = 3; // 3 units away
+                direction.multiplyScalar(distance);
+                position.add(direction);
+              } else {
+                // Default position if camera not available
+                position.set(0, 1, -3);
+              }
+              
+              // Check if this video is already in the store
+              const existingVideo = useVideoStore.getState().videos.find(v => v.id === video.id);
+              
+              if (existingVideo) {
+                // If it exists, update it to be visible in the scene with the new position
+                // Preserve all the existing properties, just update position and isInScene
+                useVideoStore.getState().updateVideo(video.id, {
+                  ...existingVideo,
+                  position: [position.x, position.y, position.z],
+                  isInScene: true
+                });
+              } else {
+                // Add video to the store with all properties
+                useVideoStore.getState().addVideo({
+                  id: video.id,
+                  src: video.url,
+                  fileName: video.fileName,
+                  position: [position.x, position.y, position.z],
+                  rotation: video.rotation as [number, number, number] || [0, 0, 0],
+                  scale: video.scale as number || 1,
+                  isPlaying: video.isPlaying as boolean || true,
+                  volume: video.volume as number || 0.5,
+                  loop: video.loop as boolean || true,
+                  isInScene: true
+                });
+              }
+              
+              // Close the inventory
+              handleInventoryToggle(false);
+            }}
             onClose={() => handleInventoryToggle(false)}
             isOpen={showInventory}
-            onRemoveObject={(id?: string) => {
-              if (id) {
-                // Try to find and remove the object (could be either image or model)
-                const image = useImageStore.getState().images.find(img => img.id === id);
-                if (image) {
-                  useImageStore.getState().updateImage(id, { isInScene: false });
-                } else {
-                  // Try as model
-                  useModelStore.getState().updateModel(id, { isInScene: false });
-                }
-              }
-            }}
+            onRemoveObject={onRemoveObject}
           />
         )}
       </div>

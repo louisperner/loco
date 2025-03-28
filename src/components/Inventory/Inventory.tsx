@@ -8,6 +8,7 @@ import { useGameStore } from '../../store/useGameStore';
 interface InventoryProps {
   onSelectImage: (imageData: InventoryItem) => void;
   onSelectModel: (modelData: InventoryItem) => void;
+  onSelectVideo?: (videoData: InventoryItem) => void;
   onClose: () => void;
   isOpen: boolean;
   onRemoveObject?: (id?: string) => void;
@@ -18,14 +19,14 @@ interface InventoryRefHandle {
 }
 
 const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = (
-  { onSelectImage, onSelectModel, onClose, isOpen, onRemoveObject },
+  { onSelectImage, onSelectModel, onSelectVideo, onClose, isOpen, onRemoveObject },
   ref
 ) => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const prevIsOpenRef = useRef(isOpen);
   const setCanvasInteractive = useGameStore(state => state.setCanvasInteractive);
   
-  const inventoryHook = useInventory(onSelectImage, onSelectModel, onClose, isOpen, onRemoveObject);
+  const inventoryHook = useInventory(onSelectImage, onSelectModel, onSelectVideo, onClose, isOpen, onRemoveObject);
   
   const {
     items,

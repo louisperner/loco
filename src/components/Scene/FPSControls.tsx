@@ -450,7 +450,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
               // console.log('Checking parent:', parent.name || 'unnamed', parent.userData);
               
               if (parent.userData && 
-                 (parent.userData.type === 'image' || parent.userData.type === 'model') && 
+                 (parent.userData.type === 'image' || parent.userData.type === 'model' || parent.userData.type === 'video') && 
                  parent.userData.id) {
                 foundObject = parent;
                 break;

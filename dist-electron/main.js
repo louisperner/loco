@@ -2,6 +2,7 @@
 const electron = require("electron");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const crypto = require("crypto");
 const byteToHex = [];
 for (let i = 0; i < 256; ++i) {
@@ -34,15 +35,19 @@ function v4(options, buf, offset) {
   rnds[8] = rnds[8] & 63 | 128;
   return unsafeStringify(rnds);
 }
-const ASSETS_DIR = path.join(electron.app.getPath("userData"), "assets");
-const MODELS_DIR = path.join(ASSETS_DIR, "models");
-const IMAGES_DIR = path.join(ASSETS_DIR, "images");
+const APP_DIR = path.join(os.homedir(), ".loco");
+const MODELS_DIR = path.join(APP_DIR, "models");
+const IMAGES_DIR = path.join(APP_DIR, "images");
+const VIDEOS_DIR = path.join(APP_DIR, "videos");
 function ensureDirectoriesExist() {
-  [ASSETS_DIR, MODELS_DIR, IMAGES_DIR].forEach((dir) => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  });
+  try {
+    if (!fs.existsSync(APP_DIR)) fs.mkdirSync(APP_DIR);
+    if (!fs.existsSync(MODELS_DIR)) fs.mkdirSync(MODELS_DIR);
+    if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR);
+    if (!fs.existsSync(VIDEOS_DIR)) fs.mkdirSync(VIDEOS_DIR);
+  } catch (error) {
+    console.error("Error creating app directories:", error);
+  }
 }
 electron.app.whenReady().then(() => {
   ensureDirectoriesExist();
@@ -186,6 +191,48 @@ electron.app.whenReady().then(() => {
     } catch (error) {
       console.error("Error saving image file:", error);
       throw error;
+    }
+  });
+  electron.ipcMain.handle("save-video-file", async (event, fileBuffer, fileName) => {
+    try {
+      const uniqueFileName = `${v4()}-${fileName}`;
+      const filePath = path.join(VIDEOS_DIR, uniqueFileName);
+      fs.writeFileSync(filePath, Buffer.from(fileBuffer));
+      return `app-file://${filePath}`;
+    } catch (error) {
+      console.error("Error saving video file:", error);
+      throw error;
+    }
+  });
+  electron.ipcMain.handle("list-videos-from-disk", async (event) => {
+    try {
+      const files = fs.readdirSync(VIDEOS_DIR);
+      const videoFiles = files.filter((file) => {
+        const ext = path.extname(file).toLowerCase();
+        return [".mp4", ".webm", ".mov", ".avi", ".mkv"].includes(ext);
+      });
+      const videos = videoFiles.map((file) => {
+        const filePath = path.join(VIDEOS_DIR, file);
+        const stats = fs.statSync(filePath);
+        const fileName = file.includes("-") ? file.substring(file.indexOf("-") + 1) : file;
+        return {
+          id: v4(),
+          // Generate a new ID for each video
+          fileName,
+          url: `app-file://${filePath}`,
+          thumbnailUrl: "",
+          // No thumbnail for now
+          filePath,
+          fileSize: stats.size,
+          createdAt: stats.birthtime.toISOString(),
+          modifiedAt: stats.mtime.toISOString(),
+          type: "video"
+        };
+      });
+      return { success: true, videos };
+    } catch (error) {
+      console.error("Error listing videos from disk:", error);
+      return { success: false, videos: [], error: error.message };
     }
   });
   electron.ipcMain.handle("test-file-access", async (event, filePath) => {
