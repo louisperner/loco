@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import Player from './components/Game/Game';
 import SplashScreen from './components/Game/SplashScreen';
 import { useImageStore } from './store/useImageStore';
+// 
+import { Analytics } from "@vercel/analytics/react"
 
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -25,6 +27,7 @@ const App: React.FC = () => {
     <div className="relative w-full h-full">
       {isLoading && <SplashScreen />}
       <Player />
+      <Analytics />
     </div>
   );
 };
