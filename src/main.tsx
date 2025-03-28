@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import Player from './components/Game/Game';
-import SplashScreen from './components/SplashScreen/SplashScreen';
+import SplashScreen from './components/Game/SplashScreen';
 import { useImageStore } from './store/useImageStore';
 
 const App: React.FC = () => {
