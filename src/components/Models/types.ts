@@ -93,7 +93,7 @@ export interface InternalImageProps {
   onError?: (error: ErrorEvent) => void;
 }
 
-export type TransformMode = 'translate' | 'rotate' | 'scale'; 
+export type TransformMode = 'translate' | 'rotate' | 'scale';
 
 // Video types
 export interface VideoDataType {
@@ -130,4 +130,4 @@ export interface InternalVideoProps {
   loop?: boolean;
   onLoad?: (video: HTMLVideoElement) => void;
   onError?: (error: ErrorEvent) => void;
-} 
+}

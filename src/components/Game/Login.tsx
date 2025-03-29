@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { auth } from '../../utils/firebase';
-import { 
-  signInWithEmailAndPassword
-} from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState<string>('');
@@ -107,4 +105,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login; 
+export default Login;
