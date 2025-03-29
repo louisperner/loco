@@ -15,22 +15,16 @@ import { TbVolume, TbVolumeOff } from 'react-icons/tb';
 import LoadingIndicator from '../Scene/LoadingIndicator';
 
 // Internal video component for handling the actual video display
-const InternalVideo: React.FC<InternalVideoProps> = ({ 
-  src, 
-  isPlaying = true, 
-  volume = 0.5, 
-  loop = true, 
-  onLoad
-}) => {
+const InternalVideo: React.FC<InternalVideoProps> = ({ src, isPlaying = true, volume = 0.5, loop = true, onLoad }) => {
   const [videoSrc, setVideoSrc] = useState<string>('');
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const videoTexture = useRef<THREE.VideoTexture | null>(null);
   const [textureLoaded, setTextureLoaded] = useState(false);
-  const [videoAspect, setVideoAspect] = useState<number>(16/9); // Default 16:9 aspect ratio
+  const [videoAspect, setVideoAspect] = useState<number>(16 / 9); // Default 16:9 aspect ratio
   const playStateRef = useRef<boolean>(isPlaying);
   const [isLoading, setIsLoading] = useState(true);
   const loadingRef = useRef<THREE.Group>(null);
-  
+
   // Animate loading indicator
   useFrame(() => {
     if (loadingRef.current && isLoading) {
@@ -38,17 +32,17 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
       loadingRef.current.rotation.x += 0.01;
     }
   });
-  
+
   // Update ref when props change to avoid stale closures
   useEffect(() => {
     playStateRef.current = isPlaying;
   }, [isPlaying]);
-  
+
   // Load the video with proper URL processing
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
-    
+
     const loadVideo = async () => {
       try {
         const processedUrl = await processVideoUrl(src);
@@ -61,9 +55,9 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
         }
       }
     };
-    
+
     loadVideo();
-    
+
     return () => {
       isMounted = false;
       if (videoRef.current) {
@@ -75,28 +69,27 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
       if (videoSrc !== src && videoSrc.startsWith('blob:')) {
         try {
           revokeBlobUrl(videoSrc, src);
-        } catch (error) {
-        }
+        } catch (error) {}
       }
     };
   }, [src]);
-  
+
   // Create the video element and texture
   useEffect(() => {
     if (!videoSrc) return;
-    
+
     // Clean up previous video/texture if they exist
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.src = '';
       videoRef.current.load();
     }
-    
+
     if (videoTexture.current) {
       videoTexture.current.dispose();
       videoTexture.current = null;
     }
-    
+
     // Create new video element
     const video = document.createElement('video');
     video.crossOrigin = 'anonymous';
@@ -104,7 +97,7 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
     video.muted = volume === 0;
     video.volume = volume;
     video.playsInline = true;
-    
+
     // Handle events first before setting src
     const handleMetadata = () => {
       if (video.videoWidth && video.videoHeight) {
@@ -112,29 +105,29 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
         setVideoAspect(aspect);
       }
     };
-    
+
     const handleCanPlay = () => {
       // Create texture
       const texture = new THREE.VideoTexture(video);
       texture.minFilter = THREE.LinearFilter;
       texture.magFilter = THREE.LinearFilter;
       texture.format = THREE.RGBAFormat;
-      
+
       videoTexture.current = texture;
       setTextureLoaded(true);
       setIsLoading(false);
-      
+
       if (onLoad) {
         onLoad(video);
       }
-      
+
       // Play video if needed - use a timeout to avoid race conditions
       if (playStateRef.current) {
         setTimeout(() => {
           if (playStateRef.current && video.paused) {
             const playPromise = video.play();
             if (playPromise !== undefined) {
-              playPromise.catch(e => {
+              playPromise.catch((e) => {
                 if (e.name !== 'AbortError') {
                 }
               });
@@ -143,55 +136,55 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
         }, 50);
       }
     };
-    
+
     video.addEventListener('loadedmetadata', handleMetadata);
     video.addEventListener('canplay', handleCanPlay);
-    
+
     // Save the video element reference
     videoRef.current = video;
-    
+
     // Set src and load
     video.src = videoSrc;
     video.load();
-    
+
     // Set a timeout to mark loading as false after a maximum wait time
     const timeout = setTimeout(() => {
       if (setIsLoading) {
         setIsLoading(false);
       }
     }, 10000); // 10 seconds maximum loading time
-    
+
     return () => {
       // Remove event listeners
       video.removeEventListener('loadedmetadata', handleMetadata);
       video.removeEventListener('canplay', handleCanPlay);
-      
+
       // Clear timeout
       clearTimeout(timeout);
-      
+
       // Cleanup
       video.pause();
       video.src = '';
       video.load();
-      
+
       if (videoTexture.current) {
         videoTexture.current.dispose();
         videoTexture.current = null;
       }
     };
   }, [videoSrc, loop, volume, onLoad]);
-  
+
   // Handle changes to isPlaying
   useEffect(() => {
     if (!videoRef.current) return;
-    
+
     if (isPlaying) {
       // Use timeout to avoid race conditions with creation/loading
       setTimeout(() => {
         if (videoRef.current && videoRef.current.paused) {
           const playPromise = videoRef.current.play();
           if (playPromise !== undefined) {
-            playPromise.catch(e => {
+            playPromise.catch((e) => {
               if (e.name !== 'AbortError') {
               }
             });
@@ -202,7 +195,7 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
       videoRef.current.pause();
     }
   }, [isPlaying]);
-  
+
   // Control volume when it changes
   useEffect(() => {
     if (videoRef.current) {
@@ -210,20 +203,20 @@ const InternalVideo: React.FC<InternalVideoProps> = ({
       videoRef.current.muted = volume === 0;
     }
   }, [volume]);
-  
+
   // Handle loop changes
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.loop = loop;
     }
   }, [loop]);
-  
+
   return (
     <>
       {isLoading && <LoadingIndicator />}
       {textureLoaded && videoTexture.current && (
         <mesh>
-          <planeGeometry args={[1, 1/videoAspect]} />
+          <planeGeometry args={[1, 1 / videoAspect]} />
           <meshBasicMaterial map={videoTexture.current} transparent side={THREE.DoubleSide} />
         </mesh>
       )}
@@ -247,15 +240,15 @@ const iconButtonStyle = {
 };
 
 const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpdate, onSelect }) => {
-  const { 
-    src, 
+  const {
+    src,
     position: initialPosition = [0, 0, 0],
     rotation: initialRotation = [0, 0, 0],
     lookAtUser: initialLookAtUser = false,
     isPlaying: initialIsPlaying = true,
     volume: initialVolume = 0.5,
     loop: initialLoop = true,
-    scale: initialScale = 1,
+    scale: initialScale = 5,
   } = videoData;
 
   const [lookAtUser, setLookAtUser] = useState<boolean>(initialLookAtUser);
@@ -267,7 +260,7 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
   const [scale, setScale] = useState<number>(initialScale);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [showVolumeSlider, setShowVolumeSlider] = useState<boolean>(false);
-  
+
   const groupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
 
@@ -278,42 +271,42 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
       if (initialPosition[0] === 0 && initialPosition[1] === 0 && initialPosition[2] === 0) {
         const cameraDirection = new THREE.Vector3();
         camera.getWorldDirection(cameraDirection);
-        
+
         // Position the video 2 units in front of the camera
         const distance = 5;
         const position = new THREE.Vector3();
         position.copy(camera.position).add(cameraDirection.multiplyScalar(distance));
-        
+
         groupRef.current.position.copy(position);
-        
+
         // Make the video face the camera
         groupRef.current.lookAt(camera.position);
-        
+
         // Save the initial position and rotation
         const currentRotation: [number, number, number] = [
           groupRef.current.rotation.x,
           groupRef.current.rotation.y,
-          groupRef.current.rotation.z
+          groupRef.current.rotation.z,
         ];
 
         saveChanges({
           position: [position.x, position.y, position.z],
-          rotation: currentRotation
+          rotation: currentRotation,
         });
       } else {
         // For existing videos, set the saved position and make it look at camera
         groupRef.current.position.set(...initialPosition);
         groupRef.current.lookAt(camera.position);
-        
+
         // Save the new rotation after lookAt
         const currentRotation: [number, number, number] = [
           groupRef.current.rotation.x,
           groupRef.current.rotation.y,
-          groupRef.current.rotation.z
+          groupRef.current.rotation.z,
         ];
-        
+
         saveChanges({
-          rotation: currentRotation
+          rotation: currentRotation,
         });
       }
     }
@@ -326,12 +319,12 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
       const currentPosition: [number, number, number] = [
         groupRef.current.position.x,
         groupRef.current.position.y,
-        groupRef.current.position.z
+        groupRef.current.position.z,
       ];
       const currentRotation: [number, number, number] = [
         groupRef.current.rotation.x,
         groupRef.current.rotation.y,
-        groupRef.current.rotation.z
+        groupRef.current.rotation.z,
       ];
 
       const updatedData = {
@@ -378,27 +371,27 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
   useEffect(() => {
     if (groupRef.current && showControls) {
       const controls = document.querySelector('.transform-controls');
-      
+
       const handleChange = (): void => {
         if (groupRef.current) {
           const newPosition: [number, number, number] = [
             groupRef.current.position.x,
             groupRef.current.position.y,
-            groupRef.current.position.z
+            groupRef.current.position.z,
           ];
           const newRotation: [number, number, number] = [
             groupRef.current.rotation.x,
             groupRef.current.rotation.y,
-            groupRef.current.rotation.z
+            groupRef.current.rotation.z,
           ];
-          
+
           const updatedData = {
             ...videoData,
             position: newPosition,
             rotation: newRotation,
-            scale
+            scale,
           };
-          
+
           onUpdate(updatedData);
         }
       };
@@ -416,7 +409,7 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
         }
       };
     }
-    
+
     return undefined;
   }, [showControls, videoData, scale, onUpdate]);
 
@@ -426,18 +419,18 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
       const lookAtPosition = new THREE.Vector3();
       camera.getWorldPosition(lookAtPosition);
       groupRef.current.lookAt(lookAtPosition);
-      
+
       // Save new rotation after lookAt
       const newRotation: [number, number, number] = [
         groupRef.current.rotation.x,
         groupRef.current.rotation.y,
-        groupRef.current.rotation.z
+        groupRef.current.rotation.z,
       ];
-      
+
       if (JSON.stringify(newRotation) !== JSON.stringify(videoData.rotation)) {
         onUpdate({
           ...videoData,
-          rotation: newRotation
+          rotation: newRotation,
         });
       }
     }
@@ -455,13 +448,13 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
   const handleContextMenu = (e: ThreeEvent<MouseEvent>): void => {
     e.stopPropagation();
     e.nativeEvent.preventDefault();
-    
+
     // Dispatch removeObject event for right-click deletion
     const removeEvent = new CustomEvent('removeObject', {
       detail: {
         type: 'video',
-        id: videoData.id
-      }
+        id: videoData.id,
+      },
     });
     window.dispatchEvent(removeEvent);
   };
@@ -488,58 +481,60 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
         transition: 'all 0.3s ease-in-out',
       }}
     >
-      <button 
+      <button
         onClick={handlePlayPause}
         style={{
           ...iconButtonStyle,
           backgroundColor: isPlaying ? '#4a90e2' : '#444',
         }}
-        title={isPlaying ? "Pause" : "Play"}
+        title={isPlaying ? 'Pause' : 'Play'}
       >
         {isPlaying ? <FaPause size={14} /> : <FaPlay size={14} />}
       </button>
 
-      <button 
+      <button
         onClick={() => handleLoopToggle()}
         style={{
           ...iconButtonStyle,
           backgroundColor: loop ? '#4a90e2' : '#444',
         }}
-        title="Loop video"
+        title='Loop video'
       >
         <MdLoop size={16} />
       </button>
 
       <div style={{ position: 'relative' }}>
-        <button 
+        <button
           onClick={() => setShowVolumeSlider(!showVolumeSlider)}
           style={{
             ...iconButtonStyle,
             backgroundColor: volume > 0 ? '#4a90e2' : '#444',
           }}
-          title="Volume"
+          title='Volume'
         >
           {volume > 0 ? <TbVolume size={16} /> : <TbVolumeOff size={16} />}
         </button>
-        
+
         {showVolumeSlider && (
-          <div style={{
-            position: 'absolute',
-            bottom: '38px',
-            left: '0',
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            padding: '8px',
-            borderRadius: '8px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '6px',
-          }}>
-            <input 
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '38px',
+              left: '0',
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              padding: '8px',
+              borderRadius: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <input
+              type='range'
+              min='0'
+              max='1'
+              step='0.01'
               value={volume}
               onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
               style={{ width: '80px', height: '20px' }}
@@ -548,51 +543,44 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
           </div>
         )}
       </div>
-      
-      <button 
+
+      <button
         onClick={() => handleLookAtUser(!lookAtUser)}
         style={{
           ...iconButtonStyle,
           backgroundColor: lookAtUser ? '#4a90e2' : '#444',
         }}
-        title="Look at user"
+        title='Look at user'
       >
         <BiSolidCameraHome size={16} />
       </button>
-      
-      <button 
-        onClick={() => handleScale(true)}
-        style={iconButtonStyle}
-        title="Scale up"
-      >
+
+      <button onClick={() => handleScale(true)} style={iconButtonStyle} title='Scale up'>
         <FaExpand size={14} />
       </button>
-      
-      <button 
-        onClick={() => handleScale(false)}
-        style={iconButtonStyle}
-        title="Scale down"
-      >
+
+      <button onClick={() => handleScale(false)} style={iconButtonStyle} title='Scale down'>
         <FaCompress size={14} />
       </button>
-      
-      <button 
+
+      <button
         onClick={() => setShowControls(!showControls)}
         style={{
           ...iconButtonStyle,
           backgroundColor: showControls ? '#4a90e2' : '#444',
         }}
-        title="Show transform controls"
+        title='Show transform controls'
       >
         <FaArrowsAlt size={14} />
       </button>
-      
+
       {showControls && (
-        <button 
-          onClick={() => setTransformMode(
-            transformMode === 'translate' ? 'rotate' :
-            transformMode === 'rotate' ? 'scale' : 'translate'
-          )}
+        <button
+          onClick={() =>
+            setTransformMode(
+              transformMode === 'translate' ? 'rotate' : transformMode === 'rotate' ? 'scale' : 'translate',
+            )
+          }
           style={{
             ...iconButtonStyle,
             backgroundColor: '#4a90e2',
@@ -604,14 +592,14 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
           {transformMode === 'scale' && <BiReset size={16} />}
         </button>
       )}
-      
-      <button 
+
+      <button
         onClick={onRemove}
         style={{
           ...iconButtonStyle,
           backgroundColor: '#e24a4a',
         }}
-        title="Delete video"
+        title='Delete video'
       >
         <MdDelete size={16} />
       </button>
@@ -622,11 +610,11 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
     <>
       {showControls && groupRef.current && (
         // @ts-ignore - Using TransformControls with groupRef
-        <TransformControls 
+        <TransformControls
           object={groupRef.current}
           mode={transformMode}
           size={1}
-          space="local"
+          space='local'
           showX={true}
           showY={true}
           showZ={true}
@@ -637,28 +625,28 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
               const newPosition: [number, number, number] = [
                 groupRef.current.position.x,
                 groupRef.current.position.y,
-                groupRef.current.position.z
+                groupRef.current.position.z,
               ];
               const newRotation: [number, number, number] = [
                 groupRef.current.rotation.x,
                 groupRef.current.rotation.y,
-                groupRef.current.rotation.z
+                groupRef.current.rotation.z,
               ];
-              
+
               onUpdate({
                 ...videoData,
                 position: newPosition,
                 rotation: newRotation,
-                scale
+                scale,
               });
             }
           }}
         />
       )}
-      <group 
-        ref={groupRef} 
-        position={new THREE.Vector3(...initialPosition)} 
-        rotation={new THREE.Euler(...initialRotation)} 
+      <group
+        ref={groupRef}
+        position={new THREE.Vector3(...initialPosition)}
+        rotation={new THREE.Euler(...initialRotation)}
         scale={scale}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
@@ -668,27 +656,13 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
         name={`video-${videoData.id}`}
       >
         {/* Add invisible mesh for raycasting with args relative to video size */}
-        <mesh 
-          name={`video-collider-${videoData.id}`} 
-          position={[0, -0.2, 0]} 
-        >
+        <mesh name={`video-collider-${videoData.id}`} position={[0, -0.2, 0]}>
           <planeGeometry args={[1, 0.5625]} />
-          <meshBasicMaterial 
-            visible={false} 
-            transparent={true} 
-            opacity={0} 
-            side={THREE.DoubleSide}
-            alphaTest={0.5}
-          />
+          <meshBasicMaterial visible={false} transparent={true} opacity={0} side={THREE.DoubleSide} alphaTest={0.5} />
         </mesh>
-        
-        <InternalVideo 
-          src={src}
-          isPlaying={isPlaying}
-          volume={volume}
-          loop={loop}
-        />
-        
+
+        <InternalVideo src={src} isPlaying={isPlaying} volume={volume} loop={loop} />
+
         {isHovered && (
           <Html
             transform
@@ -707,4 +681,4 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
   );
 };
 
-export default VideoInScene; 
+export default VideoInScene;

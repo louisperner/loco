@@ -814,7 +814,7 @@ const Player: React.FC = () => {
                 fileName: video.fileName,
                 position: [position.x, position.y, position.z],
                 rotation: (video.rotation as [number, number, number]) || [0, 0, 0],
-                scale: (video.scale as number) || 1,
+                scale: (video.scale as number) || 3,
                 isPlaying: (video.isPlaying as boolean) || true,
                 volume: (video.volume as number) || 0.5,
                 loop: (video.loop as boolean) || true,
