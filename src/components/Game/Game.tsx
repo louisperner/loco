@@ -450,10 +450,6 @@ const Player: React.FC = () => {
             failIfMajorPerformanceCaveat: false,
           }}
         >
-          <GizmoHelper alignment='bottom-right' margin={[80, 80]}>
-            <GizmoViewport labelColor='white' />
-          </GizmoHelper>
-
           {/* <Sparkles count={10000} size={1} position={[0, 0.9, 0]} scale={100} speed={0.3} /> */}
 
           {/* <directionalLight 
@@ -538,6 +534,10 @@ const Player: React.FC = () => {
             {/* <Noise opacity={0.02} /> */}
             {/* <Vignette eskil={false} offset={0.1} darkness={1.1} /> */}
           </EffectComposer>
+
+          <GizmoHelper alignment='top-right' margin={[80, 80]}>
+            <GizmoViewport labelColor='white' />
+          </GizmoHelper>
         </Canvas>
 
         {/* Settings Panel */}
