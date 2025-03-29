@@ -60,12 +60,7 @@ export interface SettingsTab {
 }
 
 // Define possible value types for settings
-export type SettingValue = 
-  | string 
-  | number 
-  | boolean 
-  | [number, number, number] 
-  | RgbaColor;
+export type SettingValue = string | number | boolean | [number, number, number] | RgbaColor;
 
 export interface SettingsPanelProps {
   children?: ReactNode;
@@ -138,6 +133,8 @@ export interface SettingsPanelProps {
     starsFade: boolean;
   };
   onEnvironmentSettingChange?: (setting: string, value: SettingValue) => void;
+  showCoordinates?: boolean;
+  onCoordinatesToggle?: (show: boolean) => void;
 }
 
 export interface ColorPickerControlProps {
@@ -148,4 +145,4 @@ export interface ColorPickerControlProps {
   onColorChange: (type: string, color: string | RgbaColor) => void;
   colorPickerRefs: MutableRefObject<{ [key: string]: HTMLDivElement | null }>;
   colorPickerContainerRef: RefObject<HTMLDivElement>;
-} 
+}

@@ -18,6 +18,7 @@ import { Bloom, EffectComposer } from '@react-three/postprocessing';
 
 // Import separated components
 import { Crosshair, Floor, PreviewFrame, FrameRateLimiter, CameraExposer } from '../Scene';
+import CoordinateDisplay from '../ui/CoordinateDisplay';
 
 // Import utilities
 import { rgbaToString } from '../../utils/colorUtils';
@@ -56,6 +57,8 @@ const Player: React.FC = () => {
   // Game store state and actions
   const uiVisible = useGameStore((state) => state.uiVisible);
   const setUiVisible = useGameStore((state) => state.setUiVisible);
+
+  const showCoordinates = useGameStore((state) => state.showCoordinates);
 
   const showCatalog = useGameStore((state) => state.showCatalog);
   const setShowCatalog = useGameStore((state) => state.setShowCatalog);
@@ -621,6 +624,8 @@ const Player: React.FC = () => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 setTheme(theme as any);
               }}
+              showCoordinates={showCoordinates}
+              onCoordinatesToggle={useGameStore.getState().setShowCoordinates}
               environmentSettings={environmentSettings}
               onEnvironmentSettingChange={(setting: string, value: unknown) =>
                 setEnvironmentSetting(
@@ -824,6 +829,9 @@ const Player: React.FC = () => {
             onRemoveObject={onRemoveObject}
           />
         )}
+
+        {/* Coordinate Display */}
+        {uiVisible && showCoordinates && <CoordinateDisplay cameraRef={cameraRef} />}
       </div>
     </HotbarContext.Provider>
   );

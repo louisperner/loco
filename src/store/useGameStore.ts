@@ -71,21 +71,21 @@ interface GameState {
   showSettings: boolean;
   showInventory: boolean;
   isSpotlightOpen: boolean;
-  
+
   // Mode states
   currentMode: string;
   movementEnabled: boolean;
-  
+
   // Frame states
   frames: WebFrame[];
   selectedFrame: number | null;
   pendingWebsiteUrl: string | null;
-  
+
   // Preview states
   showPreview: boolean;
   confirmedPosition: [number, number, number] | null;
   confirmedRotation: [number, number, number] | null;
-  
+
   // Settings states
   activeTab: string;
   isResetAnimating: boolean;
@@ -93,23 +93,26 @@ interface GameState {
   canvasInteractive: boolean;
   showColorPicker: string | null;
   selectedTheme: string | null;
-  
+
   // Hotbar states
   selectedHotbarItem: HotbarItem | null;
-  
+
   // Visibility states
   visibilitySettings: VisibilitySettings;
-  
+
   // Crosshair states
   crosshairSettings: CrosshairSettings;
-  
+
   // Ground states
   gravityEnabled: boolean;
   groundShape: string;
-  
+
   // Environment settings
   environmentSettings: EnvironmentSettings;
-  
+
+  // Show coordinates
+  showCoordinates: boolean;
+
   // Actions
   setUiVisible: (visible: boolean) => void;
   setShowCatalog: (show: boolean) => void;
@@ -117,10 +120,10 @@ interface GameState {
   setShowSettings: (show: boolean) => void;
   setShowInventory: (show: boolean) => void;
   setIsSpotlightOpen: (isOpen: boolean) => void;
-  
+
   setCurrentMode: (mode: string) => void;
   setMovementEnabled: (enabled: boolean) => void;
-  
+
   setFrames: (frames: WebFrame[]) => void;
   addFrame: (url: string, position?: [number, number, number], rotation?: [number, number, number]) => void;
   removeFrame: (frameId: number) => void;
@@ -128,47 +131,86 @@ interface GameState {
   updateFrameUrl: (frameId: number, newUrl: string) => void;
   setSelectedFrame: (frameId: number | null) => void;
   setPendingWebsiteUrl: (url: string | null) => void;
-  
+
   setShowPreview: (show: boolean) => void;
   setConfirmedPosition: (position: [number, number, number] | null) => void;
   setConfirmedRotation: (rotation: [number, number, number] | null) => void;
-  
+
   setActiveTab: (tab: string) => void;
   setIsResetAnimating: (isAnimating: boolean) => void;
   setColorChanged: (type: string | null) => void;
   setCanvasInteractive: (interactive: boolean) => void;
   setShowColorPicker: (type: string | null) => void;
   setSelectedTheme: (theme: string | null) => void;
-  
+
   setSelectedHotbarItem: (item: HotbarItem | null) => void;
-  
+
   setVisibilitySetting: (setting: keyof VisibilitySettings, value: boolean) => void;
-  
-  setCrosshairSetting: <K extends keyof CrosshairSettings>(
-    setting: K,
-    value: CrosshairSettings[K]
-  ) => void;
-  
+
+  setCrosshairSetting: <K extends keyof CrosshairSettings>(setting: K, value: CrosshairSettings[K]) => void;
+
   setGravityEnabled: (enabled: boolean) => void;
   setGroundShape: (shape: string) => void;
-  
-  setEnvironmentSetting: <K extends keyof EnvironmentSettings>(
-    setting: K,
-    value: EnvironmentSettings[K]
-  ) => void;
-  
+
+  setEnvironmentSetting: <K extends keyof EnvironmentSettings>(setting: K, value: EnvironmentSettings[K]) => void;
+
   // Complex actions
   handleModeChange: (mode: string) => void;
   handleToggleHelp: () => void;
   handleCancel: () => void;
   handlePositionConfirm: (position: [number, number, number], rotation: [number, number, number]) => void;
   handleSpotlightVisibility: (isVisible: boolean) => void;
-  
+
   // Adicionar esta nova ação
   resetCrosshairAndVisibilitySettings: () => void;
+
+  // Show coordinates
+  setShowCoordinates: (show: boolean) => void;
 }
 
-export const useGameStore = create<GameState>()(
+// Add the missing interface
+type GameStateActions = Pick<
+  GameState,
+  | 'setUiVisible'
+  | 'setShowCatalog'
+  | 'setShowHelp'
+  | 'setShowSettings'
+  | 'setShowInventory'
+  | 'setIsSpotlightOpen'
+  | 'setCurrentMode'
+  | 'setMovementEnabled'
+  | 'setFrames'
+  | 'addFrame'
+  | 'removeFrame'
+  | 'restoreFramePosition'
+  | 'updateFrameUrl'
+  | 'setSelectedFrame'
+  | 'setPendingWebsiteUrl'
+  | 'setShowPreview'
+  | 'setConfirmedPosition'
+  | 'setConfirmedRotation'
+  | 'setActiveTab'
+  | 'setIsResetAnimating'
+  | 'setColorChanged'
+  | 'setCanvasInteractive'
+  | 'setShowColorPicker'
+  | 'setSelectedTheme'
+  | 'setSelectedHotbarItem'
+  | 'setVisibilitySetting'
+  | 'setCrosshairSetting'
+  | 'setGravityEnabled'
+  | 'setGroundShape'
+  | 'setEnvironmentSetting'
+  | 'handleModeChange'
+  | 'handleToggleHelp'
+  | 'handleCancel'
+  | 'handlePositionConfirm'
+  | 'handleSpotlightVisibility'
+  | 'resetCrosshairAndVisibilitySettings'
+  | 'setShowCoordinates'
+>;
+
+export const useGameStore = create<GameState & GameStateActions>()(
   persist(
     (set, get) => ({
       // UI States
@@ -178,21 +220,21 @@ export const useGameStore = create<GameState>()(
       showSettings: false,
       showInventory: false,
       isSpotlightOpen: false,
-      
+
       // Mode states
       currentMode: 'live',
       movementEnabled: true,
-      
+
       // Frame states
       frames: [],
       selectedFrame: null,
       pendingWebsiteUrl: null,
-      
+
       // Preview states
       showPreview: false,
       confirmedPosition: null,
       confirmedRotation: null,
-      
+
       // Settings states
       activeTab: 'cores',
       isResetAnimating: false,
@@ -200,10 +242,10 @@ export const useGameStore = create<GameState>()(
       canvasInteractive: true,
       showColorPicker: null,
       selectedTheme: null,
-      
+
       // Hotbar states
       selectedHotbarItem: null,
-      
+
       // Visibility states
       visibilitySettings: {
         floorVisible: true,
@@ -211,7 +253,7 @@ export const useGameStore = create<GameState>()(
         floorPlaneVisible: true,
         backgroundVisible: true,
       },
-      
+
       // Crosshair states
       crosshairSettings: {
         visible: true,
@@ -220,11 +262,11 @@ export const useGameStore = create<GameState>()(
         thickness: 2,
         style: 'circle',
       },
-      
+
       // Ground states
       gravityEnabled: false,
       groundShape: 'circle',
-      
+
       // Environment settings
       environmentSettings: {
         skyVisible: false,
@@ -243,26 +285,29 @@ export const useGameStore = create<GameState>()(
         starsSaturation: 0,
         starsFade: true,
       },
-      
+
+      // Show coordinates
+      showCoordinates: true,
+
       // Actions
-      setUiVisible: (visible) => set({ uiVisible: visible }),
-      setShowCatalog: (show) => set({ showCatalog: show }),
-      setShowHelp: (show) => set({ showHelp: show }),
-      setShowSettings: (show) => set({ showSettings: show }),
-      setShowInventory: (show) => set({ showInventory: show }),
-      setIsSpotlightOpen: (isOpen) => set({ isSpotlightOpen: isOpen }),
-      
-      setCurrentMode: (mode) => set({ currentMode: mode }),
-      setMovementEnabled: (enabled) => set({ movementEnabled: enabled }),
-      
-      setFrames: (frames) => set({ frames }),
-      addFrame: (url, position, rotation) => {
+      setUiVisible: (visible: boolean) => set({ uiVisible: visible }),
+      setShowCatalog: (show: boolean) => set({ showCatalog: show }),
+      setShowHelp: (show: boolean) => set({ showHelp: show }),
+      setShowSettings: (show: boolean) => set({ showSettings: show }),
+      setShowInventory: (show: boolean) => set({ showInventory: show }),
+      setIsSpotlightOpen: (isOpen: boolean) => set({ isSpotlightOpen: isOpen }),
+
+      setCurrentMode: (mode: string) => set({ currentMode: mode }),
+      setMovementEnabled: (enabled: boolean) => set({ movementEnabled: enabled }),
+
+      setFrames: (frames: WebFrame[]) => set({ frames }),
+      addFrame: (url: string, position?: [number, number, number], rotation?: [number, number, number]) => {
         const { confirmedPosition, confirmedRotation, frames } = get();
         const finalPosition = position || confirmedPosition;
         const finalRotation = rotation || confirmedRotation;
-        
+
         if (!finalPosition || !finalRotation) return;
-        
+
         set({
           frames: [
             ...frames,
@@ -281,12 +326,12 @@ export const useGameStore = create<GameState>()(
           pendingWebsiteUrl: null,
         });
       },
-      removeFrame: (frameId) => {
+      removeFrame: (frameId: number) => {
         set((state) => ({
           frames: state.frames.filter((frame) => frame.id !== frameId),
         }));
       },
-      restoreFramePosition: (frameId) => {
+      restoreFramePosition: (frameId: number) => {
         set((state) => ({
           frames: state.frames.map((frame) => {
             if (frame.id === frameId && frame.originalPosition && frame.originalRotation) {
@@ -300,65 +345,63 @@ export const useGameStore = create<GameState>()(
           }),
         }));
       },
-      updateFrameUrl: (frameId, newUrl) => {
+      updateFrameUrl: (frameId: number, newUrl: string) => {
         set((state) => ({
-          frames: state.frames.map((frame) =>
-            frame.id === frameId ? { ...frame, url: newUrl } : frame
-          ),
+          frames: state.frames.map((frame) => (frame.id === frameId ? { ...frame, url: newUrl } : frame)),
         }));
       },
-      setSelectedFrame: (frameId) => set({ selectedFrame: frameId }),
-      setPendingWebsiteUrl: (url) => set({ pendingWebsiteUrl: url }),
-      
-      setShowPreview: (show) => set({ showPreview: show }),
-      setConfirmedPosition: (position) => set({ confirmedPosition: position }),
-      setConfirmedRotation: (rotation) => set({ confirmedRotation: rotation }),
-      
-      setActiveTab: (tab) => set({ activeTab: tab }),
-      setIsResetAnimating: (isAnimating) => set({ isResetAnimating: isAnimating }),
-      setColorChanged: (type) => set({ colorChanged: type }),
-      setCanvasInteractive: (interactive) => set({ canvasInteractive: interactive }),
-      setShowColorPicker: (type) => set({ showColorPicker: type }),
-      setSelectedTheme: (theme) => set({ selectedTheme: theme }),
-      
-      setSelectedHotbarItem: (item) => set({ selectedHotbarItem: item }),
-      
-      setVisibilitySetting: (setting, value) => 
+      setSelectedFrame: (frameId: number | null) => set({ selectedFrame: frameId }),
+      setPendingWebsiteUrl: (url: string | null) => set({ pendingWebsiteUrl: url }),
+
+      setShowPreview: (show: boolean) => set({ showPreview: show }),
+      setConfirmedPosition: (position: [number, number, number] | null) => set({ confirmedPosition: position }),
+      setConfirmedRotation: (rotation: [number, number, number] | null) => set({ confirmedRotation: rotation }),
+
+      setActiveTab: (tab: string) => set({ activeTab: tab }),
+      setIsResetAnimating: (isAnimating: boolean) => set({ isResetAnimating: isAnimating }),
+      setColorChanged: (type: string | null) => set({ colorChanged: type }),
+      setCanvasInteractive: (interactive: boolean) => set({ canvasInteractive: interactive }),
+      setShowColorPicker: (type: string | null) => set({ showColorPicker: type }),
+      setSelectedTheme: (theme: string | null) => set({ selectedTheme: theme }),
+
+      setSelectedHotbarItem: (item: HotbarItem | null) => set({ selectedHotbarItem: item }),
+
+      setVisibilitySetting: (setting: keyof VisibilitySettings, value: boolean) =>
         set((state) => ({
           visibilitySettings: {
             ...state.visibilitySettings,
             [setting]: value,
           },
         })),
-      
-      setCrosshairSetting: (setting, value) =>
+
+      setCrosshairSetting: (setting: keyof CrosshairSettings, value: CrosshairSettings[typeof setting]) =>
         set((state) => ({
           crosshairSettings: {
             ...state.crosshairSettings,
             [setting]: value,
           },
         })),
-      
-      setGravityEnabled: (enabled) => set({ gravityEnabled: enabled }),
-      setGroundShape: (shape) => set({ groundShape: shape }),
-      
-      setEnvironmentSetting: (setting, value) =>
+
+      setGravityEnabled: (enabled: boolean) => set({ gravityEnabled: enabled }),
+      setGroundShape: (shape: string) => set({ groundShape: shape }),
+
+      setEnvironmentSetting: (setting: keyof EnvironmentSettings, value: EnvironmentSettings[typeof setting]) =>
         set((state) => ({
           environmentSettings: {
             ...state.environmentSettings,
             [setting]: value,
           },
         })),
-      
+
       // Complex actions
-      handleModeChange: (mode) => {
+      handleModeChange: (mode: string) => {
         const { pendingWebsiteUrl } = get();
-        
+
         set({
           currentMode: mode,
           movementEnabled: mode === 'live',
         });
-        
+
         if (mode === 'build') {
           set({
             showPreview: true,
@@ -371,58 +414,48 @@ export const useGameStore = create<GameState>()(
             confirmedPosition: null,
             confirmedRotation: null,
           });
-          
+
           if (pendingWebsiteUrl) {
             set({ pendingWebsiteUrl: null });
           }
         }
       },
-      
+
       handleToggleHelp: () => {
-        const { showHelp } = get();
+        const currentShowHelp = get().showHelp;
+        set({ showHelp: !currentShowHelp });
+      },
+
+      handleCancel: () => {
         set({
-          showHelp: !showHelp,
-          movementEnabled: showHelp, // Enable movement when help is closed
+          showPreview: false,
+          confirmedPosition: null,
+          confirmedRotation: null,
+          pendingWebsiteUrl: null,
         });
       },
-      
-      handleCancel: () => {
-        const { currentMode, pendingWebsiteUrl, handleModeChange } = get();
-        
-        if (currentMode === 'build') {
-          if (pendingWebsiteUrl) {
-            set({
-              pendingWebsiteUrl: null,
-              confirmedPosition: null,
-              confirmedRotation: null,
-            });
-          } else {
-            handleModeChange('live');
-          }
-        }
-      },
-      
-      handlePositionConfirm: (position, rotation) => {
+
+      handlePositionConfirm: (position: [number, number, number], rotation: [number, number, number]) => {
         const { pendingWebsiteUrl, addFrame } = get();
-        
+
         set({
           confirmedPosition: position,
           confirmedRotation: rotation,
         });
-        
+
         if (pendingWebsiteUrl) {
           setTimeout(() => {
             addFrame(pendingWebsiteUrl, position, rotation);
           }, 300);
         }
       },
-      
-      handleSpotlightVisibility: (isVisible) => {
+
+      handleSpotlightVisibility: (isVisible: boolean) => {
         set({
           showPreview: isVisible,
           isSpotlightOpen: isVisible,
         });
-        
+
         if (!isVisible) {
           set({
             confirmedPosition: null,
@@ -430,7 +463,7 @@ export const useGameStore = create<GameState>()(
           });
         }
       },
-      
+
       // Adicionar essa nova ação para resetar as configurações
       resetCrosshairAndVisibilitySettings: () => {
         set({
@@ -446,9 +479,12 @@ export const useGameStore = create<GameState>()(
             gridVisible: true,
             floorPlaneVisible: true,
             backgroundVisible: true,
-          }
+          },
         });
       },
+
+      // Show coordinates
+      setShowCoordinates: (show: boolean) => set({ showCoordinates: show }),
     }),
     {
       name: 'game-storage',
@@ -461,6 +497,6 @@ export const useGameStore = create<GameState>()(
         selectedTheme: state.selectedTheme,
         environmentSettings: state.environmentSettings,
       }),
-    }
-  )
-); 
+    },
+  ),
+);
