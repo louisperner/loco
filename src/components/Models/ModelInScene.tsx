@@ -115,8 +115,8 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     id, 
     url,
     fileName,
-    position = [0, 0, 0], 
-    rotation = [0, 0, 0], 
+    position: initialPosition = [0, 0, 0], 
+    rotation: initialRotation = [0, 0, 0], 
     scale: initialScale = 1 
   } = modelData;
 
@@ -133,6 +133,56 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
   // Get camera for positioning
   const { camera } = useThree();
 
+  // Set initial position based on camera direction
+  useEffect(() => {
+    if (groupRef.current) {
+      // Only set initial position if it's a new model (position is [0,0,0])
+      if (initialPosition[0] === 0 && initialPosition[1] === 0 && initialPosition[2] === 0) {
+        const cameraDirection = new THREE.Vector3();
+        camera.getWorldDirection(cameraDirection);
+        
+        // Position the model 2 units in front of the camera
+        const distance = 5;
+        const position = new THREE.Vector3();
+        position.copy(camera.position).add(cameraDirection.multiplyScalar(distance));
+        
+        groupRef.current.position.copy(position);
+        
+        // Make the model face the camera
+        groupRef.current.lookAt(camera.position);
+        
+        // Save the initial position and rotation
+        const currentRotation: [number, number, number] = [
+          groupRef.current.rotation.x,
+          groupRef.current.rotation.y,
+          groupRef.current.rotation.z
+        ];
+
+        onUpdate({
+          ...modelData,
+          position: [position.x, position.y, position.z],
+          rotation: currentRotation
+        });
+      } else {
+        // For existing models, set the saved position and make it look at camera
+        groupRef.current.position.set(...initialPosition);
+        groupRef.current.lookAt(camera.position);
+        
+        // Save the new rotation after lookAt
+        const currentRotation: [number, number, number] = [
+          groupRef.current.rotation.x,
+          groupRef.current.rotation.y,
+          groupRef.current.rotation.z
+        ];
+        
+        onUpdate({
+          ...modelData,
+          rotation: currentRotation
+        });
+      }
+    }
+  }, []); // Only run once on mount
+  
   // Compute and cache bounding box to avoid recalculating it every frame
   useEffect(() => {
     // Initialize bounding box
@@ -149,14 +199,14 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     if (groupRef.current && boundingBoxRef.current) {
       boundingBoxRef.current = new THREE.Box3().setFromObject(groupRef.current);
     }
-  }, [position]);
+  }, [initialPosition]);
   
   // Update bounding box when rotation changes
   useEffect(() => {
     if (groupRef.current && boundingBoxRef.current) {
       boundingBoxRef.current = new THREE.Box3().setFromObject(groupRef.current);
     }
-  }, [rotation]);
+  }, [initialRotation]);
 
   // Apply scale to the model
   useEffect(() => {
@@ -427,8 +477,8 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
       {/* Model group */}
       <group
         ref={groupRef}
-        position={position}
-        rotation={rotation}
+        position={initialPosition}
+        rotation={initialRotation}
         onClick={handleClick}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}

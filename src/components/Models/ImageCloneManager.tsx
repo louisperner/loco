@@ -16,8 +16,8 @@ import LoadingIndicator from '../Scene/LoadingIndicator';
 const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpdate, onSelect }) => {
   const { 
     src, 
-    position = [0, 0, -2],
-    rotation = [0, 0, 0],
+    position: initialPosition = [0, 0, 0],
+    rotation: initialRotation = [0, 0, 0],
     lookAtUser: initialLookAtUser = false,
     invertColors: initialInvertColors = false,
     scale: initialScale = 1,
@@ -68,6 +68,54 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src]);
+
+  // Set initial position based on camera direction
+  useEffect(() => {
+    if (groupRef.current) {
+      // Only set initial position if it's a new image (position is [0,0,0])
+      if (initialPosition[0] === 0 && initialPosition[1] === 0 && initialPosition[2] === 0) {
+        const cameraDirection = new THREE.Vector3();
+        camera.getWorldDirection(cameraDirection);
+        
+        // Position the image 2 units in front of the camera
+        const distance = 5;
+        const position = new THREE.Vector3();
+        position.copy(camera.position).add(cameraDirection.multiplyScalar(distance));
+        
+        groupRef.current.position.copy(position);
+        
+        // Make the image face the camera
+        groupRef.current.lookAt(camera.position);
+        
+        // Save the initial position and rotation
+        const currentRotation: [number, number, number] = [
+          groupRef.current.rotation.x,
+          groupRef.current.rotation.y,
+          groupRef.current.rotation.z
+        ];
+
+        saveChanges({
+          position: [position.x, position.y, position.z],
+          rotation: currentRotation
+        });
+      } else {
+        // For existing images, set the saved position and make it look at camera
+        groupRef.current.position.set(...initialPosition);
+        groupRef.current.lookAt(camera.position);
+        
+        // Save the new rotation after lookAt
+        const currentRotation: [number, number, number] = [
+          groupRef.current.rotation.x,
+          groupRef.current.rotation.y,
+          groupRef.current.rotation.z
+        ];
+        
+        saveChanges({
+          rotation: currentRotation
+        });
+      }
+    }
+  }, []); // Only run once on mount
 
   // Function to save changes
   const saveChanges = (changes: Partial<ImageDataType>): void => {
@@ -387,8 +435,8 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
       )}
       <group 
         ref={groupRef} 
-        position={new THREE.Vector3(...position)} 
-        rotation={new THREE.Euler(...rotation)} 
+        position={new THREE.Vector3(...initialPosition)} 
+        rotation={new THREE.Euler(...initialRotation)} 
         scale={scale}
         onClick={handleClick}
         userData={{ type: 'image', id: imageData.id }}

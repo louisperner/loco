@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Sky, Stars } from '@react-three/drei';
+import { GizmoViewport, GizmoHelper, Sky, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import Spotlight from '../ui/Spotlight';
 import FPSControls from '../Scene/FPSControls';
@@ -454,6 +454,11 @@ const Player: React.FC = () => {
             failIfMajorPerformanceCaveat: false,
           }}
         >
+
+          <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
+            <GizmoViewport labelColor="white" />
+          </GizmoHelper>
+
           {/* <Sparkles count={10000} size={1} position={[0, 0.9, 0]} scale={100} speed={0.3} /> */}
 
           {/* <directionalLight 
@@ -468,6 +473,7 @@ const Player: React.FC = () => {
             intensity={Math.PI} 
             color="#8088ff"
           /> */}
+
           <hemisphereLight
             args={["#ffffff", "#8888ff", 0.7]} 
             position={[0, 10, 0]}
@@ -532,6 +538,7 @@ const Player: React.FC = () => {
             groundShape={groundShape as "circle" | "square" | "hexagon"}
           />
 
+    
 
           <EffectComposer>
             {/* <DepthOfField focusDistance={-50} focalLength={0.02} bokehScale={2} height={480} /> */}
