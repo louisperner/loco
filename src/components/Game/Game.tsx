@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { GizmoViewport, GizmoHelper, Sky, Stars, Bvh } from '@react-three/drei';
 import * as THREE from 'three';
@@ -29,6 +29,9 @@ import { useFileHandling } from '../../hooks/useFileHandling';
 // Import game store
 import { useGameStore, HotbarContext, EnvironmentSettings } from '../../store/useGameStore';
 
+// Import TouchControls
+import TouchControls from '../Scene/TouchControls';
+
 // Types for inventory
 interface InventoryItem {
   id: string;
@@ -37,6 +40,19 @@ interface InventoryItem {
   url: string;
   thumbnailUrl?: string;
   [key: string]: unknown;
+}
+
+interface TouchState {
+  moveJoystick: {
+    active: boolean;
+    currentX: number;
+    currentY: number;
+  };
+  lookJoystick: {
+    active: boolean;
+    currentX: number;
+    currentY: number;
+  };
 }
 
 const Player: React.FC = () => {
@@ -359,11 +375,26 @@ const Player: React.FC = () => {
     }
   }, []);
 
+  // Touch controls
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [touchState, setTouchState] = useState<TouchState>({
+    moveJoystick: {
+      active: false,
+      currentX: 0,
+      currentY: 0,
+    },
+    lookJoystick: {
+      active: false,
+      currentX: 0,
+      currentY: 0,
+    },
+  });
+
   return (
     <HotbarContext.Provider value={{ selectedHotbarItem, setSelectedHotbarItem }}>
       <div
         ref={canvasContainerRef}
-        className='w-screen h-screen relative'
+        className='fixed inset-0 w-screen h-screen'
         style={{
           backgroundColor: visibilitySettings.backgroundVisible
             ? getColorWithOpacity(backgroundColor, backgroundOpacity)
@@ -502,6 +533,9 @@ const Player: React.FC = () => {
               gravityEnabled={gravityEnabled}
               floorHeight={0}
               initialPosition={[0, 1.7, 0]}
+              onTouchStateChange={setTouchState}
+              onMobileChange={setIsMobile}
+              touchState={touchState}
             />
 
             <CameraExposer cameraRef={cameraRef} />
@@ -538,10 +572,18 @@ const Player: React.FC = () => {
             {/* <Vignette eskil={false} offset={0.1} darkness={1.1} /> */}
           </EffectComposer>
 
-          <GizmoHelper alignment='top-right' margin={[80, 80]}>
+          {/* <GizmoHelper alignment='top-right' margin={[80, 80]}>
             <GizmoViewport labelColor='white' />
-          </GizmoHelper>
+          </GizmoHelper> */}
         </Canvas>
+
+        {/* Touch Controls outside Canvas */}
+        <TouchControls
+          enabled={movementEnabled}
+          isMobile={isMobile}
+          touchState={touchState}
+          onTouchStateChange={setTouchState}
+        />
 
         {/* Settings Panel */}
         {uiVisible && (

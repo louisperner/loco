@@ -3,8 +3,8 @@ import ReactDOM from 'react-dom/client';
 import Player from './components/Game/Game';
 import SplashScreen from './components/Game/SplashScreen';
 import { useImageStore } from './store/useImageStore';
-// 
-import { Analytics } from "@vercel/analytics/react"
+//
+import { Analytics } from '@vercel/analytics/react';
 
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -12,7 +12,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const initializeApp = async (): Promise<void> => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         setIsLoading(false);
       } catch (error) {
         console.error('Error initializing app:', error);
@@ -24,7 +24,7 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative w-full h-full">
+    <div className='fixed inset-0 w-screen h-screen overflow-hidden' draggable={false}>
       {isLoading && <SplashScreen />}
       <Player />
       <Analytics />
@@ -35,12 +35,12 @@ const App: React.FC = () => {
 // Add welcome image to local storage if it doesn't exist
 const initializeWelcomeImage = () => {
   const STORAGE_KEY = 'scene-images';
-  
+
   try {
     // Check if images already exist in local storage
     const savedImages = localStorage.getItem(STORAGE_KEY);
     let existingImages = [];
-    
+
     if (savedImages) {
       try {
         existingImages = JSON.parse(savedImages);
@@ -49,15 +49,15 @@ const initializeWelcomeImage = () => {
         // Invalid JSON, treat as empty
       }
     }
-    
+
     // Check if welcome image is already added
-    const hasWelcomeImage = Array.isArray(existingImages) && 
-      existingImages.some(img => img.fileName === 'welcome.png');
-    
+    const hasWelcomeImage =
+      Array.isArray(existingImages) && existingImages.some((img) => img.fileName === 'welcome.png');
+
     if (!hasWelcomeImage) {
       // Load image first to get its dimensions
       const img = new Image();
-      
+
       img.onload = () => {
         // Add welcome.png with correct dimensions
         const welcomeImagePath = '/welcome.png';
@@ -67,13 +67,13 @@ const initializeWelcomeImage = () => {
           fileName: 'welcome.png',
           position: [0, 5, -15],
           rotation: [0, 0, 0],
-          scale: 2, 
+          scale: 2,
           width: img.width,
           height: img.height,
-          alt: 'Welcome image'
+          alt: 'Welcome image',
         });
       };
-      
+
       img.onerror = (error) => {
         console.error('Error loading welcome image:', error);
         // Fallback without dimensions
@@ -85,10 +85,10 @@ const initializeWelcomeImage = () => {
           position: [0, 4, -10],
           rotation: [0, 0, 0],
           scale: 2,
-          alt: 'Welcome image'
+          alt: 'Welcome image',
         });
       };
-      
+
       // Start loading the image
       img.src = '/welcome.png';
     }
@@ -100,4 +100,4 @@ const initializeWelcomeImage = () => {
 // Initialize welcome image on app start
 initializeWelcomeImage();
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<App />); 
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<App />);
