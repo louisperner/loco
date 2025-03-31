@@ -54,7 +54,7 @@ const PWAInstallPrompt: React.FC = () => {
   return (
     <div className='fixed bottom-4 left-0 right-0 mx-auto w-[90%] max-w-md bg-slate-800 text-white p-4 rounded-lg shadow-lg z-50 flex items-center justify-between'>
       <div>
-        <p className='text-sm text-slate-300'>Add to your home screen for easy access</p>
+        <p className='text-sm text-slate-300'>Add Loco to your home screen</p>
       </div>
       <div className='flex gap-2'>
         <button
