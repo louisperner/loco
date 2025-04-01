@@ -1,5 +1,4 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import InventoryItem from './InventoryItem';
 import { useGameStore } from '../../store/useGameStore';
 
@@ -65,9 +64,6 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
   handleDragEnd,
   handleConfirmSelection,
   handleRemoveItem,
-  reloadInventory,
-  showHotbarButton,
-  onAddToHotbar,
 }) => {
   const setCanvasInteractive = useGameStore((state) => state.setCanvasInteractive);
 

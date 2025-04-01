@@ -105,10 +105,6 @@ const InventoryItem: React.FC<InventoryItemProps> = ({
     return '📄'; // Default document emoji
   };
 
-  // Calculate item count - in Minecraft would be stack size
-  // Here we're just showing a placeholder count of "1"
-  const itemCount = 1;
-
   return (
     <div
       ref={itemRef}

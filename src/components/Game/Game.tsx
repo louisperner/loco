@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { GizmoViewport, GizmoHelper, Sky, Stars, Bvh } from '@react-three/drei';
+import { Sky, Stars, Bvh } from '@react-three/drei';
 import * as THREE from 'three';
 import Spotlight from '../ui/Spotlight';
 import FPSControls from '../Scene/FPSControls';
