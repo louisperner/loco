@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { generateVideoThumbnail } from '../Models/utils';
 
@@ -41,6 +41,9 @@ const InventoryItem: React.FC<InventoryItemProps> = ({
   handleRemoveItem,
 }) => {
   const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewPosition, setPreviewPosition] = useState({ top: 0, left: 0 });
+  const itemRef = useRef<HTMLDivElement>(null);
 
   // Generate thumbnail for videos if needed
   useEffect(() => {
@@ -59,6 +62,37 @@ const InventoryItem: React.FC<InventoryItemProps> = ({
     }
   }, [item.type, item.thumbnailUrl, item.url]);
 
+  const updatePreviewPosition = () => {
+    if (itemRef.current) {
+      const rect = itemRef.current.getBoundingClientRect();
+      const previewWidth = 200; // Width of preview container
+      const previewHeight = 250; // Height of preview container including title
+      const spacing = 10; // Space between item and preview
+
+      // Calculate initial position above the item
+      let top = rect.top - previewHeight - spacing;
+      let left = rect.left + (rect.width - previewWidth) / 2;
+
+      // Adjust if preview would go off screen
+      if (top < 0) {
+        // If not enough space above, show below
+        top = rect.bottom + spacing;
+      }
+      if (left < 0) {
+        left = 0;
+      } else if (left + previewWidth > window.innerWidth) {
+        left = window.innerWidth - previewWidth;
+      }
+
+      setPreviewPosition({ top, left });
+    }
+  };
+
+  const handleMouseEnter = () => {
+    updatePreviewPosition();
+    setShowPreview(true);
+  };
+
   // Determine the icon to show based on item type
   const getItemIcon = () => {
     if (item.type === 'model') {
@@ -71,86 +105,125 @@ const InventoryItem: React.FC<InventoryItemProps> = ({
     return '📄'; // Default document emoji
   };
 
+  // Calculate item count - in Minecraft would be stack size
+  // Here we're just showing a placeholder count of "1"
+  const itemCount = 1;
+
   return (
     <div
+      ref={itemRef}
       className={cn(
-        'group relative bg-[#1A1A1A] rounded-md flex flex-col justify-between aspect-square cursor-pointer transition-all duration-200 overflow-hidden min-h-[120px]',
-        isSelected && 'ring-2 ring-[#4B6BFB]',
-        'hover:bg-[#242424]',
-        'active:scale-98',
+        'w-[56px] h-[56px] relative cursor-pointer border-2 transition-all duration-100 rounded-md group',
+        isSelected 
+          ? 'ring-blue bg-[#555555]' 
+          : 'border-[#151515] bg-[#222222] hover:bg-[#333333]',
+        isInHotbar,
       )}
       onClick={() => handleItemSelect(item)}
       draggable={!isInHotbar}
       onDragStart={(e) => handleDragStart(e, item)}
       onDragEnd={handleDragEnd}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setShowPreview(false)}
     >
-      {/* Preview */}
-      <div className='flex-1 flex items-center justify-center relative p-2'>
+      {/* Item Preview */}
+      <div className='absolute inset-2 flex items-center justify-center'>
         {item.type === 'image' ? (
           <img
             src={item.thumbnailUrl || item.url}
             alt={item.fileName}
             title={item.fileName}
-            className='w-[80%] h-[80%] object-contain'
+            className='max-w-full max-h-full object-contain'
+          />
+        ) : item.type === 'video' && videoThumbnail ? (
+          <img
+            src={videoThumbnail}
+            alt={item.fileName}
+            title={item.fileName}
+            className='max-w-full max-h-full object-contain'
+          />
+        ) : item.thumbnailUrl ? (
+          <img
+            src={item.thumbnailUrl}
+            alt={item.fileName}
+            title={item.fileName}
+            className='max-w-full max-h-full object-contain'
           />
         ) : (
-          <div className='w-[80%] h-[80%] flex justify-center items-center relative'>
-            {item.thumbnailUrl ? (
-              <img
-                src={item.thumbnailUrl}
-                alt={item.fileName}
-                title={item.fileName}
-                className='w-full h-full object-contain'
-              />
-            ) : (
-              <div className='w-6 h-6 text-white/40'>
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  viewBox='0 0 24 24'
-                  fill='currentColor'
-                  className='w-full h-full'
-                >
-                  <path d='M12 6.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' />
-                </svg>
-              </div>
-            )}
-          </div>
+          <span className='text-xl'>{getItemIcon()}</span>
         )}
       </div>
 
-      {/* Filename */}
-      <div className='absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5'>
-        <p className='text-[10px] font-medium text-white/90 truncate' title={item.fileName}>
-          {item.fileName}
-        </p>
-      </div>
+      {/* Hover Preview */}
+      {showPreview && (
+        <div
+          className="fixed z-[9999] pointer-events-none"
+          style={{
+            top: `${previewPosition.top}px`,
+            left: `${previewPosition.left}px`,
+          }}
+        >
+          <div className="bg-[#222222] border-2 border-[#151515] rounded-md p-2 shadow-xl">
+            <div className="w-[200px] h-[200px] flex items-center justify-center">
+              {item.type === 'image' ? (
+                <img
+                  src={item.thumbnailUrl || item.url}
+                  alt={item.fileName}
+                  className="max-w-full max-h-full object-contain"
+                />
+              ) : item.type === 'video' && (videoThumbnail || item.thumbnailUrl) ? (
+                <img
+                  src={videoThumbnail || item.thumbnailUrl}
+                  alt={item.fileName}
+                  className="max-w-full max-h-full object-contain"
+                />
+              ) : item.type === 'model' && item.thumbnailUrl ? (
+                <img
+                  src={item.thumbnailUrl}
+                  alt={item.fileName}
+                  className="max-w-full max-h-full object-contain"
+                />
+              ) : (
+                <div className="text-8xl">
+                  {getItemIcon()}
+                </div>
+              )}
+            </div>
+            <div className="mt-2 text-center">
+              <p className="text-white/90 text-sm truncate max-w-[180px]" title={item.fileName}>
+                {item.fileName}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Action buttons */}
-      <div className='absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200'>
+      {/* Action buttons - show on hover */}
+      <div className='absolute -top-7 left-0 right-0 flex justify-center gap-0.5 opacity-0 group-hover:opacity-100 hover:opacity-100'>
         {/* Add to hotbar button */}
         {!isInHotbar && (
           <button
-            className='w-5 h-5 bg-[#4B6BFB] text-white/90 rounded-md text-xs flex justify-center items-center hover:bg-[#5472FB] transition-colors duration-200'
+            className='w-6 h-6 bg-[#555555] text-white/90 border border-[#151515] text-xs flex justify-center items-center hover:bg-[#666666]'
             onClick={(e) => {
               e.stopPropagation();
               handleAddToHotbar(item);
             }}
             title='Add to hotbar'
           >
-            +
+            ➕
           </button>
         )}
 
         {/* Remove button */}
         <button
-          className='w-5 h-5 bg-[#C75D5D] text-white/90 rounded-md text-xs flex justify-center items-center hover:bg-[#D46464] transition-colors duration-200'
+          className='w-6 h-6 bg-[#C75D5D] text-white/90 border border-[#151515] text-xs flex justify-center items-center hover:bg-[#D46464]'
           onClick={(e) => {
             e.stopPropagation();
             handleRemoveItem(item.id, e);
           }}
           title='Remove item'
         >
-          ×
+          ❌
         </button>
       </div>
 

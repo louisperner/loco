@@ -57,12 +57,12 @@ const Hotbar: React.FC<HotbarProps> = ({
     <>
       {/* Complete Hotbar (Landscape and Desktop) */}
       <div className='hidden landscape:flex md:flex fixed bottom-5 left-1/2 -translate-x-1/2 flex-col items-center z-50 pointer-events-none'>
-        <div className='flex gap-1 bg-[#0F0F0F]/90 rounded-lg p-1 shadow-lg pointer-events-auto border border-white/10 backdrop-blur-sm'>
+        <div className='flex gap-1 bg-[#2c2c2c]/90 rounded-lg p-1 shadow-lg pointer-events-auto border border-[#151515] backdrop-blur-sm'>
           {hotbarItems.map((item, index) => (
             <div
               key={index}
               className={cn(
-                'w-[42px] h-[42px] md:w-[56px] md:h-[56px] bg-[#1A1A1A] rounded-md flex justify-center items-center relative cursor-pointer transition-all duration-200 overflow-hidden group',
+                'w-[42px] h-[42px] md:w-[56px] md:h-[56px] bg-[#1A1A1A] rounded-md border-[#151515] border-2 flex justify-center items-center relative cursor-pointer transition-all duration-200 overflow-hidden group',
                 !item && 'bg-[#1A1A1A]/60 hover:bg-[#242424]/60',
                 selectedHotbarSlot === index && 'ring-2 ring-[#4B6BFB] shadow-[0_0_10px_rgba(75,107,251,0.3)]',
                 dragOverSlot === index && 'bg-[#4B6BFB]/30 ring-2 ring-[#4B6BFB]',
@@ -116,7 +116,7 @@ const Hotbar: React.FC<HotbarProps> = ({
                     onClick={(e) => handleRemoveFromHotbar(index, e)}
                     title='Remove from hotbar'
                   >
-                    ×
+                    ❌
                   </button>
                 </>
               ) : (

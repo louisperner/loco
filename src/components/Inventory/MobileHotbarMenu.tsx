@@ -36,76 +36,83 @@ const MobileHotbarMenu: React.FC<MobileHotbarMenuProps> = ({
   return (
     <>
       {/* Backdrop */}
-      {isOpen && <div className='fixed inset-0 bg-black/50 z-40' onClick={onClose} />}
+      {isOpen && <div className='fixed inset-0 bg-black/70 z-40' onClick={onClose} />}
 
-      {/* Menu */}
+      {/* Menu - Minecraft style */}
       <div
         className={cn(
-          'fixed bottom-0 left-0 right-0 bg-black/95 border-t border-white/10 rounded-t-xl p-4 z-50 transition-transform duration-300 ease-in-out',
+          'fixed bottom-0 left-0 right-0 bg-[#3F3F3F]/95 border-t-6 border-[#222222] z-50 transition-transform duration-300 ease-in-out',
           isOpen ? 'translate-y-0' : 'translate-y-full',
         )}
       >
-        <div className='flex justify-center items-center mb-4'>
-          <div className='w-12 h-1 bg-white/20 rounded-full' />
+        <div className='flex justify-center items-center py-3 bg-[#222222]'>
+          <h2 className='text-white font-bold tracking-wide'>Hotbar</h2>
+          <button 
+            onClick={onClose}
+            className='absolute right-4 w-8 h-8 bg-[#C75D5D] text-white hover:bg-[#D46464] flex items-center justify-center'
+          >
+            ×
+          </button>
         </div>
 
-        <div className='grid grid-cols-3 gap-2'>
+        <div className='grid grid-cols-3 gap-1 p-3 bg-[#2C2C2C]'>
           {hotbarItems.map((item, index) => (
             <div
               key={index}
               className={cn(
-                'w-full aspect-square bg-black/60 border-2 border-white/20 rounded-md flex justify-center items-center relative cursor-pointer transition-all duration-200 overflow-hidden',
-                !item && 'bg-black/40',
-                selectedHotbarSlot === index && 'border-blue-500 shadow-lg shadow-blue-500/30',
-                'hover:bg-black/80 hover:-translate-y-0.5',
+                'w-full aspect-square bg-[#222222] border-2 border-[#151515] flex justify-center items-center relative cursor-pointer',
+                selectedHotbarSlot === index && 'border-white bg-[#555555]',
+                'hover:bg-[#333333]',
               )}
               onClick={(e) => handleHotbarSlotClick(index, e)}
             >
               {item ? (
                 <>
-                  {item.type === 'image' ? (
-                    <img
-                      src={item.thumbnailUrl || item.url}
-                      alt={item.fileName}
-                      title={item.fileName}
-                      className='w-4/5 h-4/5 object-contain'
-                    />
-                  ) : (
-                    <div className='w-4/5 h-4/5 flex justify-center items-center relative'>
-                      {item.thumbnailUrl ? (
-                        <img
-                          src={item.thumbnailUrl}
-                          alt={item.fileName}
-                          title={item.fileName}
-                          className='w-full h-full object-contain'
-                        />
-                      ) : (
-                        <div className='w-10 h-10 mb-1'>
-                          <svg
-                            xmlns='http://www.w3.org/2000/svg'
-                            viewBox='0 0 24 24'
-                            fill='currentColor'
-                            className='w-full h-full animate-spin-slow'
-                          >
-                            <path d='M12 6.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <div className='absolute top-0.5 left-1 text-xs text-white/90 font-bold bg-black/30 px-1.5 py-0.5 rounded'>
+                  <div className='absolute inset-2 flex items-center justify-center'>
+                    {item.type === 'image' ? (
+                      <img
+                        src={item.thumbnailUrl || item.url}
+                        alt={item.fileName}
+                        title={item.fileName}
+                        className='max-w-full max-h-full object-contain'
+                      />
+                    ) : item.thumbnailUrl ? (
+                      <img
+                        src={item.thumbnailUrl}
+                        alt={item.fileName}
+                        title={item.fileName}
+                        className='max-w-full max-h-full object-contain'
+                      />
+                    ) : (
+                      <div className='text-white/40 text-xl'>
+                        {item.type === 'model' ? '📦' : item.type === 'video' ? '🎬' : '📄'}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Item count */}
+                  <div className='absolute right-0.5 bottom-0 text-xs font-bold text-white'>
+                    1
+                  </div>
+                  
+                  {/* Slot number */}
+                  <div className='absolute bottom-0 left-0 w-full text-center text-white/70 text-xs font-minecraft opacity-70'>
                     {index + 1}
                   </div>
+                  
                   <button
-                    className='absolute top-0 right-0 w-[18px] h-[18px] bg-red-500/70 text-white rounded-tr-md rounded-bl-md text-xs flex justify-center items-center cursor-pointer opacity-0 hover:bg-red-500/90 transition-opacity duration-200 p-0 group-hover:opacity-100'
-                    onClick={(e) => handleRemoveFromHotbar(index, e)}
+                    className='absolute -top-6 right-0 w-6 h-6 bg-[#C75D5D] text-white/90 border border-[#151515] text-xs flex justify-center items-center hover:bg-[#D46464]'
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveFromHotbar(index, e);
+                    }}
                     title='Remove from hotbar'
                   >
                     ×
                   </button>
                 </>
               ) : (
-                <div className='absolute top-0.5 left-1 text-xs text-white/90 font-bold bg-black/30 px-1.5 py-0.5 rounded'>
+                <div className='text-center text-white/70 text-xs font-minecraft opacity-70'>
                   {index + 1}
                 </div>
               )}

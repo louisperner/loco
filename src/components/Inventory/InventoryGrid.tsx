@@ -89,65 +89,91 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
 
   if (items.length === 0) {
     return (
-      <div className='flex justify-center items-center flex-col h-full text-white/60 text-center p-5'>
+      <div className='flex justify-center items-center flex-col h-full text-white/60 text-center p-5 bg-[#2c2c2c]'>
         <p>No items found. Drag and drop images or 3D models to add them to your inventory.</p>
-        {/* <button 
-          onClick={() => reloadInventory?.()}
-          className="mt-4 bg-blue-500/70 text-white rounded-md px-6 py-2.5 text-base cursor-pointer transition-all duration-200 hover:bg-blue-500/90"
-        >
-          Refresh Inventory
-        </button> */}
       </div>
     );
   }
 
+  // Group items into rows of 12 (Wider Minecraft-style grid)
+  const groupedItems = [];
+  for (let i = 0; i < items.length; i += 12) {
+    groupedItems.push(items.slice(i, i + 12));
+  }
+
   return (
     <>
-      <div
-        className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 p-4 overflow-y-auto flex-1 
-        [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full 
-        [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent relative'
+      <div className='bg-[#2C2C2C] flex-1 flex flex-col p-2 overflow-y-auto 
+        [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm 
+        [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]'
       >
-        <button
-          onClick={() => reloadInventory?.()}
-          className='absolute top-4 right-4 bg-[#4B6BFB] text-white/90 text-xs rounded-md px-3 py-1.5 hover:bg-[#5472FB] transition-colors duration-200'
-          title='Refresh inventory'
-        >
-          Refresh
-        </button>
-        {items.map((item) => {
-          const isInHotbar = hotbarItems.some((hotbarItem) => hotbarItem && hotbarItem.id === item.id);
-
-          return (
-            <InventoryItem
-              key={item.id}
-              item={item}
-              isSelected={selectedItem?.id === item.id}
-              isInHotbar={isInHotbar}
-              isAddingToHotbar={isAddingToHotbar}
-              selectedHotbarSlot={selectedHotbarSlot}
-              handleItemSelect={handleItemSelect}
-              handleAddToHotbar={handleAddToHotbar}
-              handleDragStart={handleDragStart}
-              handleDragEnd={handleDragEnd}
-              handleRemoveItem={handleRemoveItem}
-            />
-          );
-        })}
+        {/* Container for items grid */}
+        <div className='flex-1 mt-1 flex flex-col items-center'>
+          {/* Render rows of items */}
+          {groupedItems.map((row, rowIndex) => (
+            <div key={`row-${rowIndex}`} className='flex mb-1 justify-center'>
+              {row.map((item) => {
+                const isInHotbar = hotbarItems.some((hotbarItem) => hotbarItem && hotbarItem.id === item.id);
+                
+                return (
+                  <div key={item.id} className='mx-0.5'>
+                    <InventoryItem
+                      item={item}
+                      isSelected={selectedItem?.id === item.id}
+                      isInHotbar={isInHotbar}
+                      isAddingToHotbar={isAddingToHotbar}
+                      selectedHotbarSlot={selectedHotbarSlot}
+                      handleItemSelect={handleItemSelect}
+                      handleAddToHotbar={handleAddToHotbar}
+                      handleDragStart={handleDragStart}
+                      handleDragEnd={handleDragEnd}
+                      handleRemoveItem={handleRemoveItem}
+                    />
+                  </div>
+                );
+              })}
+              
+              {/* Fill empty slots in the last row to maintain grid alignment */}
+              {rowIndex === groupedItems.length - 1 && row.length < 12 && 
+                Array(12 - row.length).fill(null).map((_, idx) => (
+                  <div 
+                    key={`empty-${idx}`} 
+                    className='w-[56px] h-[56px] mx-0.5 bg-[#222222] border-2 border-[#151515] rounded-md'
+                  />
+                ))
+              }
+            </div>
+          ))}
+          
+          {/* Add extra empty rows to ensure minimum height when there are few items */}
+          {groupedItems.length < 5 &&
+            Array(5 - groupedItems.length).fill(null).map((_, rowIdx) => (
+              <div key={`empty-row-${rowIdx}`} className='flex mb-1 justify-center'>
+                {Array(12).fill(null).map((_, idx) => (
+                  <div 
+                    key={`empty-slot-${rowIdx}-${idx}`} 
+                    className='w-[56px] h-[56px] mx-0.5 bg-[#222222] border-2 border-[#151515] rounded-md'
+                  />
+                ))}
+              </div>
+            ))
+          }
+        </div>
       </div>
 
       {selectedItem && (
-        <div className='flex justify-center p-2 bg-[#0F0F0F]/90'>
-          <Button
-            className='w-full bg-[#4B6BFB] text-white/90 rounded-md px-6 py-2 text-sm font-medium transition-all duration-200 hover:bg-[#5472FB] disabled:opacity-50 disabled:cursor-not-allowed'
+        <div className='flex justify-center p-3 bg-[#222222]'>
+          <button
+            className='w-full bg-[#555555] text-white/90 rounded-none px-6 py-2 text-sm font-medium transition-all duration-200 hover:bg-[#666666] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2'
             disabled={!selectedItem}
             onClick={() => {
               handleConfirmSelection();
               setCanvasInteractive(true);
             }}
           >
-            Add to Canvas
-          </Button>
+            <span className="text-lg">➕</span>
+            <span>Add to Canvas</span>
+          </button>
         </div>
       )}
     </>

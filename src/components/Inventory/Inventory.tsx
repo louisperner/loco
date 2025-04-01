@@ -125,7 +125,7 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
     <>
       {showFullInventory && (
         <div
-          className='fixed inset-0 z-40'
+          className='fixed inset-0 z-40 bg-black/70'
           onClick={(e) => {
             e.preventDefault();
             onClose();
@@ -137,8 +137,8 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
       {hotbarComponent}
 
       {showFullInventory && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center pointer-events-none'>
-          <div className='relative w-4/5 max-w-[900px] h-4/5 max-h-[700px] bg-black/95 rounded-xl shadow-2xl flex flex-col overflow-hidden text-white font-minecraft border border-white/10 pointer-events-auto'>
+        <div className='fixed inset-0 z-50 flex items-center justify-center pointer-events-none rounded-md'>
+          <div className='relative w-full max-w-[750px] h-auto max-h-[500px] bg-[#2c2c2ce] rounded-md shadow-2xl flex flex-col overflow-hidden text-white font-minecraft pointer-events-auto '>            
             <InventoryHeader
               searchTerm={searchTerm}
               handleSearchChange={handleSearchChange}
@@ -148,7 +148,6 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
               onClose={onClose}
               searchInputRef={searchInputRef}
             />
-
             <InventoryGrid
               items={items}
               loading={loading}
