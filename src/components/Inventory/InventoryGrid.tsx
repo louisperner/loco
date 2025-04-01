@@ -67,13 +67,13 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
   handleRemoveItem,
   reloadInventory,
   showHotbarButton,
-  onAddToHotbar
+  onAddToHotbar,
 }) => {
-  const setCanvasInteractive = useGameStore(state => state.setCanvasInteractive);
-  
+  const setCanvasInteractive = useGameStore((state) => state.setCanvasInteractive);
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center flex-col h-full text-white/60 text-center p-5">
+      <div className='flex justify-center items-center flex-col h-full text-white/60 text-center p-5'>
         <p>Loading items...</p>
       </div>
     );
@@ -81,7 +81,7 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
 
   if (error) {
     return (
-      <div className="flex justify-center items-center flex-col h-full text-red-400 text-center p-5">
+      <div className='flex justify-center items-center flex-col h-full text-red-400 text-center p-5'>
         <p>Error: {error}</p>
       </div>
     );
@@ -89,7 +89,7 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
 
   if (items.length === 0) {
     return (
-      <div className="flex justify-center items-center flex-col h-full text-white/60 text-center p-5">
+      <div className='flex justify-center items-center flex-col h-full text-white/60 text-center p-5'>
         <p>No items found. Drag and drop images or 3D models to add them to your inventory.</p>
         {/* <button 
           onClick={() => reloadInventory?.()}
@@ -103,19 +103,21 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
 
   return (
     <>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 p-5 overflow-y-auto flex-1 
-        [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full 
-        [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-black/30 relative">
-        <button 
+      <div
+        className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 p-4 overflow-y-auto flex-1 
+        [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full 
+        [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent relative'
+      >
+        <button
           onClick={() => reloadInventory?.()}
-          className="absolute top-2 right-2 bg-blue-500/70 text-white text-xs rounded-md px-2 py-1 hover:bg-blue-500/90"
-          title="Refresh inventory"
+          className='absolute top-4 right-4 bg-[#4B6BFB] text-white/90 text-xs rounded-md px-3 py-1.5 hover:bg-[#5472FB] transition-colors duration-200'
+          title='Refresh inventory'
         >
           Refresh
         </button>
         {items.map((item) => {
-          const isInHotbar = hotbarItems.some(hotbarItem => hotbarItem && hotbarItem.id === item.id);
-          
+          const isInHotbar = hotbarItems.some((hotbarItem) => hotbarItem && hotbarItem.id === item.id);
+
           return (
             <InventoryItem
               key={item.id}
@@ -133,11 +135,11 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
           );
         })}
       </div>
-      
+
       {selectedItem && (
-        <div className="flex justify-center p-4 bg-black/80 border-t border-white/20">
-          <Button 
-            className="bg-blue-500/70 text-white rounded-md px-6 py-2.5 text-base cursor-pointer transition-all duration-200 hover:bg-blue-500/90 hover:-translate-y-0.5 disabled:bg-white/50 disabled:cursor-not-allowed disabled:opacity-70"
+        <div className='flex justify-center p-2 bg-[#0F0F0F]/90'>
+          <Button
+            className='w-full bg-[#4B6BFB] text-white/90 rounded-md px-6 py-2 text-sm font-medium transition-all duration-200 hover:bg-[#5472FB] disabled:opacity-50 disabled:cursor-not-allowed'
             disabled={!selectedItem}
             onClick={() => {
               handleConfirmSelection();
@@ -152,4 +154,4 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({
   );
 };
 
-export default InventoryGrid; 
+export default InventoryGrid;

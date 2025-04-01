@@ -500,7 +500,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
         const isMobileClick = e.isSimulated === true;
 
         // Log para debug (pode remover após confirmar funcionamento)
-        console.log('Mouse event:', e.type, e.button, 'isMobileClick:', isMobileClick, e);
+        // console.log('Mouse event:', e.type, e.button, 'isMobileClick:', isMobileClick, e);
 
         if (!enabled || (!isLocked && !isMobileClick)) return;
 

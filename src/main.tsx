@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import Player from './components/Game/Game';
 import SplashScreen from './components/Game/SplashScreen';
 import { useImageStore } from './store/useImageStore';
-import PWAInstallPrompt from './components/PWAInstallPrompt';
+import PWAInstallPrompts from './components/PWAInstallPrompts';
 //
 import { Analytics } from '@vercel/analytics/react';
 
@@ -28,7 +28,7 @@ const App: React.FC = () => {
     <div className='fixed inset-0 w-screen h-screen overflow-hidden' draggable={false}>
       {isLoading && <SplashScreen />}
       <Player />
-      <PWAInstallPrompt />
+      {typeof window !== 'undefined' && !window.navigator.userAgent.toLowerCase().includes('electron') && <PWAInstallPrompts />}
       <Analytics />
     </div>
   );

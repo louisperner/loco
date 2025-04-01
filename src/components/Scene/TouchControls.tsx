@@ -276,7 +276,7 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
   if (!isMobile || !enabled) return null;
 
   return (
-    <div className='fixed inset-0 pointer-events-none z-50'>
+    <div className='fixed inset-0 pointer-events-none z-50 opacity-[0.3]'>
       {/* Movement Joystick com botões acima */}
       <div className='absolute left-8 bottom-4'>
         {/* Control buttons div separado e posicionado acima do joystick esquerdo */}

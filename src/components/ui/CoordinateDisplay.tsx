@@ -33,18 +33,11 @@ const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({ cameraRef }) => {
 
   return (
     <div className='fixed top-4 left-4 bg-black/60 text-white px-3 py-2 rounded shadow-lg z-50 border border-gray-700'>
-      <div className='flex flex-col space-y-1 font-mono text-sm'>
+      <div className='flex flex-col space-y-1 font-mono text-[10px]'>
         <div className='flex items-center'>
-          <span className='text-red-400 w-8'>X:</span>
-          <span>{coordinates.x}</span>
-        </div>
-        <div className='flex items-center'>
-          <span className='text-green-400 w-8'>Y:</span>
-          <span>{coordinates.y}</span>
-        </div>
-        <div className='flex items-center'>
-          <span className='text-blue-400 w-8'>Z:</span>
-          <span>{coordinates.z}</span>
+          <span>
+            {coordinates.x}, {coordinates.y}, {coordinates.z}
+          </span>
         </div>
       </div>
     </div>
