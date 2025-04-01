@@ -199,11 +199,11 @@ const InventoryItem: React.FC<InventoryItemProps> = ({
       )}
 
       {/* Action buttons - show on hover */}
-      <div className='absolute -top-7 left-0 right-0 flex justify-center gap-0.5 opacity-0 group-hover:opacity-100 hover:opacity-100'>
+      <div className='absolute top-0 right-0 flex justify-center gap-0.5 opacity-0 group-hover:opacity-100 hover:opacity-100'>
         {/* Add to hotbar button */}
         {!isInHotbar && (
           <button
-            className='w-6 h-6 bg-[#555555] text-white/90 border border-[#151515] text-xs flex justify-center items-center hover:bg-[#666666]'
+            className='w-6 h-6 bg-[#fff] text-white border border-[#151515] text-[12px] flex justify-center items-center rounded-md'
             onClick={(e) => {
               e.stopPropagation();
               handleAddToHotbar(item);
@@ -216,7 +216,7 @@ const InventoryItem: React.FC<InventoryItemProps> = ({
 
         {/* Remove button */}
         <button
-          className='w-6 h-6 bg-[#C75D5D] text-white/90 border border-[#151515] text-xs flex justify-center items-center hover:bg-[#D46464]'
+          className='w-6 h-6 bg-[#fff] text-white border border-[#151515] text-[10px] flex justify-center items-center rounded-md'
           onClick={(e) => {
             e.stopPropagation();
             handleRemoveItem(item.id, e);
