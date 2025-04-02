@@ -104,6 +104,35 @@ const ModelFallback: React.FC<ModelFallbackProps> = ({ fileName, scale, errorDet
   );
 };
 
+// Add PrimitiveModel component
+const PrimitiveModel: React.FC<{ type: 'cube' | 'sphere' | 'plane', scale: number }> = ({ type, scale }) => {
+  switch (type) {
+    case 'cube':
+      return (
+        <mesh scale={scale}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color="#4ade80" />
+        </mesh>
+      );
+    case 'sphere':
+      return (
+        <mesh scale={scale}>
+          <sphereGeometry args={[0.5, 32, 32]} />
+          <meshStandardMaterial color="#4ade80" />
+        </mesh>
+      );
+    case 'plane':
+      return (
+        <mesh scale={scale} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[1, 1]} />
+          <meshStandardMaterial color="#4ade80" side={THREE.DoubleSide} />
+        </mesh>
+      );
+    default:
+      return null;
+  }
+};
+
 const ModelInScene: React.FC<ModelInSceneProps> = ({ 
   modelData, 
   onRemove, 
@@ -166,23 +195,19 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
       } else {
         // For existing models, set the saved position and make it look at camera
         groupRef.current.position.set(...initialPosition);
-        groupRef.current.lookAt(camera.position);
-        
-        // Save the new rotation after lookAt
-        const currentRotation: [number, number, number] = [
-          groupRef.current.rotation.x,
-          groupRef.current.rotation.y,
-          groupRef.current.rotation.z
-        ];
-        
-        onUpdate({
-          ...modelData,
-          rotation: currentRotation
-        });
+        groupRef.current.rotation.set(...initialRotation);
       }
     }
   }, []); // Only run once on mount
-  
+
+  // Update position and rotation when they change
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.position.set(...initialPosition);
+      groupRef.current.rotation.set(...initialRotation);
+    }
+  }, [initialPosition, initialRotation]);
+
   // Compute and cache bounding box to avoid recalculating it every frame
   useEffect(() => {
     // Initialize bounding box
@@ -499,14 +524,21 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
           />
         </mesh>
         
-        {/* Use Suspense and ErrorBoundary for model loading */}
-        <ErrorBoundary 
-          fallback={<ModelFallback fileName={fileName} scale={scale} />}
-        >
-          <Suspense fallback={<LoadingIndicator message="Loading model..." />}>
-            <Model url={url} scale={scale} />
-          </Suspense>
-        </ErrorBoundary>
+        {/* Render primitive or loaded model */}
+        {modelData.isPrimitive ? (
+          <PrimitiveModel 
+            type={modelData.primitiveType as 'cube' | 'sphere' | 'plane'} 
+            scale={scale} 
+          />
+        ) : (
+          <ErrorBoundary 
+            fallback={<ModelFallback fileName={fileName} scale={scale} />}
+          >
+            <Suspense fallback={<LoadingIndicator message="Loading model..." />}>
+              <Model url={url} scale={scale} />
+            </Suspense>
+          </ErrorBoundary>
+        )}
 
         {/* Only render control panel if visible - lazy loading */}
         {controlPanelVisible && ControlPanel && <ControlPanel />}

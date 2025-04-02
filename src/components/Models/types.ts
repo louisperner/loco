@@ -14,6 +14,8 @@ export interface ModelDataType {
   rotation?: [number, number, number];
   scale?: number;
   isInScene?: boolean;
+  isPrimitive?: boolean;
+  primitiveType?: 'cube' | 'sphere' | 'plane';
   [key: string]: unknown; // For any additional properties
 }
 

@@ -4,7 +4,25 @@ import { cn } from '@/lib/utils';
 import TopNavBar from '../ui/TopNavBar';
 import MobileHotbarMenu from './MobileHotbarMenu';
 import { useImageStore } from '@/store/useImageStore';
+import { useVideoStore } from '@/store/videoStore';
+import { useModelStore } from '@/store/useModelStore';
 import * as THREE from 'three';
+import { generateVideoThumbnail } from '@/components/Models/utils';
+import { saveModelThumbnail } from '@/utils/modelThumbnailGenerator';
+
+// Define Electron API types
+interface ElectronAPI {
+  saveModelFile: (file: File, fileName: string) => Promise<string>;
+}
+
+declare global {
+  interface Window {
+    electron?: ElectronAPI;
+    mainCamera?: THREE.Camera;
+    _modelFileCache?: { [key: string]: File };
+    _blobUrlCache?: { [key: string]: boolean };
+  }
+}
 
 // Define the item interface based on what's used in the component
 interface HotbarItem {
@@ -37,7 +55,12 @@ interface HotbarProps {
 
 const HotbarTopNav: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const modelInputRef = useRef<HTMLInputElement>(null);
   const addImage = useImageStore(state => state.addImage);
+  const addVideo = useVideoStore(state => state.addVideo);
+  const addModel = useModelStore(state => state.addModel);
+  const updateModel = useModelStore(state => state.updateModel);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -69,6 +92,7 @@ const HotbarTopNav: React.FC = () => {
 
         // Add image to the store
         addImage({
+          id: `image-${Date.now()}`,
           src: objectUrl,
           fileName: file.name,
           width: img.width,
@@ -83,6 +107,7 @@ const HotbarTopNav: React.FC = () => {
       img.onerror = () => {
         // Add image without dimensions if loading fails
         addImage({
+          id: `image-${Date.now()}`,
           src: objectUrl,
           fileName: file.name,
           position: [0, 1, 0],
@@ -96,11 +121,192 @@ const HotbarTopNav: React.FC = () => {
     }
   };
 
-  const handleButtonClick = (id: string) => {
-    if (id === 'img') {
-      fileInputRef.current?.click();
+  const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const objectUrl = URL.createObjectURL(file);
+
+      try {
+        // Generate thumbnail for the video
+        const thumbnailUrl = await generateVideoThumbnail(objectUrl);
+
+        // Get camera position if available
+        let position: [number, number, number] = [0, 1, 0];
+        if (window.mainCamera) {
+          const camera = window.mainCamera;
+          const direction = new THREE.Vector3(0, 0, -1);
+          direction.applyQuaternion(camera.quaternion);
+
+          const pos = new THREE.Vector3();
+          pos.copy(camera.position);
+          direction.multiplyScalar(3); // Place 3 units in front of camera
+          pos.add(direction);
+          position = [pos.x, pos.y, pos.z];
+        }
+
+        // Add video to the store
+        addVideo({
+          src: objectUrl,
+          fileName: file.name,
+          thumbnailUrl,
+          position,
+          rotation: [0, 0, 0],
+          scale: 3,
+          isPlaying: true,
+          volume: 0.5,
+          loop: true,
+          isInScene: true
+        });
+      } catch (error) {
+        console.error('Error processing video:', error);
+        // Add video without thumbnail if generation fails
+        addVideo({
+          src: objectUrl,
+          fileName: file.name,
+          position: [0, 1, 0],
+          rotation: [0, 0, 0],
+          scale: 3,
+          isPlaying: true,
+          volume: 0.5,
+          loop: true,
+          isInScene: true
+        });
+      }
     }
-    // Handle other button clicks here
+  };
+
+  const handleModelSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const objectUrl = URL.createObjectURL(file);
+
+      try {
+        // Get camera position if available
+        let position: [number, number, number] = [0, 1, 0];
+        if (window.mainCamera) {
+          const camera = window.mainCamera;
+          const direction = new THREE.Vector3(0, 0, -1);
+          direction.applyQuaternion(camera.quaternion);
+
+          const pos = new THREE.Vector3();
+          pos.copy(camera.position);
+          direction.multiplyScalar(3); // Place 3 units in front of camera
+          pos.add(direction);
+          position = [pos.x, pos.y, pos.z];
+        }
+
+        // Store the file in the model cache
+        window._modelFileCache = window._modelFileCache || {};
+        window._modelFileCache[objectUrl] = file;
+
+        // Store in the blob URL cache
+        window._blobUrlCache = window._blobUrlCache || {};
+        window._blobUrlCache[objectUrl] = true;
+
+        // Add model to the store
+        const modelId = addModel({
+          url: objectUrl,
+          fileName: file.name,
+          position,
+          rotation: [0, 0, 0],
+          scale: 1,
+          isInScene: true
+        });
+
+        // Save the file to disk if in Electron environment
+        if (window.electron?.saveModelFile) {
+          const savedPath = await window.electron.saveModelFile(file, file.name);
+          const thumbnailUrl = await saveModelThumbnail(savedPath, modelId);
+
+          // Update model with the new file path and thumbnail
+          updateModel(modelId, {
+            url: savedPath,
+            thumbnailUrl
+          });
+
+          // Clean up the blob URL after saving
+          URL.revokeObjectURL(objectUrl);
+          if (window._modelFileCache) delete window._modelFileCache[objectUrl];
+          if (window._blobUrlCache) delete window._blobUrlCache[objectUrl];
+        }
+      } catch (error) {
+        console.error('Error handling model upload:', error);
+        alert(`Error loading 3D model: ${(error as Error).message}`);
+      }
+    }
+  };
+
+  const handlePrimitiveSelect = (type: 'cube' | 'sphere' | 'plane') => {
+    // Get camera position if available
+    let position: [number, number, number] = [0, 1, 0];
+    if (window.mainCamera) {
+      const camera = window.mainCamera;
+      const direction = new THREE.Vector3(0, 0, -1);
+      direction.applyQuaternion(camera.quaternion);
+
+      const pos = new THREE.Vector3();
+      pos.copy(camera.position);
+      direction.multiplyScalar(3); // Place 3 units in front of camera
+      pos.add(direction);
+      position = [pos.x, pos.y, pos.z];
+    }
+
+    // Create a unique ID for the primitive
+    const id = `${type}-${Date.now()}`;
+
+    // Create a simple SVG thumbnail without Unicode characters
+    const svgString = `
+      <svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100" height="100" fill="#1A1A1A"/>
+        ${type === 'cube' ? 
+          '<rect x="20" y="20" width="60" height="60" fill="#4ade80" stroke="#2dd4bf" stroke-width="2"/>' :
+          type === 'sphere' ?
+          '<circle cx="50" cy="50" r="30" fill="#4ade80" stroke="#2dd4bf" stroke-width="2"/>' :
+          '<rect x="20" y="40" width="60" height="20" fill="#4ade80" stroke="#2dd4bf" stroke-width="2"/>'
+        }
+      </svg>
+    `;
+
+    // Add primitive to the model store
+    addModel({
+      id,
+      url: `primitive://${type}`,
+      fileName: `${type}.${type === 'plane' ? 'glb' : 'gltf'}`,
+      position,
+      rotation: [0, 0, 0],
+      scale: 1,
+      isInScene: true,
+      isPrimitive: true,
+      primitiveType: type,
+      thumbnailUrl: `data:image/svg+xml;base64,${btoa(svgString)}`
+    });
+  };
+
+  const handleButtonClick = (type: string) => {
+    switch (type) {
+      case 'img':
+        fileInputRef.current?.click();
+        break;
+      case 'video':
+        videoInputRef.current?.click();
+        break;
+      case 'model':
+        modelInputRef.current?.click();
+        break;
+      case 'cube':
+        handlePrimitiveSelect('cube');
+        break;
+      case 'sphere':
+        handlePrimitiveSelect('sphere');
+        break;
+      case 'plane':
+        handlePrimitiveSelect('plane');
+        break;
+      default:
+        break;
+    }
   };
 
   const navItems = [
@@ -194,6 +400,22 @@ const HotbarTopNav: React.FC = () => {
         accept="image/*"
         className="hidden"
         onChange={handleFileSelect}
+        multiple={false}
+      />
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={handleVideoSelect}
+        multiple={false}
+      />
+      <input
+        ref={modelInputRef}
+        type="file"
+        accept=".glb,.gltf,.fbx,.obj"
+        className="hidden"
+        onChange={handleModelSelect}
         multiple={false}
       />
       {navItems.map((item) => (
