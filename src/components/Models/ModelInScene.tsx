@@ -2,15 +2,25 @@ import React, { useRef, useState, useEffect, Suspense, useMemo, useCallback } fr
 import { Html, useGLTF, TransformControls, Box } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { Lock, Unlock, Move, RotateCw, Plus, Minus, MapPin, Trash2 } from 'lucide-react';
+import { Lock, Unlock, Move, RotateCw, Plus, Minus, MapPin, Trash2, Palette, Image as ImageIcon, Video } from 'lucide-react';
 import { 
   ModelProps, 
   ModelFallbackProps, 
-  ModelInSceneProps 
+  ModelInSceneProps,
+  ModelDataType,
+  PrimitiveType,
+  TextureType,
+  PrimitiveModelProps,
+  PrimitiveModelData,
+  StoreImageData,
+  StoreVideoData
 } from './types';
 import ErrorBoundary from './ErrorBoundary';
 import { processFileUrl, controlButtonStyle } from './utils';
 import LoadingIndicator from '../Scene/LoadingIndicator';
+import { useImageStore } from '@/store/useImageStore';
+import { useVideoStore } from '@/store/videoStore';
+import { useStore } from '@/store/useStore';
 
 // Separate model component to use with Suspense and ErrorBoundary
 const Model: React.FC<ModelProps> = ({ url, scale }) => {
@@ -104,33 +114,71 @@ const ModelFallback: React.FC<ModelFallbackProps> = ({ fileName, scale, errorDet
   );
 };
 
-// Add PrimitiveModel component
-const PrimitiveModel: React.FC<{ type: 'cube' | 'sphere' | 'plane', scale: number }> = ({ type, scale }) => {
+// Add PrimitiveModel component with color and texture support
+const PrimitiveModel: React.FC<PrimitiveModelProps> = ({ type, scale, color = '#4ade80', texture }) => {
+  const material = useMemo(() => {
+    if (texture) {
+      return new THREE.MeshStandardMaterial({ 
+        map: texture,
+        side: type === 'plane' ? THREE.DoubleSide : THREE.FrontSide
+      });
+    }
+    return new THREE.MeshStandardMaterial({ 
+      color,
+      side: type === 'plane' ? THREE.DoubleSide : THREE.FrontSide
+    });
+  }, [color, texture, type]);
+
   switch (type) {
     case 'cube':
       return (
         <mesh scale={scale}>
           <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial color="#4ade80" />
+          <primitive object={material} />
         </mesh>
       );
     case 'sphere':
       return (
         <mesh scale={scale}>
           <sphereGeometry args={[0.5, 32, 32]} />
-          <meshStandardMaterial color="#4ade80" />
+          <primitive object={material} />
         </mesh>
       );
     case 'plane':
       return (
         <mesh scale={scale} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[1, 1]} />
-          <meshStandardMaterial color="#4ade80" side={THREE.DoubleSide} />
+          <primitive object={material} />
         </mesh>
       );
     default:
       return null;
   }
+};
+
+const isPrimitiveModel = (model: ModelDataType): model is PrimitiveModelData => {
+  return model.isPrimitive === true;
+};
+
+const texturePanelStyle = {
+  position: 'absolute' as const,
+  top: '40px',
+  left: '0',
+  backgroundColor: 'rgba(0,0,0,0.8)',
+  padding: '8px',
+  borderRadius: '4px',
+  display: 'flex',
+  flexDirection: 'column' as const,
+  gap: '4px',
+  maxHeight: '200px',
+  overflowY: 'auto' as const
+};
+
+const textureGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, 1fr)',
+  gap: '4px',
+  maxWidth: '300px'
 };
 
 const ModelInScene: React.FC<ModelInSceneProps> = ({ 
@@ -140,19 +188,25 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
   selected = false,
   onSelect,
 }) => {
+  const isPrimitive = isPrimitiveModel(modelData);
+  const primitiveData = isPrimitive ? modelData : null;
+
   const { 
     id, 
     url,
     fileName,
     position: initialPosition = [0, 0, 0], 
     rotation: initialRotation = [0, 0, 0], 
-    scale: initialScale = 1 
+    scale: initialScale = 1,
   } = modelData;
 
   const [hovered, setHovered] = useState<boolean>(false);
   const [showControls, setShowControls] = useState<boolean>(false);
   const [transformMode, setTransformMode] = useState<'translate' | 'rotate'>('translate');
   const [scale, setScale] = useState<number>(initialScale);
+  const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
+  const [showTexturePicker, setShowTexturePicker] = useState<boolean>(false);
+  const [texture, setTexture] = useState<THREE.Texture | THREE.VideoTexture | undefined>(undefined);
   const groupRef = useRef<THREE.Group>(null);
   const pointerTimerRef = useRef<number | null>(null);
   const boundingBoxRef = useRef<THREE.Box3 | null>(null);
@@ -161,6 +215,32 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
   
   // Get camera for positioning
   const { camera } = useThree();
+
+  // Load texture if textureUrl exists
+  useEffect(() => {
+    if (isPrimitive && primitiveData?.textureUrl) {
+      if (primitiveData.textureType === 'image') {
+        const img = new Image();
+        img.src = primitiveData.textureUrl;
+        img.onload = () => {
+          const newTexture = new THREE.Texture(img);
+          newTexture.needsUpdate = true;
+          setTexture(newTexture);
+        };
+      } else if (primitiveData.textureType === 'video') {
+        const video = document.createElement('video');
+        video.src = primitiveData.textureUrl;
+        video.loop = true;
+        video.muted = true;
+        video.play();
+        const videoTexture = new THREE.VideoTexture(video);
+        videoTexture.needsUpdate = true;
+        setTexture(videoTexture);
+      }
+    } else {
+      setTexture(undefined);
+    }
+  }, [isPrimitive, primitiveData?.textureUrl, primitiveData?.textureType]);
 
   // Set initial position based on camera direction
   useEffect(() => {
@@ -191,7 +271,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
           ...modelData,
           position: [position.x, position.y, position.z],
           rotation: currentRotation
-        });
+        } as ModelDataType);
       } else {
         // For existing models, set the saved position and make it look at camera
         groupRef.current.position.set(...initialPosition);
@@ -243,6 +323,23 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
       }
     }
   }, [scale]);
+
+  // Update collider size based on object size
+  useEffect(() => {
+    if (groupRef.current) {
+      const box = new THREE.Box3().setFromObject(groupRef.current);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      
+      // Update the collider mesh size
+      const collider = groupRef.current.children.find(child => child.name === `model-collider-${id}`);
+      if (collider && collider instanceof THREE.Mesh) {
+        const geometry = collider.geometry as THREE.BoxGeometry;
+        geometry.dispose(); // Clean up old geometry
+        collider.geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+      }
+    }
+  }, [scale, id]); // Update when scale changes
 
   // Much more aggressive debouncing for pointer events
   const handlePointerOver = useCallback((e: { nativeEvent: PointerEvent }): void => {
@@ -303,25 +400,13 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
   // Memoize the position update function to reduce rerenders
   const handleObjectChange = useCallback(() => {
     if (groupRef.current) {
-      // Update model data
+      const position = groupRef.current.position;
+      const rotation = groupRef.current.rotation;
       onUpdate({
         ...modelData,
-        position: [
-          groupRef.current.position.x,
-          groupRef.current.position.y,
-          groupRef.current.position.z
-        ] as [number, number, number],
-        rotation: [
-          groupRef.current.rotation.x,
-          groupRef.current.rotation.y,
-          groupRef.current.rotation.z
-        ] as [number, number, number]
-      });
-      
-      // Update bounding box
-      if (boundingBoxRef.current) {
-        boundingBoxRef.current = new THREE.Box3().setFromObject(groupRef.current);
-      }
+        position: [position.x, position.y, position.z],
+        rotation: [rotation.x, rotation.y, rotation.z]
+      } as ModelDataType);
     }
   }, [modelData, onUpdate]);
 
@@ -356,135 +441,30 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
   // Only render control panel when needed
   const controlPanelVisible = hovered || selected;
   
-  // Load and initialize control panel only when it's going to be visible
-  const ControlPanel = useMemo(() => {
-    if (!controlPanelVisible) return null;
+  const handleColorChange = (newColor: string) => {
+    if (isPrimitive && primitiveData) {
+      onUpdate({
+        ...modelData,
+        color: newColor
+      } as PrimitiveModelData);
+      setShowColorPicker(false);
+    }
+  };
+
+  const handleTextureSelect = (type: TextureType, item: StoreImageData | StoreVideoData) => {
+    if (!item.url) return;
     
-    const MemoizedControlPanel = () => (
-      <Html
-        transform
-        distanceFactor={8}
-        position={[0, 2, 0]}
-        style={{ 
-          backgroundColor: 'rgba(0,0,0,0.7)', 
-          padding: '8px',
-          borderRadius: '4px',
-          color: 'white',
-          whiteSpace: 'nowrap',
-          display: 'flex',
-          gap: '8px',
-          alignItems: 'center',
-          pointerEvents: 'auto',
-          userSelect: 'none',
-        }}
-      >
-        <button
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            setShowControls(!showControls);
-          }}
-          style={controlButtonStyle}
-        >
-          {showControls ? <Lock size={16} /> : <Unlock size={16} />}
-        </button>
-
-        <button
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            if (showControls) {
-              setTransformMode(transformMode === 'translate' ? 'rotate' : 'translate');
-            }
-          }}
-          style={{
-            ...controlButtonStyle,
-            opacity: showControls ? 1 : 0.5,
-            cursor: showControls ? 'pointer' : 'not-allowed'
-          }}
-        >
-          {transformMode === 'translate' ? <Move size={16} /> : <RotateCw size={16} />}
-        </button>
-
-        <button
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            const newScale = Math.min(scale + 0.1, 5);
-            setScale(newScale);
-            onUpdate({
-              ...modelData,
-              scale: newScale
-            });
-          }}
-          style={controlButtonStyle}
-        >
-          <Plus size={16} />
-        </button>
-
-        <button
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            const newScale = Math.max(scale - 0.1, 0.1);
-            setScale(newScale);
-            onUpdate({
-              ...modelData,
-              scale: newScale
-            });
-          }}
-          style={controlButtonStyle}
-        >
-          <Minus size={16} />
-        </button>
-
-        <button
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            
-            // Position in front of camera
-            const direction = new THREE.Vector3();
-            camera.getWorldDirection(direction);
-            
-            const newPosition = camera.position.clone().add(
-              direction.multiplyScalar(3)
-            );
-            
-            if (groupRef.current) {
-              groupRef.current.position.copy(newPosition);
-              
-              // Look at camera
-              const lookAtPosition = camera.position.clone();
-              groupRef.current.lookAt(lookAtPosition);
-              
-              // Update model data
-              onUpdate({
-                ...modelData,
-                position: [newPosition.x, newPosition.y, newPosition.z] as [number, number, number],
-                rotation: [
-                  groupRef.current.rotation.x,
-                  groupRef.current.rotation.y,
-                  groupRef.current.rotation.z
-                ] as [number, number, number]
-              });
-            }
-          }}
-          style={controlButtonStyle}
-        >
-          <MapPin size={16} />
-        </button>
-
-        <button
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            onRemove(id);
-          }}
-          style={{...controlButtonStyle, color: '#ff4d4d'}}
-        >
-          <Trash2 size={16} />
-        </button>
-      </Html>
-    );
+    const updatedData = {
+      ...modelData,
+      textureUrl: item.url,
+      textureType: type
+    } as PrimitiveModelData;
     
-    MemoizedControlPanel.displayName = 'ModelControlPanel';
-    return MemoizedControlPanel;
-  }, [controlPanelVisible, showControls, transformMode, scale, camera, id, modelData, onRemove, onUpdate]);
+    onUpdate(updatedData);
+  };
+
+  const images = useStore((state: { images: StoreImageData[] }) => state.images);
+  const videos = useStore((state: { videos: StoreVideoData[] }) => state.videos);
 
   return (
     <>
@@ -515,33 +495,225 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
           name={`model-collider-${id}`} 
           raycast={optimizedRaycast}
         >
-          <boxGeometry args={[3, 3, 3]} />
+          <boxGeometry args={[1, 1, 1]} />
           <meshBasicMaterial 
             visible={false} 
             transparent={true} 
-            opacity={0} 
+            opacity={0}
             alphaTest={0.5}
           />
         </mesh>
         
         {/* Render primitive or loaded model */}
-        {modelData.isPrimitive ? (
+        {isPrimitive && primitiveData ? (
           <PrimitiveModel 
-            type={modelData.primitiveType as 'cube' | 'sphere' | 'plane'} 
-            scale={scale} 
+            type={primitiveData.primitiveType} 
+            scale={scale}
+            color={primitiveData.color || '#4ade80'}
+            texture={texture}
           />
         ) : (
-          <ErrorBoundary 
-            fallback={<ModelFallback fileName={fileName} scale={scale} />}
-          >
-            <Suspense fallback={<LoadingIndicator message="Loading model..." />}>
-              <Model url={url} scale={scale} />
-            </Suspense>
-          </ErrorBoundary>
+          url.startsWith('primitive://') ? (
+            <PrimitiveModel 
+              type={url.replace('primitive://', '') as PrimitiveType}
+              scale={scale}
+              color="#4ade80"
+            />
+          ) : (
+            <ErrorBoundary 
+              fallback={<ModelFallback fileName={fileName} scale={scale} />}
+            >
+              <Suspense fallback={<LoadingIndicator message="Loading model..." />}>
+                <Model url={url} scale={scale} />
+              </Suspense>
+            </ErrorBoundary>
+          )
         )}
 
-        {/* Only render control panel if visible - lazy loading */}
-        {controlPanelVisible && ControlPanel && <ControlPanel />}
+        {/* Render control panel when visible */}
+        {controlPanelVisible && (
+          <Html
+            transform={false}
+            position={[0, 0, 0]}
+            style={{
+              position: 'absolute',
+              top: '-60px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: '#1A1A1A',
+              padding: '8px',
+              borderRadius: '8px',
+              color: 'white',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              gap: '8px',
+              alignItems: 'center',
+              pointerEvents: 'all',
+              userSelect: 'none',
+              zIndex: 1000,
+              border: '1px solid rgba(255,255,255,0.1)',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+              minWidth: '200px',
+              justifyContent: 'center'
+            }}
+            prepend
+          >
+            {/* Control buttons */}
+            <button
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                setShowControls(!showControls);
+              }}
+              style={{
+                ...controlButtonStyle,
+                backgroundColor: '#2C2C2C',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '6px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                cursor: 'pointer'
+              }}
+            >
+              {showControls ? <Lock size={16} /> : <Unlock size={16} />}
+            </button>
+
+            <button
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (showControls) {
+                  setTransformMode(transformMode === 'translate' ? 'rotate' : 'translate');
+                }
+              }}
+              style={{
+                ...controlButtonStyle,
+                opacity: showControls ? 1 : 0.5,
+                cursor: showControls ? 'pointer' : 'not-allowed'
+              }}
+            >
+              {transformMode === 'translate' ? <Move size={16} /> : <RotateCw size={16} />}
+            </button>
+
+            <button
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                const newScale = Math.min(scale + 0.1, 5);
+                setScale(newScale);
+                onUpdate({
+                  ...modelData,
+                  scale: newScale
+                } as ModelDataType);
+              }}
+              style={controlButtonStyle}
+            >
+              <Plus size={16} />
+            </button>
+
+            <button
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                const newScale = Math.max(scale - 0.1, 0.1);
+                setScale(newScale);
+                onUpdate({
+                  ...modelData,
+                  scale: newScale
+                } as ModelDataType);
+              }}
+              style={controlButtonStyle}
+            >
+              <Minus size={16} />
+            </button>
+
+            {isPrimitive && primitiveData && (
+              <>
+                <button
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    setShowColorPicker(!showColorPicker);
+                  }}
+                  style={{
+                    ...controlButtonStyle,
+                    backgroundColor: primitiveData.color
+                  }}
+                >
+                  <Palette size={16} />
+                </button>
+
+                <button
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    setShowTexturePicker(!showTexturePicker);
+                  }}
+                  style={controlButtonStyle}
+                >
+                  {primitiveData.textureType === 'video' ? <Video size={16} /> : <ImageIcon size={16} />}
+                </button>
+
+                {showColorPicker && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '40px',
+                      left: '0',
+                      backgroundColor: 'rgba(0,0,0,0.8)',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}
+                  >
+                    <input
+                      type="color"
+                      value={primitiveData.color}
+                      onChange={(e) => handleColorChange(e.target.value)}
+                      style={{ width: '100%', height: '30px' }}
+                    />
+                  </div>
+                )}
+
+                {showTexturePicker && (
+                  <div style={texturePanelStyle}>
+                    <div style={textureGridStyle}>
+                      {images.map((img: StoreImageData) => (
+                        <button
+                          key={img.id}
+                          onClick={() => handleTextureSelect('image', img)}
+                          style={{
+                            ...controlButtonStyle,
+                            backgroundImage: `url(${img.thumbnailUrl || img.url})`,
+                          }}
+                        />
+                      ))}
+                      {videos.map((video: StoreVideoData) => (
+                        <button
+                          key={video.id}
+                          onClick={() => handleTextureSelect('video', video)}
+                          style={{
+                            ...controlButtonStyle,
+                            backgroundImage: `url(${video.thumbnailUrl})`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <button
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                onRemove(id);
+              }}
+              style={{...controlButtonStyle, color: '#ff4d4d'}}
+            >
+              <Trash2 size={16} />
+            </button>
+          </Html>
+        )}
       </group>
     </>
   );

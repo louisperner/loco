@@ -6,18 +6,31 @@ import { ReactElement } from 'react';
 // Use TypeScript's typeof window.electron to reference it when needed
 
 // Model types
-export interface ModelDataType {
+export type PrimitiveType = 'cube' | 'sphere' | 'plane';
+export type TextureType = 'image' | 'video';
+
+export interface BaseModelData {
   id: string;
   url: string;
-  fileName?: string;
+  fileName: string;
   position?: [number, number, number];
   rotation?: [number, number, number];
   scale?: number;
-  isInScene?: boolean;
-  isPrimitive?: boolean;
-  primitiveType?: 'cube' | 'sphere' | 'plane';
-  [key: string]: unknown; // For any additional properties
 }
+
+export interface PrimitiveModelData extends BaseModelData {
+  isPrimitive: true;
+  primitiveType: PrimitiveType;
+  color: string;
+  textureUrl?: string;
+  textureType?: TextureType;
+}
+
+export interface LoadedModelData extends BaseModelData {
+  isPrimitive?: false;
+}
+
+export type ModelDataType = PrimitiveModelData | LoadedModelData;
 
 export interface ModelProps {
   url: string;
@@ -25,7 +38,7 @@ export interface ModelProps {
 }
 
 export interface ModelFallbackProps {
-  fileName?: string;
+  fileName: string;
   scale: number;
   errorDetails?: string;
 }
@@ -33,7 +46,7 @@ export interface ModelFallbackProps {
 export interface ModelInSceneProps {
   modelData: ModelDataType;
   onRemove: (id: string) => void;
-  onUpdate: (data: ModelDataType) => void;
+  onUpdate: (modelData: ModelDataType) => void;
   selected?: boolean;
   onSelect?: (id: string) => void;
 }
@@ -132,4 +145,25 @@ export interface InternalVideoProps {
   loop?: boolean;
   onLoad?: (video: HTMLVideoElement) => void;
   onError?: (error: ErrorEvent) => void;
+}
+
+export interface PrimitiveModelProps {
+  type: PrimitiveType;
+  scale: number;
+  color?: string;
+  texture?: THREE.Texture | THREE.VideoTexture;
+}
+
+export interface StoreImageData {
+  id: string;
+  fileName: string;
+  thumbnailUrl?: string;
+  url?: string;
+}
+
+export interface StoreVideoData {
+  id: string;
+  fileName: string;
+  thumbnailUrl: string;
+  url?: string;
 }
