@@ -18,12 +18,14 @@ export interface BaseModelData {
   scale?: number;
 }
 
-export interface PrimitiveModelData extends BaseModelData {
+export interface PrimitiveModelData extends Omit<BaseModelData, 'url' | 'fileName'> {
   isPrimitive: true;
   primitiveType: PrimitiveType;
-  color: string;
+  color?: string;
   textureUrl?: string;
   textureType?: TextureType;
+  url?: string;
+  fileName?: string;
 }
 
 export interface LoadedModelData extends BaseModelData {

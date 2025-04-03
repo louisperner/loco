@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, Suspense, useMemo, useCallback } fr
 import { Html, useGLTF, TransformControls, Box } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { Lock, Unlock, Move, RotateCw, Plus, Minus, MapPin, Trash2, Palette, Image as ImageIcon, Video } from 'lucide-react';
+import { Lock, Unlock, Move, RotateCw, Plus, Minus, Trash2, Palette, Image as ImageIcon, Video } from 'lucide-react';
 import { 
   ModelProps, 
   ModelFallbackProps, 
@@ -18,8 +18,6 @@ import {
 import ErrorBoundary from './ErrorBoundary';
 import { processFileUrl, controlButtonStyle } from './utils';
 import LoadingIndicator from '../Scene/LoadingIndicator';
-import { useImageStore } from '@/store/useImageStore';
-import { useVideoStore } from '@/store/videoStore';
 import { useStore } from '@/store/useStore';
 
 // Separate model component to use with Suspense and ErrorBoundary
@@ -160,25 +158,42 @@ const isPrimitiveModel = (model: ModelDataType): model is PrimitiveModelData => 
   return model.isPrimitive === true;
 };
 
-const texturePanelStyle = {
+const pickerPanelStyle = {
   position: 'absolute' as const,
-  top: '40px',
-  left: '0',
-  backgroundColor: 'rgba(0,0,0,0.8)',
-  padding: '8px',
-  borderRadius: '4px',
+  top: '45px',
+  left: '50%',
+  transform: 'translateX(-50%)',
+  backgroundColor: 'rgba(26, 26, 26, 0.95)',
+  padding: '12px',
+  borderRadius: '8px',
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: '4px',
-  maxHeight: '200px',
-  overflowY: 'auto' as const
+  gap: '8px',
+  maxHeight: '250px',
+  overflowY: 'auto' as const,
+  zIndex: 1001,
+  border: '1px solid rgba(255,255,255,0.1)',
+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
 };
 
 const textureGridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(3, 1fr)',
-  gap: '4px',
+  gap: '8px',
   maxWidth: '300px'
+};
+
+const textureButtonStyle = {
+  ...controlButtonStyle,
+  width: '60px',
+  height: '60px',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  border: '2px solid rgba(255,255,255,0.1)',
+  transition: 'border-color 0.2s ease',
+  ':hover': {
+    borderColor: 'rgba(255,255,255,0.3)'
+  }
 };
 
 const ModelInScene: React.FC<ModelInSceneProps> = ({ 
@@ -187,9 +202,39 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
   onUpdate,
   selected = false,
   onSelect,
+}: {
+  modelData: ModelDataType;
+  onRemove: (id: string) => void;
+  onUpdate: (data: ModelDataType) => void;
+  selected?: boolean;
+  onSelect?: (id: string) => void;
 }) => {
   const isPrimitive = isPrimitiveModel(modelData);
   const primitiveData = isPrimitive ? modelData : null;
+
+  // Debug log to check if images and videos are loaded in store
+  const images = useStore((state) => state.images);
+  const videos = useStore((state) => state.videos);
+
+  // Enhanced Debug Log
+  /* Debugging code removed to comply with ESLint no-console rule
+  if (isPrimitive && primitiveData) {
+    console.log(
+      "ModelInScene - Primitive Detected:",
+      `ID: ${primitiveData.id}`,
+      `Type: ${primitiveData.primitiveType}`,
+      `Color: ${primitiveData.color}`,
+      `TextureURL: ${primitiveData.textureUrl}`,
+      `TextureType: ${primitiveData.textureType}`,
+      `Images in store: ${images.length}`,
+      `Videos in store: ${videos.length}`
+    );
+  } else if (!isPrimitive) {
+     console.log("ModelInScene - Loaded Model Detected:", `ID: ${modelData.id}`, `URL: ${modelData.url}`);
+  } else {
+     console.log("ModelInScene - Error: isPrimitive=true but primitiveData is null?", modelData);
+  }
+  */
 
   const { 
     id, 
@@ -278,7 +323,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         groupRef.current.rotation.set(...initialRotation);
       }
     }
-  }, []); // Only run once on mount
+  }, [camera, initialPosition, initialRotation, modelData, onUpdate]); // Include all dependencies
 
   // Update position and rotation when they change
   useEffect(() => {
@@ -443,11 +488,52 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
   
   const handleColorChange = (newColor: string) => {
     if (isPrimitive && primitiveData) {
+      // Update current model color
       onUpdate({
         ...modelData,
         color: newColor
       } as PrimitiveModelData);
+
+      // Create a new primitive model with the same type and new color
+      const newPrimitiveModel: PrimitiveModelData = {
+        id: `primitive-${Date.now()}`,
+        isPrimitive: true,
+        primitiveType: primitiveData.primitiveType,
+        color: newColor,
+        position: [0, 0, 0],
+        rotation: [0, 0, 0],
+        scale: 1
+      };
+
+      // Add to inventory using the store
+      useStore.getState().addPrimitiveModel(newPrimitiveModel);
+
+      // Close the color picker
       setShowColorPicker(false);
+
+      // Show feedback toast
+      const toast = document.createElement('div');
+      toast.style.position = 'fixed';
+      toast.style.bottom = '20px';
+      toast.style.left = '50%';
+      toast.style.transform = 'translateX(-50%)';
+      toast.style.backgroundColor = 'rgba(26, 26, 26, 0.95)';
+      toast.style.color = 'white';
+      toast.style.padding = '12px 24px';
+      toast.style.borderRadius = '8px';
+      toast.style.zIndex = '9999';
+      toast.style.border = '1px solid rgba(255,255,255,0.1)';
+      toast.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+      toast.style.backdropFilter = 'blur(8px)';
+      (toast.style as CSSStyleDeclaration)['WebkitBackdropFilter' as any] = 'blur(8px)';
+      toast.textContent = `New ${primitiveData.primitiveType} added to inventory`;
+      
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => document.body.removeChild(toast), 300);
+      }, 2000);
     }
   };
 
@@ -462,9 +548,6 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     
     onUpdate(updatedData);
   };
-
-  const images = useStore((state: { images: StoreImageData[] }) => state.images);
-  const videos = useStore((state: { videos: StoreVideoData[] }) => state.videos);
 
   return (
     <>
@@ -513,18 +596,18 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
             texture={texture}
           />
         ) : (
-          url.startsWith('primitive://') ? (
+          url?.startsWith('primitive://') ? (
             <PrimitiveModel 
-              type={url.replace('primitive://', '') as PrimitiveType}
+              type={(url?.replace('primitive://', '') || 'cube') as PrimitiveType}
               scale={scale}
               color="#4ade80"
             />
           ) : (
             <ErrorBoundary 
-              fallback={<ModelFallback fileName={fileName} scale={scale} />}
+              fallback={<ModelFallback fileName={fileName || 'Unknown'} scale={scale} />}
             >
               <Suspense fallback={<LoadingIndicator message="Loading model..." />}>
-                <Model url={url} scale={scale} />
+                <Model url={url || '/placeholder-model.glb'} scale={scale} />
               </Suspense>
             </ErrorBoundary>
           )
@@ -540,8 +623,8 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
               top: '-60px',
               left: '50%',
               transform: 'translateX(-50%)',
-              backgroundColor: '#1A1A1A',
-              padding: '8px',
+              backgroundColor: 'rgba(26, 26, 26, 0.95)',
+              padding: '8px 12px',
               borderRadius: '8px',
               color: 'white',
               whiteSpace: 'nowrap',
@@ -552,9 +635,11 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
               userSelect: 'none',
               zIndex: 1000,
               border: '1px solid rgba(255,255,255,0.1)',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
               minWidth: '200px',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)'
             }}
             prepend
           >
@@ -632,6 +717,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                     setShowColorPicker(!showColorPicker);
+                    setShowTexturePicker(false);
                   }}
                   style={{
                     ...controlButtonStyle,
@@ -645,6 +731,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                     setShowTexturePicker(!showTexturePicker);
+                    setShowColorPicker(false);
                   }}
                   style={controlButtonStyle}
                 >
@@ -652,52 +739,97 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
                 </button>
 
                 {showColorPicker && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '40px',
-                      left: '0',
-                      backgroundColor: 'rgba(0,0,0,0.8)',
-                      padding: '8px',
-                      borderRadius: '4px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px'
-                    }}
+                  <div 
+                    style={pickerPanelStyle}
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
                   >
-                    <input
-                      type="color"
-                      value={primitiveData.color}
-                      onChange={(e) => handleColorChange(e.target.value)}
-                      style={{ width: '100%', height: '30px' }}
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <input
+                        type="color"
+                        value={primitiveData.color}
+                        onChange={(e) => handleColorChange(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ 
+                          width: '100%', 
+                          height: '40px',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowColorPicker(false);
+                        }}
+                        style={{
+                          ...controlButtonStyle,
+                          width: '100%',
+                          padding: '4px 8px',
+                          backgroundColor: '#2C2C2C'
+                        }}
+                      >
+                        Close
+                      </button>
+                    </div>
                   </div>
                 )}
 
                 {showTexturePicker && (
-                  <div style={texturePanelStyle}>
-                    <div style={textureGridStyle}>
+                  <div 
+                    style={pickerPanelStyle}
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                  >
+                    <div 
+                      style={textureGridStyle}
+                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    >
                       {images.map((img: StoreImageData) => (
                         <button
                           key={img.id}
-                          onClick={() => handleTextureSelect('image', img)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (img.url) {
+                              handleTextureSelect('image', img);
+                            }
+                          }}
                           style={{
-                            ...controlButtonStyle,
-                            backgroundImage: `url(${img.thumbnailUrl || img.url})`,
+                            ...textureButtonStyle,
+                            backgroundImage: `url(${img.thumbnailUrl || img.url || ''})`,
                           }}
                         />
                       ))}
                       {videos.map((video: StoreVideoData) => (
                         <button
                           key={video.id}
-                          onClick={() => handleTextureSelect('video', video)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (video.url) {
+                              handleTextureSelect('video', video);
+                            }
+                          }}
                           style={{
-                            ...controlButtonStyle,
-                            backgroundImage: `url(${video.thumbnailUrl})`,
+                            ...textureButtonStyle,
+                            backgroundImage: `url(${video.thumbnailUrl || ''})`,
                           }}
                         />
                       ))}
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowTexturePicker(false);
+                      }}
+                      style={{
+                        ...controlButtonStyle,
+                        width: '100%',
+                        padding: '4px 8px',
+                        backgroundColor: '#2C2C2C',
+                        marginTop: '8px'
+                      }}
+                    >
+                      Close
+                    </button>
                   </div>
                 )}
               </>

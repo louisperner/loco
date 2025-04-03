@@ -280,6 +280,7 @@ const HotbarTopNav: React.FC = () => {
       isInScene: true,
       isPrimitive: true,
       primitiveType: type,
+      color: '#4ade80',
       thumbnailUrl: `data:image/svg+xml;base64,${btoa(svgString)}`
     });
   };
