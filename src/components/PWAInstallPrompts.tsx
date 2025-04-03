@@ -38,7 +38,7 @@ const PWAInstallPrompts: React.FC = () => {
     deferredPrompt.prompt();
 
     // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice;
+    //const { outcome } = await deferredPrompt.userChoice;
 
     // We've used the prompt, and can't use it again, throw it away
     setDeferredPrompt(null);
@@ -46,7 +46,7 @@ const PWAInstallPrompts: React.FC = () => {
     // Hide the install button
     setShowInstallPrompt(false);
 
-    console.log(`User ${outcome === 'accepted' ? 'accepted' : 'dismissed'} the install prompt`);
+    // console.log(`User ${outcome === 'accepted' ? 'accepted' : 'dismissed'} the install prompt`);
   };
 
   if (!showInstallPrompt) return null;

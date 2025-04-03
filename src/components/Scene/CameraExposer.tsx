@@ -2,12 +2,7 @@ import React, { useEffect, RefObject } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
-// Extend Window interface to include our camera property
-declare global {
-  interface Window {
-    mainCamera?: THREE.Camera;
-  }
-}
+// No need to declare Window interface here as it's already defined in global.d.ts
 
 interface CameraExposerProps {
   cameraRef: RefObject<THREE.Camera>;

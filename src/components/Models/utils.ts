@@ -1,4 +1,16 @@
-import React from 'react';
+import type { CSSProperties } from 'react';
+import { ElectronAPI } from '../../types/electron-api';
+
+// Use type assertions when accessing window.electron
+// This avoids having to extend the Window interface here
+
+// Helper function to safely access electron API
+const getElectron = (): ElectronAPI | undefined => {
+  return (window as { electron?: ElectronAPI }).electron;
+};
+
+// Use type assertions instead of extending Window
+// This will prevent conflicts with declarations in other files
 
 /**
  * Processes a URL to handle various protocols (file://, app-file://, blob:)
@@ -13,13 +25,14 @@ export const processFileUrl = async (url: string): Promise<{
     // Handle different URL protocols
     if (url.startsWith('file://') || url.startsWith('app-file://')) {
       // In Electron environment
-      if (window.electron && typeof window.electron.loadFileAsBlob === 'function') {
+      const electron = getElectron();
+      if (electron && typeof electron.loadFileAsBlob === 'function') {
         try {
-          const result = await window.electron.loadFileAsBlob(url);
+          const result = await electron.loadFileAsBlob(url);
           if (result.success && result.blobUrl) {
             // Cache the blob URL
             window._blobUrlCache = window._blobUrlCache || {};
-            window._blobUrlCache[result.blobUrl] = result.blobUrl;
+            window._blobUrlCache[result.blobUrl] = true;
             
             return { processedUrl: result.blobUrl, error: null };
           } else {
@@ -43,7 +56,7 @@ export const processFileUrl = async (url: string): Promise<{
     } else if (url.startsWith('blob:')) {
       // Already a blob URL
       window._blobUrlCache = window._blobUrlCache || {};
-      window._blobUrlCache[url] = url;
+      window._blobUrlCache[url] = true;
       return { processedUrl: url, error: null };
     } else {
       // Normal http/https URL
@@ -66,8 +79,9 @@ export const processFileUrl = async (url: string): Promise<{
 export const processImageUrl = async (src: string): Promise<string> => {
   if (src && (src.startsWith('app-file://') || src.startsWith('file://'))) {
     try {
-      if (window.electron && window.electron.loadImageFromAppFile) {
-        const result = await window.electron.loadImageFromAppFile(src);
+      const electron = getElectron();
+      if (electron && electron.loadImageFromAppFile) {
+        const result = await electron.loadImageFromAppFile(src);
         if (result.success && result.url) {
           window._imageBlobCache = window._imageBlobCache || {};
           window._imageBlobCache[result.url] = result.url;
@@ -101,8 +115,9 @@ export const processImageUrl = async (src: string): Promise<string> => {
 export const processVideoUrl = async (src: string): Promise<string> => {
   if (src && (src.startsWith('app-file://') || src.startsWith('file://'))) {
     try {
-      if (window.electron && window.electron.loadVideoFromAppFile) {
-        const result = await window.electron.loadVideoFromAppFile(src);
+      const electron = getElectron();
+      if (electron && electron.loadVideoFromAppFile) {
+        const result = await electron.loadVideoFromAppFile(src);
         if (result.success && result.url) {
           window._videoBlobCache = window._videoBlobCache || {};
           window._videoBlobCache[result.url] = result.url;
@@ -111,10 +126,10 @@ export const processVideoUrl = async (src: string): Promise<string> => {
           console.error('Failed to load video from app-file URL:', result.error);
           return src; // Fallback to original source
         }
-      } else if (window.electron && window.electron.loadImageFromAppFile) {
+      } else if (electron && electron.loadImageFromAppFile) {
         // Fall back to the image loader if video loader is not available
         // This might work for some video formats in Electron
-        const result = await window.electron.loadImageFromAppFile(src);
+        const result = await electron.loadImageFromAppFile(src);
         if (result.success && result.url) {
           window._videoBlobCache = window._videoBlobCache || {};
           window._videoBlobCache[result.url] = result.url;
@@ -165,7 +180,7 @@ export const revokeBlobUrl = (blobUrl: string, originalUrl: string): void => {
 /**
  * Creates a CSS style object for control buttons
  */
-export const controlButtonStyle: React.CSSProperties = {
+export const controlButtonStyle: CSSProperties = {
   background: 'transparent',
   border: '1px solid white',
   borderRadius: '4px',
@@ -182,7 +197,7 @@ export const controlButtonStyle: React.CSSProperties = {
 /**
  * Creates a CSS style object for icon buttons
  */
-export const iconButtonStyle: React.CSSProperties = {
+export const iconButtonStyle: CSSProperties = {
   backgroundColor: '#444',
   border: 'none',
   color: 'white',
@@ -264,4 +279,46 @@ export const generateVideoThumbnail = async (videoUrl: string): Promise<string> 
     // Set the source last
     video.src = videoUrl;
   });
+};
+
+export const loadBlobFromUrl = async (url: string): Promise<string> => {
+  if (window._blobUrlCache && window._blobUrlCache[url]) {
+    return url; // Already cached with boolean flag, return original URL
+  }
+  
+  try {
+    if (url.startsWith('file://') || url.startsWith('app-file://')) {
+      // In Electron environment
+      const electron = getElectron();
+      if (electron && typeof electron.loadFileAsBlob === 'function') {
+        try {
+          const result = await electron.loadFileAsBlob(url);
+          if (result && result.success && result.blobUrl) {
+            // Cache the blob URL
+            window._blobUrlCache = window._blobUrlCache || {};
+            window._blobUrlCache[url] = true;
+            return result.blobUrl;
+          }
+          throw new Error(result?.error || 'Failed to load blob');
+        } catch (error) {
+          console.error('Error loading blob in Electron:', error);
+          throw error;
+        }
+      }
+    }
+    
+    // For regular HTTP URLs, fetch and create a blob URL
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    
+    // Cache the blob URL
+    window._blobUrlCache = window._blobUrlCache || {};
+    window._blobUrlCache[url] = true;
+    
+    return blobUrl;
+  } catch (error) {
+    console.error('Error loading blob:', error);
+    throw error;
+  }
 }; 

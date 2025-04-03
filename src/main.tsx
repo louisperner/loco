@@ -28,7 +28,10 @@ const App: React.FC = () => {
     <div className='fixed inset-0 w-screen h-screen overflow-hidden' draggable={false}>
       {isLoading && <SplashScreen />}
       <Player />
-      {typeof window !== 'undefined' && !window.navigator.userAgent.toLowerCase().includes('electron') && <PWAInstallPrompts />}
+      {typeof window !== 'undefined' && 
+        !window.navigator.userAgent.toLowerCase().includes('electron') && 
+        /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(window.navigator.userAgent.toLowerCase()) && 
+        <PWAInstallPrompts />}
       <Analytics />
     </div>
   );

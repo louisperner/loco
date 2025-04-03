@@ -525,6 +525,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
       toast.style.border = '1px solid rgba(255,255,255,0.1)';
       toast.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
       toast.style.backdropFilter = 'blur(8px)';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (toast.style as CSSStyleDeclaration)['WebkitBackdropFilter' as any] = 'blur(8px)';
       toast.textContent = `New ${primitiveData.primitiveType} added to inventory`;
       

@@ -15,7 +15,7 @@ interface TouchControlsProps {
       currentY: number;
     };
   };
-  onTouchStateChange?: (state: any) => void;
+  onTouchStateChange?: (state: TouchControlsProps['touchState']) => void;
 }
 
 const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchState, onTouchStateChange }) => {
@@ -68,18 +68,15 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
     // Dispara eventos diretamente no canvas
     const downEvent = new SimulatedMouseEvent('mousedown', clickParams);
     canvas.dispatchEvent(downEvent);
-    console.log(`Enviado mousedown para o canvas, botão: ${button}`);
 
     // Dispara o evento de clique após o mousedown
     const clickEvent = new SimulatedMouseEvent('click', clickParams);
     canvas.dispatchEvent(clickEvent);
-    console.log(`Enviado click para o canvas, botão: ${button}`);
 
     // Simula o mouseup após um pequeno delay
     setTimeout(() => {
       const upEvent = new SimulatedMouseEvent('mouseup', clickParams);
       canvas.dispatchEvent(upEvent);
-      console.log(`Enviado mouseup para o canvas, botão: ${button}`);
     }, 100);
   };
 
@@ -248,16 +245,14 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
       lookJoystick.removeEventListener('touchend', lookEndHandler);
       lookJoystick.removeEventListener('touchcancel', lookEndHandler);
     };
-  }, [enabled, isMobile, onTouchStateChange, touchState.lookJoystick, touchState.moveJoystick.active]);
+  }, [enabled, isMobile, onTouchStateChange, touchState.lookJoystick, touchState.moveJoystick]);
 
   useEffect(() => {
     if (!isMobile || !enabled) return;
 
-    // Registrar um ouvinte global para depuração de eventos
-    const debugMouseEvents = (e: MouseEvent) => {
-      if (e.type === 'click' || e.type === 'mousedown' || e.type === 'mouseup') {
-        console.log(`Global mouse event captured: ${e.type}, button: ${e.button}`);
-      }
+    // Listener for mouse events (for debugging purposes)
+    const debugMouseEvents = () => {
+      // Debug handling removed
     };
 
     // Adicionar ouvintes para depuração

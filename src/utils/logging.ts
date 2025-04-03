@@ -10,6 +10,7 @@
 export const logError = (message: string, error?: unknown): void => {
   // Only log in development
   if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
     console.error(message, error);
   }
 };
@@ -21,6 +22,7 @@ export const logError = (message: string, error?: unknown): void => {
 export const logInfo = (message: string): void => {
   // Only log in development
   if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
     console.log(message);
   }
 };
@@ -32,6 +34,7 @@ export const logInfo = (message: string): void => {
 export const logWarning = (message: string): void => {
   // Only log in development
   if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
     console.warn(message);
   }
 };
@@ -43,6 +46,7 @@ export const logWarning = (message: string): void => {
  */
 export const logDebug = (message: string, data?: unknown): void => {
   if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
     console.debug(message, data);
   }
 }; 

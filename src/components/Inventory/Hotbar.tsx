@@ -10,21 +10,6 @@ import * as THREE from 'three';
 import { generateVideoThumbnail } from '@/components/Models/utils';
 import { saveModelThumbnail } from '@/utils/modelThumbnailGenerator';
 
-// Define Electron API types
-interface ElectronAPI {
-  saveModelFile: (file: File, fileName: string) => Promise<string>;
-}
-
-declare global {
-  interface Window {
-    electron?: ElectronAPI;
-    mainCamera?: THREE.Camera;
-    _modelFileCache?: { [key: string]: File };
-    _blobUrlCache?: { [key: string]: boolean };
-  }
-}
-
-// Define the item interface based on what's used in the component
 interface HotbarItem {
   id: string;
   type: 'model' | 'image' | 'video';

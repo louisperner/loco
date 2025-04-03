@@ -1,6 +1,7 @@
 import { InventoryItem } from '../utils/inventoryUtils';
-import { ImageDataType } from '../components/Models/types';
+import { ImageDataType, ModelDataType, VideoDataType } from '../components/Models/types';
 import * as THREE from 'three';
+import { ElectronAPI } from './electron-api';
 
 // =====================================================
 // GLOBAL TYPE DECLARATIONS - MODULE AUGMENTATION
@@ -9,6 +10,19 @@ import * as THREE from 'three';
 // merging Window interface declarations
 // =====================================================
 
+// Define a type for primitive models to avoid any
+interface PrimitiveModelData {
+  id: string;
+  isPrimitive: boolean;
+  primitiveType: 'cube' | 'sphere' | 'plane';
+  color?: string;
+  textureUrl?: string;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number;
+  [key: string]: unknown;
+}
+
 // Extend the Window interface
 export {};
 
@@ -16,67 +30,22 @@ declare global {
   // Define Window interface once
   interface Window {
     // Electron API
-    electron?: {
-      // Index signature for additional properties
-      [key: string]: unknown;
-      
-      // File operations
-      loadFileAsBlob?: (url: string) => Promise<{
-        success: boolean;
-        blobUrl?: string;
-        error?: string;
-      }>;
-      saveModelFile?: (file: File, filename: string) => Promise<string>;
-      saveImageFile?: (file: File, filename: string) => Promise<string>;
-      saveVideoFile?: (file: File, filename: string) => Promise<string>;
-      loadImageFromAppFile?: (src: string) => Promise<{ 
-        success: boolean; 
-        url?: string; 
-        error?: string 
-      }>;
-      loadVideoFromAppFile?: (url: string) => Promise<{
-        success: boolean;
-        url?: string;
-        error?: string;
-      }>;
-      
-      // Inventory operations
-      listImagesFromDisk?: () => Promise<{ 
-        success: boolean; 
-        images: InventoryItem[]; 
-        error?: string 
-      }>;
-      listModelsFromDisk?: () => Promise<{ 
-        success: boolean; 
-        models: InventoryItem[]; 
-        error?: string 
-      }>;
-      listVideosFromDisk?: () => Promise<{
-        success: boolean;
-        videos: InventoryItem[];
-        error?: string
-      }>;
-      
-      // File cleanup
-      deleteFile?: (path: string) => Promise<{ 
-        success: boolean; 
-        error?: string 
-      }>;
-      cleanAllFiles: () => Promise<{ 
-        success: boolean; 
-        message?: string; 
-        error?: string 
-      }>;
-    };
+    electron?: ElectronAPI;
     
     // Global caches
     _modelFileCache?: Record<string, File>;
-    _blobUrlCache?: Record<string, any>;
-    _imageBlobCache?: Record<string, any>;
-    _videoBlobCache?: Record<string, any>;
+    _blobUrlCache?: Record<string, boolean>;
+    _imageBlobCache?: Record<string, string>;
+    _videoBlobCache?: Record<string, string>;
     
-    // Other global properties
+    // Scene/Camera related properties
     mainCamera?: THREE.Camera;
     addImageToScene?: (imageData: ImageDataType) => string;
+    addModelToScene?: (modelData: ModelDataType) => string;
+    addVideoToScene?: (videoData: VideoDataType) => string;
+    addPrimitiveToScene?: (primitiveData: PrimitiveModelData) => string;
+    
+    // Message system
+    addMessage?: (text: string, position?: [number, number, number]) => void;
   }
 } 

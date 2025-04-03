@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useModelStore } from '../../store/useModelStore';
+import { useModelStore, Model } from '../../store/useModelStore';
 import ModelInScene from './ModelInScene';
 import { ModelDataType, ModelManagerProps, RemoveObjectEvent } from './types';
 
@@ -34,7 +34,7 @@ const ModelManager: React.FC<ModelManagerProps> = ({ onSelect }) => {
 
   // Handle model update
   const handleUpdateModel = (modelData: ModelDataType): void => {
-    updateModel(modelData.id, modelData);
+    updateModel(modelData.id, modelData as unknown as Partial<Model>);
   };
 
   // Handle model removal

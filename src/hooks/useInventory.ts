@@ -70,6 +70,82 @@ export interface InventoryHookResult {
   addItemToHotbarDirect: (item: InventoryItem) => void;
 }
 
+// Define interfaces for Electron API responses - using more specific types
+interface ImageData {
+  id: string;
+  fileName: string;
+  url: string;
+  thumbnailUrl?: string;
+  filePath?: string;
+  fileSize?: number;
+  createdAt?: string;
+  modifiedAt?: string;
+  [key: string]: unknown;
+}
+
+interface ModelData {
+  id: string;
+  fileName: string;
+  url: string;
+  thumbnailUrl?: string;
+  filePath?: string;
+  fileSize?: number;
+  createdAt?: string;
+  modifiedAt?: string;
+  [key: string]: unknown;
+}
+
+interface VideoData {
+  id: string;
+  fileName: string;
+  url: string;
+  thumbnailUrl?: string;
+  filePath?: string;
+  fileSize?: number;
+  createdAt?: string;
+  modifiedAt?: string;
+  position?: string;
+  rotation?: string;
+  scale?: string;
+  isInScene?: boolean;
+  isPlaying?: boolean;
+  volume?: number;
+  loop?: boolean;
+  [key: string]: unknown;
+}
+
+interface ImageResponse {
+  success: boolean;
+  images: ImageData[];
+  error?: string;
+}
+
+interface ModelResponse {
+  success: boolean;
+  models: ModelData[];
+  error?: string;
+}
+
+interface VideoResponse {
+  success: boolean;
+  videos: VideoData[];
+  error?: string;
+}
+
+interface DeleteFileResponse {
+  success: boolean;
+  error?: string;
+}
+
+// Type for electron API to avoid 'any'
+interface ElectronInstance {
+  listImagesFromDisk?: () => Promise<ImageResponse>;
+  listModelsFromDisk?: () => Promise<ModelResponse>;
+  listVideosFromDisk?: () => Promise<VideoResponse>;
+  deleteFile?: (path: string) => Promise<DeleteFileResponse>;
+  [key: string]: unknown;
+}
+
 export const useInventory = (
   onSelectImage?: (item: InventoryItem) => void,
   onSelectModel?: (item: InventoryItem) => void,
@@ -103,29 +179,29 @@ export const useInventory = (
       let allItems: InventoryItem[] = [];
 
       // First check if we're in a browser environment (not Electron)
+      const electron = window.electron as unknown as ElectronInstance;
       const isElectronAvailable =
-        window.electron &&
-        typeof window.electron.listImagesFromDisk === 'function' &&
-        typeof window.electron.listModelsFromDisk === 'function';
+        !!electron &&
+        typeof electron.listImagesFromDisk === 'function' &&
+        typeof electron.listModelsFromDisk === 'function';
 
       if (isElectronAvailable) {
         try {
-          const electron = window.electron;
           if (electron && electron.listImagesFromDisk) {
             const imageResult = await electron.listImagesFromDisk();
 
             if (imageResult.success) {
-              const imageItems = imageResult.images.map((img) => ({
-                id: String((img as Record<string, unknown>).id || ''),
+              const imageItems = imageResult.images.map((img: ImageData) => ({
+                id: String(img.id || ''),
                 type: 'image' as const,
-                fileName: String((img as Record<string, unknown>).fileName || ''),
-                url: String((img as Record<string, unknown>).url || ''),
-                thumbnailUrl: String((img as Record<string, unknown>).thumbnailUrl || ''),
-                filePath: (img as Record<string, unknown>).filePath as string | undefined,
-                fileSize: (img as Record<string, unknown>).fileSize as number | undefined,
-                createdAt: (img as Record<string, unknown>).createdAt as string | undefined,
-                modifiedAt: (img as Record<string, unknown>).modifiedAt as string | undefined,
-                category: getImageCategory(String((img as Record<string, unknown>).fileName || '')),
+                fileName: String(img.fileName || ''),
+                url: String(img.url || ''),
+                thumbnailUrl: String(img.thumbnailUrl || ''),
+                filePath: img.filePath as string | undefined,
+                fileSize: img.fileSize as number | undefined,
+                createdAt: img.createdAt as string | undefined,
+                modifiedAt: img.modifiedAt as string | undefined,
+                category: getImageCategory(String(img.fileName || '')),
               }));
               allItems = [...allItems, ...imageItems];
             }
@@ -136,22 +212,21 @@ export const useInventory = (
         }
 
         try {
-          const electron = window.electron;
           if (electron && electron.listModelsFromDisk) {
             const modelResult = await electron.listModelsFromDisk();
 
             if (modelResult.success) {
-              const modelItems = modelResult.models.map((model) => ({
-                id: String((model as Record<string, unknown>).id || ''),
+              const modelItems = modelResult.models.map((model: ModelData) => ({
+                id: String(model.id || ''),
                 type: 'model' as const,
-                fileName: String((model as Record<string, unknown>).fileName || ''),
-                url: String((model as Record<string, unknown>).url || ''),
-                thumbnailUrl: String((model as Record<string, unknown>).thumbnailUrl || ''),
-                filePath: (model as Record<string, unknown>).filePath as string | undefined,
-                fileSize: (model as Record<string, unknown>).fileSize as number | undefined,
-                createdAt: (model as Record<string, unknown>).createdAt as string | undefined,
-                modifiedAt: (model as Record<string, unknown>).modifiedAt as string | undefined,
-                category: getModelCategory(String((model as Record<string, unknown>).fileName || '')),
+                fileName: String(model.fileName || ''),
+                url: String(model.url || ''),
+                thumbnailUrl: String(model.thumbnailUrl || ''),
+                filePath: model.filePath as string | undefined,
+                fileSize: model.fileSize as number | undefined,
+                createdAt: model.createdAt as string | undefined,
+                modifiedAt: model.modifiedAt as string | undefined,
+                category: getModelCategory(String(model.fileName || '')),
               }));
               allItems = [...allItems, ...modelItems];
             }
@@ -162,33 +237,32 @@ export const useInventory = (
         }
 
         try {
-          const electron = window.electron;
           if (electron && electron.listVideosFromDisk) {
             const videoResult = await electron.listVideosFromDisk();
 
             if (videoResult.success) {
-              const videoItems = videoResult.videos.map((video) => {
+              const videoItems = videoResult.videos.map((video: VideoData) => {
                 const fileName = typeof video.fileName === 'string' ? video.fileName : 'Unknown Video';
                 const videoFileName = fileName || 'Unknown Video';
 
                 // Create a complete inventory item with all video properties
                 return {
-                  id: String((video as Record<string, unknown>).id || ''),
+                  id: String(video.id || ''),
                   type: 'video' as const,
                   fileName: videoFileName,
-                  url: String((video as Record<string, unknown>).url || ''),
-                  thumbnailUrl: String((video as Record<string, unknown>).thumbnailUrl || ''),
+                  url: String(video.url || ''),
+                  thumbnailUrl: String(video.thumbnailUrl || ''),
                   // Include these extra properties for restoration
-                  src: String((video as Record<string, unknown>).url || ''),
-                  position: (video as Record<string, unknown>).position as string | undefined,
-                  rotation: (video as Record<string, unknown>).rotation as string | undefined,
-                  scale: (video as Record<string, unknown>).scale as string | undefined,
-                  isInScene: (video as Record<string, unknown>).isInScene as boolean | undefined,
-                  isPlaying: (video as Record<string, unknown>).isPlaying as boolean | undefined,
-                  volume: (video as Record<string, unknown>).volume as number | undefined,
-                  loop: (video as Record<string, unknown>).loop as boolean | undefined,
-                  createdAt: (video as Record<string, unknown>).createdAt as string | undefined,
-                  modifiedAt: (video as Record<string, unknown>).modifiedAt as string | undefined,
+                  src: String(video.url || ''),
+                  position: video.position as string | undefined,
+                  rotation: video.rotation as string | undefined,
+                  scale: video.scale as string | undefined,
+                  isInScene: video.isInScene as boolean | undefined,
+                  isPlaying: video.isPlaying as boolean | undefined,
+                  volume: video.volume as number | undefined,
+                  loop: video.loop as boolean | undefined,
+                  createdAt: video.createdAt as string | undefined,
+                  modifiedAt: video.modifiedAt as string | undefined,
                   category: getVideoCategory(videoFileName),
                 } as InventoryItem;
               });
@@ -930,14 +1004,15 @@ export const useInventory = (
       }
 
       // Remove physical file (Electron)
-      if (window.electron?.deleteFile) {
+      const electron = window.electron as unknown as ElectronInstance;
+      if (electron && electron.deleteFile) {
         try {
           const paths = [itemToDelete.filePath, itemToDelete.url, itemToDelete.thumbnailUrl].filter(
             Boolean,
           ) as string[];
 
           for (const path of paths) {
-            await window.electron.deleteFile(path);
+            await electron.deleteFile(path);
           }
         } catch (error) {
           // eslint-disable-next-line no-console

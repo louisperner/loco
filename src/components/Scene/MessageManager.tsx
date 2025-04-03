@@ -8,12 +8,7 @@ interface Message {
   position: [number, number, number];
 }
 
-// Add to window interface for TypeScript
-declare global {
-  interface Window {
-    addMessage?: (text: string, position?: [number, number, number]) => void;
-  }
-}
+// No need to declare Window interface here as it's already defined in global.d.ts
 
 /**
  * MessageManager - Componente para gerenciar mensagens no ambiente 3D

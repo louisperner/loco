@@ -69,9 +69,12 @@ const InternalVideo: React.FC<InternalVideoProps> = ({ src, isPlaying = true, vo
       if (videoSrc !== src && videoSrc.startsWith('blob:')) {
         try {
           revokeBlobUrl(videoSrc, src);
-        } catch (error) {}
+        } catch (error) {
+          // eslint-disable-next-line @typescript-eslint/no-empty-function
+        }
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src]);
 
   // Create the video element and texture
@@ -129,6 +132,7 @@ const InternalVideo: React.FC<InternalVideoProps> = ({ src, isPlaying = true, vo
             if (playPromise !== undefined) {
               playPromise.catch((e) => {
                 if (e.name !== 'AbortError') {
+                // eslint-disable-next-line @typescript-eslint/no-empty-function
                 }
               });
             }
@@ -186,6 +190,7 @@ const InternalVideo: React.FC<InternalVideoProps> = ({ src, isPlaying = true, vo
           if (playPromise !== undefined) {
             playPromise.catch((e) => {
               if (e.name !== 'AbortError') {
+                // eslint-disable-next-line @typescript-eslint/no-empty-function
               }
             });
           }
@@ -310,6 +315,7 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
         });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
   // Function to save changes

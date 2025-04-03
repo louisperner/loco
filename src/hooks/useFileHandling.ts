@@ -700,7 +700,7 @@ export const useFileHandling = (
         );
       }
     },
-    [handleModelDrop, handleImageDrop, handleVideoDrop, setIsDragging, addImage, addModel, cameraRef],
+    [handleModelDrop, handleImageDrop, handleVideoDrop, setIsDragging, addImage, addModel, cameraRef, addVideo],
   );
 
   return {

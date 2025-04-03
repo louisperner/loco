@@ -16,10 +16,17 @@ import { GroundTab } from './tabs/GroundTab';
 import { CrosshairTab } from './tabs/CrosshairTab';
 import { EnvironmentTab } from './tabs/EnvironmentTab';
 import InterfaceSettings from './InterfaceSettings';
-import { SettingsPanelProps, SettingsTab } from './types';
+import { SettingsPanelProps, SettingsTab, SettingValue } from './types';
 import { loadSettings, saveSettings } from './utils';
 import { RgbaColor } from 'react-colorful';
-import { SettingValue } from './types';
+
+// Define CrosshairSettings type based on the CrosshairTab props
+interface CrosshairSettings {
+  visible: boolean;
+  size: number;
+  thickness: number;
+  style: 'classic' | 'dot' | 'cross' | 'plus';
+}
 
 // Interface for TabsContent component props
 interface TabsContentProps {
@@ -292,7 +299,7 @@ export function SettingsPanel({
           showColorPicker={showColorPicker || null}
           onColorPickerChange={handleColorPickerChange}
           colorPickerRefs={effectiveColorPickerRefs}
-          colorPickerContainerRef={colorPickerContainerRef as any}
+          colorPickerContainerRef={colorPickerContainerRef as React.RefObject<HTMLDivElement>}
         />
       ),
     },
@@ -325,7 +332,7 @@ export function SettingsPanel({
           showColorPicker={showColorPicker || null}
           onColorPickerChange={handleColorPickerChange}
           colorPickerRefs={effectiveColorPickerRefs}
-          colorPickerContainerRef={colorPickerContainerRef as any}
+          colorPickerContainerRef={colorPickerContainerRef as React.RefObject<HTMLDivElement>}
         />
       ),
     },
@@ -335,13 +342,13 @@ export function SettingsPanel({
       icon: <FaAdjust size='14' />,
       content: (
         <CrosshairTab
-          crosshairSettings={crosshairSettings as any}
+          crosshairSettings={crosshairSettings as CrosshairSettings}
           onCrosshairSettingChange={handleCrosshairSettingChange}
           onColorChange={handleColorChange}
           showColorPicker={showColorPicker || null}
           onColorPickerChange={handleColorPickerChange}
           colorPickerRefs={effectiveColorPickerRefs}
-          colorPickerContainerRef={colorPickerContainerRef as any}
+          colorPickerContainerRef={colorPickerContainerRef as React.RefObject<HTMLDivElement>}
           colors={{ crosshair: colors.crosshair || '' }}
         />
       ),

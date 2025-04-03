@@ -35,7 +35,7 @@ interface InventoryGridProps {
   }[];
   loading: boolean;
   error: string | null;
-  selectedItem: any;
+  selectedItem: InventoryItem | null;
   hotbarItems: (InventoryItem | null)[];
   isAddingToHotbar: boolean;
   selectedHotbarSlot: number | null;

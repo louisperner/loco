@@ -115,6 +115,7 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
         });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
   // Function to save changes
