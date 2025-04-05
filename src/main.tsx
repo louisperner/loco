@@ -4,6 +4,7 @@ import Player from './components/Game/Game';
 import SplashScreen from './components/Game/SplashScreen';
 import { useImageStore } from './store/useImageStore';
 import PWAInstallPrompts from './components/PWAInstallPrompts';
+import DrawingOverlay from './components/ui/DrawingOverlay';
 //
 import { Analytics } from '@vercel/analytics/react';
 
@@ -28,6 +29,7 @@ const App: React.FC = () => {
     <div className='fixed inset-0 w-screen h-screen overflow-hidden' draggable={false}>
       {isLoading && <SplashScreen />}
       <Player />
+      <DrawingOverlay />
       {typeof window !== 'undefined' && 
         !window.navigator.userAgent.toLowerCase().includes('electron') && 
         /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(window.navigator.userAgent.toLowerCase()) && 

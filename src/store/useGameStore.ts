@@ -71,6 +71,7 @@ interface GameState {
   showSettings: boolean;
   showInventory: boolean;
   isSpotlightOpen: boolean;
+  showDrawingOverlay: boolean;
 
   // Mode states
   currentMode: string;
@@ -166,6 +167,9 @@ interface GameState {
 
   // Show coordinates
   setShowCoordinates: (show: boolean) => void;
+
+  // Drawing overlay actions
+  setShowDrawingOverlay: (show: boolean) => void;
 }
 
 // Add the missing interface
@@ -208,6 +212,7 @@ type GameStateActions = Pick<
   | 'handleSpotlightVisibility'
   | 'resetCrosshairAndVisibilitySettings'
   | 'setShowCoordinates'
+  | 'setShowDrawingOverlay'
 >;
 
 export const useGameStore = create<GameState & GameStateActions>()(
@@ -220,6 +225,7 @@ export const useGameStore = create<GameState & GameStateActions>()(
       showSettings: false,
       showInventory: false,
       isSpotlightOpen: false,
+      showDrawingOverlay: false,
 
       // Mode states
       currentMode: 'live',
@@ -485,6 +491,13 @@ export const useGameStore = create<GameState & GameStateActions>()(
 
       // Show coordinates
       setShowCoordinates: (show: boolean) => set({ showCoordinates: show }),
+
+      // Drawing overlay actions
+      setShowDrawingOverlay: (show: boolean) =>
+        set({
+          showDrawingOverlay: show,
+          ...(show ? { movementEnabled: false, canvasInteractive: false } : { movementEnabled: true, canvasInteractive: true }),
+        }),
     }),
     {
       name: 'game-storage',

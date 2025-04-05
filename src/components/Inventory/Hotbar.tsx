@@ -1,11 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-// @ts-ignore
-import TopNavBar from '../ui/TopNavBar';
 import MobileHotbarMenu from './MobileHotbarMenu';
 import { useImageStore } from '@/store/useImageStore';
 import { useVideoStore } from '@/store/videoStore';
 import { useModelStore } from '@/store/useModelStore';
+import { useGameStore } from '@/store/useGameStore';
 import * as THREE from 'three';
 import { generateVideoThumbnail } from '@/components/Models/utils';
 import { saveModelThumbnail } from '@/utils/modelThumbnailGenerator';
@@ -46,6 +45,7 @@ const HotbarTopNav: React.FC = () => {
   const addVideo = useVideoStore(state => state.addVideo);
   const addModel = useModelStore(state => state.addModel);
   const updateModel = useModelStore(state => state.updateModel);
+  const setShowDrawingOverlay = useGameStore(state => state.setShowDrawingOverlay);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -284,6 +284,9 @@ const HotbarTopNav: React.FC = () => {
       case 'cube':
         handlePrimitiveSelect('cube');
         break;
+      case 'draw':
+        handleDraw();
+        break;
       case 'sphere':
         handlePrimitiveSelect('sphere');
         break;
@@ -293,6 +296,10 @@ const HotbarTopNav: React.FC = () => {
       default:
         break;
     }
+  };
+
+  const handleDraw = () => {
+    setShowDrawingOverlay(true);
   };
 
   const navItems = [
@@ -345,6 +352,16 @@ const HotbarTopNav: React.FC = () => {
       icon: (
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M7 4L2 9.5L7 15M13 4L18 9.5L13 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )
+    },
+    {
+      id: 'draw',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16.5 3.5L15 2L13.5 3.5L16.5 6.5L18 5L16.5 3.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M3.5 16.5L2 15L10 7L13 10L3.5 16.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M10 7L13 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       )
     },
