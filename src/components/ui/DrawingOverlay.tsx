@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Tldraw, useEditor, Editor, TLShapeId } from '@tldraw/tldraw';
+import { Tldraw, Editor } from '@tldraw/tldraw';
 import '@tldraw/tldraw/tldraw.css';
 import { useGameStore } from '../../store/useGameStore';
 import { useImageStore } from '../../store/useImageStore';
