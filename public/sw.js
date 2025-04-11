@@ -1,16 +1,32 @@
 // Cache name
-const CACHE_NAME = 'loco-cache-v1';
+const CACHE_NAME = 'loco-cache-v2';
 
 // Assets to cache
-const urlsToCache = ['/', '/index.html', '/manifest.json', '/loco-logo.png', '/favicon.svg', '/cover_loco2.png'];
+const urlsToCache = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/loco-logo.png',
+  '/favicon.svg',
+  '/cover_loco2.png'
+];
 
 // Install service worker
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('Opened cache');
-      return cache.addAll(urlsToCache);
-    }),
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log('Opened cache');
+        // Instead of addAll which fails if any resource fails,
+        // we'll use individual add operations that won't fail the entire batch
+        return Promise.allSettled(
+          urlsToCache.map(url => 
+            cache.add(url).catch(error => {
+              console.error(`Failed to cache ${url}:`, error);
+            })
+          )
+        );
+      })
   );
 });
 
