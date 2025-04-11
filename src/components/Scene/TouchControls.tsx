@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import nipplejs, { JoystickManager, JoystickOutputData } from 'nipplejs';
 
 interface TouchControlsProps {
   enabled: boolean;
@@ -19,8 +20,10 @@ interface TouchControlsProps {
 }
 
 const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchState, onTouchStateChange }) => {
-  const moveJoystickRef = useRef<HTMLDivElement>(null);
-  const lookJoystickRef = useRef<HTMLDivElement>(null);
+  const moveJoystickContainerRef = useRef<HTMLDivElement>(null);
+  const lookJoystickContainerRef = useRef<HTMLDivElement>(null);
+  const moveJoystickRef = useRef<JoystickManager | null>(null);
+  const lookJoystickRef = useRef<JoystickManager | null>(null);
 
   // Função para simular clique do mouse
   const simulateMouseClick = (button: number, e: React.MouseEvent | React.TouchEvent) => {
@@ -120,132 +123,222 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
   useEffect(() => {
     if (!isMobile || !enabled) return;
 
+    const moveJoystickContainer = moveJoystickContainerRef.current;
+    const lookJoystickContainer = lookJoystickContainerRef.current;
+
+    if (!moveJoystickContainer || !lookJoystickContainer) return;
+
+    // Cleanup any existing instances first
+    if (moveJoystickRef.current) {
+      moveJoystickRef.current.destroy();
+    }
+    
+    if (lookJoystickRef.current) {
+      lookJoystickRef.current.destroy();
+    }
+
+    // Create nipplejs instances
+    moveJoystickRef.current = nipplejs.create({
+      zone: moveJoystickContainer,
+      color: 'white',
+      size: 100,
+      mode: 'static',
+      position: { left: '50%', top: '50%' },
+      restOpacity: 0.7,
+      fadeTime: 250,
+      dynamicPage: true,
+      lockX: false,
+      lockY: false,
+      catchDistance: 150,
+      shape: 'circle',
+      dataOnly: false,
+      threshold: 0.05,
+      maxNumberOfNipples: 1,
+      multitouch: true,
+    });
+
+    lookJoystickRef.current = nipplejs.create({
+      zone: lookJoystickContainer,
+      color: 'white',
+      size: 100,
+      mode: 'static',
+      position: { left: '50%', top: '50%' },
+      restOpacity: 0.7,
+      fadeTime: 250,
+      dynamicPage: true,
+      lockX: false,
+      lockY: false,
+      catchDistance: 150,
+      shape: 'circle',
+      dataOnly: false,
+      threshold: 0.05,
+      maxNumberOfNipples: 1,
+      multitouch: true,
+    });
+
     const moveJoystick = moveJoystickRef.current;
     const lookJoystick = lookJoystickRef.current;
 
-    if (!moveJoystick || !lookJoystick) return;
-
-    // Add non-passive touch event listeners
-    const moveStartHandler = (e: TouchEvent) => {
-      e.preventDefault();
-      const touch = e.touches[0];
-      const rect = moveJoystick.getBoundingClientRect();
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-      const x = touch.clientX - rect.left - centerX;
-      const y = touch.clientY - rect.top - centerY;
-
+    // Handle move joystick events
+    const handleMoveStart = () => {
+      // Dispatch custom event
+      window.dispatchEvent(new CustomEvent('joystick-event', {
+        detail: { type: 'move:start' }
+      }));
+      
       onTouchStateChange?.({
         moveJoystick: {
           active: true,
-          currentX: x / centerX,
-          currentY: y / centerY,
+          currentX: 0,
+          currentY: 0,
         },
         lookJoystick: touchState.lookJoystick,
       });
     };
 
-    const moveMoveHandler = (e: TouchEvent) => {
-      e.preventDefault();
-      if (!touchState.moveJoystick.active) return;
+    const handleMoveMove = (_evt: any, data: JoystickOutputData) => {
+      // Extract directional data (using vector instead of angle for more accuracy)
+      // Normalize based on distance factor for smoother control
+      const maxDistance = 75; // Maximum practical distance in pixels
+      const normalizedDistance = Math.min(data.distance / maxDistance, 1);
+      
+      // Get the x and y vector directly from nipplejs data
+      // This is more accurate than calculating from angle
+      const x = data.vector.x * normalizedDistance;
+      const y = data.vector.y * normalizedDistance;
 
-      const touch = e.touches[0];
-      const rect = moveJoystick.getBoundingClientRect();
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-      const x = touch.clientX - rect.left - centerX;
-      const y = touch.clientY - rect.top - centerY;
-
+      // Dispatch custom event with joystick data
+      window.dispatchEvent(new CustomEvent('joystick-event', {
+        detail: { 
+          type: 'move:move',
+          x: x,
+          y: y,
+          vector: data.vector,
+          direction: data.direction
+        }
+      }));
+      
+      // Update touch state (make sure the values are clamped between -1 and 1)
       onTouchStateChange?.({
         moveJoystick: {
           active: true,
-          currentX: Math.max(-1, Math.min(1, x / centerX)),
-          currentY: Math.max(-1, Math.min(1, y / centerY)),
+          currentX: Math.max(-1, Math.min(1, x)),
+          currentY: Math.max(-1, Math.min(1, -y)), // Invert Y for proper controls
         },
         lookJoystick: touchState.lookJoystick,
       });
     };
 
-    const moveEndHandler = (e: TouchEvent) => {
-      e.preventDefault();
+    const handleMoveEnd = () => {
+      // Dispatch custom event
+      window.dispatchEvent(new CustomEvent('joystick-event', {
+        detail: { type: 'move:end' }
+      }));
+      
       onTouchStateChange?.({
-        moveJoystick: { active: false, currentX: 0, currentY: 0 },
+        moveJoystick: {
+          active: false,
+          currentX: 0,
+          currentY: 0,
+        },
         lookJoystick: touchState.lookJoystick,
       });
     };
 
-    const lookStartHandler = (e: TouchEvent) => {
-      e.preventDefault();
-      const touch = e.touches[0];
-      const rect = lookJoystick.getBoundingClientRect();
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-      const x = touch.clientX - rect.left - centerX;
-      const y = touch.clientY - rect.top - centerY;
-
+    // Handle look joystick events
+    const handleLookStart = () => {
+      // Dispatch custom event
+      window.dispatchEvent(new CustomEvent('joystick-event', {
+        detail: { type: 'look:start' }
+      }));
+      
       onTouchStateChange?.({
         moveJoystick: touchState.moveJoystick,
         lookJoystick: {
           active: true,
-          currentX: x / centerX,
-          currentY: y / centerY,
+          currentX: 0,
+          currentY: 0,
         },
       });
     };
 
-    const lookMoveHandler = (e: TouchEvent) => {
-      e.preventDefault();
-      if (!touchState.lookJoystick.active) return;
+    const handleLookMove = (_evt: any, data: JoystickOutputData) => {
+      // Extract directional data (using vector instead of angle for more accuracy)
+      // Normalize based on distance factor for smoother control
+      const maxDistance = 75; // Maximum practical distance in pixels
+      const normalizedDistance = Math.min(data.distance / maxDistance, 1);
+      
+      // Get the x and y vector directly from nipplejs data
+      // This is more accurate than calculating from angle
+      const x = data.vector.x * normalizedDistance;
+      const y = data.vector.y * normalizedDistance;
 
-      const touch = e.touches[0];
-      const rect = lookJoystick.getBoundingClientRect();
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-      const x = touch.clientX - rect.left - centerX;
-      const y = touch.clientY - rect.top - centerY;
-
+      // Dispatch custom event with joystick data
+      window.dispatchEvent(new CustomEvent('joystick-event', {
+        detail: { 
+          type: 'look:move',
+          x: x,
+          y: y, 
+          vector: data.vector,
+          direction: data.direction
+        }
+      }));
+      
+      // Update touch state (make sure the values are clamped between -1 and 1)
       onTouchStateChange?.({
         moveJoystick: touchState.moveJoystick,
         lookJoystick: {
           active: true,
-          currentX: Math.max(-1, Math.min(1, x / centerX)),
-          currentY: Math.max(-1, Math.min(1, y / centerY)),
+          currentX: Math.max(-1, Math.min(1, x)),
+          currentY: Math.max(-1, Math.min(1, -y)), // Invert Y for proper controls
         },
       });
     };
 
-    const lookEndHandler = (e: TouchEvent) => {
-      e.preventDefault();
+    const handleLookEnd = () => {
+      // Dispatch custom event
+      window.dispatchEvent(new CustomEvent('joystick-event', {
+        detail: { type: 'look:end' }
+      }));
+      
       onTouchStateChange?.({
         moveJoystick: touchState.moveJoystick,
-        lookJoystick: { active: false, currentX: 0, currentY: 0 },
+        lookJoystick: {
+          active: false,
+          currentX: 0,
+          currentY: 0,
+        },
       });
     };
 
-    // Add event listeners with non-passive option
-    moveJoystick.addEventListener('touchstart', moveStartHandler, { passive: false });
-    moveJoystick.addEventListener('touchmove', moveMoveHandler, { passive: false });
-    moveJoystick.addEventListener('touchend', moveEndHandler, { passive: false });
-    moveJoystick.addEventListener('touchcancel', moveEndHandler, { passive: false });
-
-    lookJoystick.addEventListener('touchstart', lookStartHandler, { passive: false });
-    lookJoystick.addEventListener('touchmove', lookMoveHandler, { passive: false });
-    lookJoystick.addEventListener('touchend', lookEndHandler, { passive: false });
-    lookJoystick.addEventListener('touchcancel', lookEndHandler, { passive: false });
+    // Register nipplejs event handlers
+    moveJoystick.on('start', handleMoveStart);
+    moveJoystick.on('move', handleMoveMove);
+    moveJoystick.on('end', handleMoveEnd);
+    
+    lookJoystick.on('start', handleLookStart);
+    lookJoystick.on('move', handleLookMove);
+    lookJoystick.on('end', handleLookEnd);
 
     // Cleanup
     return () => {
-      moveJoystick.removeEventListener('touchstart', moveStartHandler);
-      moveJoystick.removeEventListener('touchmove', moveMoveHandler);
-      moveJoystick.removeEventListener('touchend', moveEndHandler);
-      moveJoystick.removeEventListener('touchcancel', moveEndHandler);
-
-      lookJoystick.removeEventListener('touchstart', lookStartHandler);
-      lookJoystick.removeEventListener('touchmove', lookMoveHandler);
-      lookJoystick.removeEventListener('touchend', lookEndHandler);
-      lookJoystick.removeEventListener('touchcancel', lookEndHandler);
+      if (moveJoystickRef.current) {
+        moveJoystickRef.current.off('start', handleMoveStart);
+        moveJoystickRef.current.off('move', handleMoveMove);
+        moveJoystickRef.current.off('end', handleMoveEnd);
+        moveJoystickRef.current.destroy();
+        moveJoystickRef.current = null;
+      }
+      
+      if (lookJoystickRef.current) {
+        lookJoystickRef.current.off('start', handleLookStart);
+        lookJoystickRef.current.off('move', handleLookMove);
+        lookJoystickRef.current.off('end', handleLookEnd);
+        lookJoystickRef.current.destroy();
+        lookJoystickRef.current = null;
+      }
     };
-  }, [enabled, isMobile, onTouchStateChange, touchState.lookJoystick, touchState.moveJoystick]);
+  }, [enabled, isMobile, onTouchStateChange]);
 
   useEffect(() => {
     if (!isMobile || !enabled) return;
@@ -271,9 +364,9 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
   if (!isMobile || !enabled) return null;
 
   return (
-    <div className='fixed inset-0 pointer-events-none z-50 opacity-[0.3]'>
+    <div className='fixed inset-0 pointer-events-none z-50 opacity-10'>
       {/* Movement Joystick com botões acima */}
-      <div className='absolute left-8 bottom-4'>
+      <div className='absolute left-2 bottom-4'>
         {/* Control buttons div separado e posicionado acima do joystick esquerdo */}
         <div className='absolute -top-20 left-0 right-0 w-full flex justify-between gap-2 mb-2 z-10'>
           {/* Inventory button */}
@@ -327,27 +420,16 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
           </div>
         </div>
 
-        {/* O joystick esquerdo em si */}
+        {/* O joystick esquerdo com nipplejs */}
         <div
-          ref={moveJoystickRef}
-          className={`w-24 h-24 pointer-events-auto ${touchState.moveJoystick.active ? 'opacity-100' : 'opacity-50'}`}
+          ref={moveJoystickContainerRef}
+          className='w-32 h-32 pointer-events-auto relative rounded-full bg-slate-800/40 backdrop-blur-sm border-2 border-white/50 shadow-lg'
           style={{ touchAction: 'none' }}
-        >
-          <div className='absolute inset-0 rounded-full bg-white/20 border-2 border-white/50' />
-          {touchState.moveJoystick.active && (
-            <div
-              className='absolute w-12 h-12 rounded-full bg-white/50'
-              style={{
-                left: `${Math.min(Math.max(touchState.moveJoystick.currentX * 48 + 48, 0), 96)}px`,
-                top: `${Math.min(Math.max(touchState.moveJoystick.currentY * 48 + 48, 0), 96)}px`,
-              }}
-            />
-          )}
-        </div>
+        />
       </div>
 
       {/* Look Joystick com botões L e R acima */}
-      <div className='absolute right-8 bottom-4'>
+      <div className='absolute right-2 bottom-4'>
         {/* Mouse buttons div separado e posicionado acima do joystick direito */}
         <div className='absolute -top-20 -left-4 right-0 w-full flex justify-between mb-2 z-10 gap-2'>
           {/* Left mouse button */}
@@ -391,23 +473,12 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
           </div>
         </div>
 
-        {/* O joystick direito em si */}
+        {/* O joystick direito com nipplejs */}
         <div
-          ref={lookJoystickRef}
-          className={`w-24 h-24 pointer-events-auto ${touchState.lookJoystick.active ? 'opacity-100' : 'opacity-50'}`}
+          ref={lookJoystickContainerRef}
+          className='w-32 h-32 pointer-events-auto relative rounded-full bg-slate-800/40 backdrop-blur-sm border-2 border-white/50 shadow-lg'
           style={{ touchAction: 'none' }}
-        >
-          <div className='absolute inset-0 rounded-full bg-white/20 border-2 border-white/50' />
-          {touchState.lookJoystick.active && (
-            <div
-              className='absolute w-12 h-12 rounded-full bg-white/50'
-              style={{
-                left: `${Math.min(Math.max(touchState.lookJoystick.currentX * 48 + 48, 0), 96)}px`,
-                top: `${Math.min(Math.max(touchState.lookJoystick.currentY * 48 + 48, 0), 96)}px`,
-              }}
-            />
-          )}
-        </div>
+        />
       </div>
     </div>
   );

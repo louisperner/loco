@@ -73,7 +73,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
   const targetRotationY = useRef<number>(0);
   const currentRotationX = useRef<number>(0);
   const currentRotationY = useRef<number>(0);
-  const smoothingFactor = 0.15; // Lower = smoother but more laggy
+  // const smoothingFactor = 0.15; // Lower = smoother but more laggy
 
   // Store previous touch state to detect when touch has ended
   const prevTouchActive = useRef<boolean>(false);
@@ -372,33 +372,61 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     if (moveLeft.current) sideDirection.x = -1;
     if (moveRight.current) sideDirection.x = 1;
 
-    // Touch controls - modified to work better with the TouchControls component
+    // Touch controls - optimized for nipplejs integration
     if (touchState?.moveJoystick?.active) {
-      // The values from TouchControls are already normalized (-1 to 1)
+      // The values from nipplejs are already normalized (-1 to 1)
       // Apply movement with increased sensitivity for mobile
-      const mobileSpeed = 1.5; // Increased speed for mobile
-      // Fix movement mapping: X for left/right, Y for forward/backward
-      sideDirection.x = touchState.moveJoystick.currentX * mobileSpeed;
-      direction.z = touchState.moveJoystick.currentY * mobileSpeed; // Removed negative sign to invert up/down
+      const mobileSpeed = 2.0; // Increased speed for mobile to compensate for touchscreen precision
+      
+      // Apply joystick movement values directly with a slight curve for better control
+      // Apply a small deadzone to prevent drift
+      const deadzone = 0.1;
+      const moveX = Math.abs(touchState.moveJoystick.currentX) > deadzone ? touchState.moveJoystick.currentX : 0;
+      const moveY = Math.abs(touchState.moveJoystick.currentY) > deadzone ? touchState.moveJoystick.currentY : 0;
+      
+      // Apply with slight power curve for better precision (x^2 preserves sign)
+      const applyPowerCurve = (value: number) => {
+        return Math.sign(value) * Math.pow(Math.abs(value), 1.3);
+      };
+      
+      sideDirection.x = applyPowerCurve(moveX) * mobileSpeed;
+      direction.z = applyPowerCurve(moveY) * mobileSpeed; // Note: already inverted in TouchControls
     }
 
-    // Look controls with proper euler angles
+    // Look controls with improved smoothing for nipplejs
     if (touchState?.lookJoystick?.active) {
       prevTouchActive.current = true;
 
       // Get current camera euler angles
       cameraEuler.current.setFromQuaternion(camera.quaternion);
 
-      // The values from TouchControls are already normalized (-1 to 1)
-      const lookSensitivity = 0.05; // Increased look sensitivity for mobile
-
-      // Apply rotation deltas to the euler angles
-      cameraEuler.current.y -= touchState.lookJoystick.currentX * lookSensitivity;
-
-      // Update X rotation (pitch)
-      // This correctly handles the up/down regardless of camera orientation
-      const pitchDelta = touchState.lookJoystick.currentY * lookSensitivity;
-      cameraEuler.current.x -= pitchDelta;
+      // nipplejs provides more consistent values for look control
+      const lookSensitivity = 0.08; // Adjusted sensitivity for nipplejs
+      
+      // Apply a small deadzone to prevent camera drift
+      const deadzone = 0.1;
+      const lookX = Math.abs(touchState.lookJoystick.currentX) > deadzone ? touchState.lookJoystick.currentX : 0;
+      const lookY = Math.abs(touchState.lookJoystick.currentY) > deadzone ? touchState.lookJoystick.currentY : 0;
+      
+      // Apply rotation deltas with progressive sensitivity (faster for larger movements)
+      // This makes small adjustments more precise while allowing quick turns
+      const xMagnitude = Math.abs(lookX);
+      const yMagnitude = Math.abs(lookY);
+      
+      // Apply horizontal rotation (yaw) with magnitude-based sensitivity
+      if (xMagnitude > 0) {
+        // Apply a power curve for more precise control
+        const rotationFactor = lookSensitivity * (1 + Math.pow(xMagnitude, 1.5) * 2);
+        cameraEuler.current.y -= lookX * rotationFactor;
+      }
+      
+      // Apply vertical rotation (pitch) with magnitude-based sensitivity
+      if (yMagnitude > 0) {
+        // Apply a power curve for more precise control
+        const pitchFactor = lookSensitivity * (1 + Math.pow(yMagnitude, 1.5) * 1.5);
+        const pitchDelta = lookY * pitchFactor;
+        cameraEuler.current.x -= pitchDelta;
+      }
 
       // Clamp the pitch to avoid flipping
       const maxPitch = Math.PI / 2 - 0.1;
@@ -407,20 +435,30 @@ const FPSControls: React.FC<FPSControlsProps> = ({
       // Convert euler angles back to quaternion
       cameraQuaternion.current.setFromEuler(cameraEuler.current);
 
-      // Apply smoothed rotation using slerp
-      camera.quaternion.slerp(cameraQuaternion.current, smoothingFactor);
+      // Apply dynamic smoothing based on movement magnitude
+      // Fast movements get less smoothing for responsiveness
+      // Slow/precise movements get more smoothing for stability
+      const maxSmoothingFactor = 0.3;  // Maximum smoothing (for slow movements)
+      const minSmoothingFactor = 0.05; // Minimum smoothing (for fast movements)
+      
+      // Calculate smoothing factor based on movement magnitude
+      const moveMagnitude = Math.max(xMagnitude, yMagnitude);
+      const dynamicFactor = maxSmoothingFactor - (moveMagnitude * (maxSmoothingFactor - minSmoothingFactor));
+      
+      // Apply smoothed rotation using slerp with dynamic factor
+      camera.quaternion.slerp(cameraQuaternion.current, Math.min(1, Math.max(0.05, dynamicFactor)));
     } else if (prevTouchActive.current) {
-      // When touch has just ended, continue smoothing
+      // When touch has just ended, apply one final smoothing for a graceful stop
       prevTouchActive.current = false;
-
+      
       // Get current camera euler angles
       cameraEuler.current.setFromQuaternion(camera.quaternion);
-
+      
       // Convert euler angles back to quaternion
       cameraQuaternion.current.setFromEuler(cameraEuler.current);
-
-      // Apply smoothed rotation
-      camera.quaternion.slerp(cameraQuaternion.current, smoothingFactor);
+      
+      // Apply a gentler final smoothing to prevent abrupt stops
+      camera.quaternion.slerp(cameraQuaternion.current, 0.2);
     }
 
     // Normalize for consistent diagonal movement
@@ -685,13 +723,72 @@ const FPSControls: React.FC<FPSControlsProps> = ({
   useEffect(() => {
     if (!enabled) return;
 
-    // We're now handling touch events in the TouchControls component
-    // This useEffect is kept for potential future touch-related setup
+    // Enhanced touch integration for nipplejs
+    // This acts as a bridge between the nipplejs controls and the FPS system
+    
+    // Set up event listeners for the custom events that will be dispatched by TouchControls
+    const handleJoystickEvent = (event: CustomEvent) => {
+      if (event.detail && event.detail.type) {
+        // Handle different joystick events
+        switch (event.detail.type) {
+          case 'move:start':
+            // Reset any stuck state that might have occurred
+            if (moveForward.current && moveBackward.current) {
+              moveForward.current = false;
+              moveBackward.current = false;
+            }
+            if (moveLeft.current && moveRight.current) {
+              moveLeft.current = false;
+              moveRight.current = false;
+            }
+            break;
+            
+          case 'look:start':
+            // Reset camera rotation smoothing
+            prevTouchActive.current = true;
+            break;
+            
+          case 'move:end':
+            // Ensure movement stops
+            if (touchState?.moveJoystick) {
+              // Force update the touch state to ensure movement stops
+              onTouchStateChange?.({
+                moveJoystick: {
+                  active: false,
+                  currentX: 0,
+                  currentY: 0
+                },
+                lookJoystick: touchState.lookJoystick
+              });
+            }
+            break;
+            
+          case 'look:end':
+            // Ensure looking stops smoothly
+            if (touchState?.lookJoystick) {
+              // Force update the touch state to ensure rotation stops
+              onTouchStateChange?.({
+                moveJoystick: touchState.moveJoystick,
+                lookJoystick: {
+                  active: false,
+                  currentX: 0,
+                  currentY: 0
+                }
+              });
+            }
+            break;
+        }
+      }
+    };
+
+    // Listen for joystick events
+    window.addEventListener('joystick-event', handleJoystickEvent as EventListener);
 
     return () => {
-      // Cleanup if needed
+      // Clean up event listeners
+      window.removeEventListener('joystick-event', handleJoystickEvent as EventListener);
     };
-  }, [enabled, gl.domElement, onTouchStateChange]);
+  }, [enabled, onTouchStateChange, touchState]);
 
   return (
     <>

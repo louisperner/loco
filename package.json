@@ -57,6 +57,7 @@
     "cheerio": "^1.0.0-rc.12",
     "firebase": "^11.4.0",
     "monaco-editor": "0.52.2",
+    "nipplejs": "^0.10.2",
     "postcss": "^8.5.3",
     "prettier": "3.5.3",
     "react": "^19.0.0",
