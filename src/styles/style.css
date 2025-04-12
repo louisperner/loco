@@ -304,6 +304,26 @@ xmp {
   animation: slideOutToRight 0.3s ease forwards;
 }
 
+/* Canvas indicator for added items */
+.canvas-add-indicator {
+  position: fixed;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 1000;
+}
+
+.canvas-add-indicator.show {
+  opacity: 1;
+}
+
 /* ui */
 .ui {
   position: absolute;

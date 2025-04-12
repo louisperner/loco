@@ -31,7 +31,6 @@ interface TouchState {
 interface RayHelper {
   sphere: THREE.Mesh;
   arrow: THREE.ArrowHelper;
-  laser: THREE.Line;
 }
 
 /**
@@ -86,61 +85,8 @@ const FPSControls: React.FC<FPSControlsProps> = ({
   const cameraEuler = useRef(new Euler(0, 0, 0, 'YXZ'));
   const cameraQuaternion = useRef(new Quaternion());
 
-  // Create ray helper for debugging
-  useEffect(() => {
-    // Create a sphere to visualize the raycaster range
-    const sphereGeometry = new THREE.SphereGeometry(0.05, 16, 16);
-    const sphereMaterial = new THREE.MeshBasicMaterial({
-      color: 0x310041,
-      transparent: true,
-      opacity: 0.9,
-    });
-    const sphereHelper = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    sphereHelper.name = 'raycasterHelper';
-    scene.add(sphereHelper);
-
-    // Create a laser beam using a line with glow effect
-    const laserMaterial = new THREE.LineBasicMaterial({
-      color: 0xff0000,
-      linewidth: 3,
-      transparent: true,
-      opacity: 0.95,
-      depthTest: false, // Make it always visible
-    });
-
-    // Create a very long line for the laser beam (effectively infinite)
-    const laserGeometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0, 0, -1000), // Very long distance
-    ]);
-
-    const laserBeam = new THREE.Line(laserGeometry, laserMaterial);
-    laserBeam.name = 'laserBeam';
-    laserBeam.renderOrder = 999; // Render on top of other objects
-    scene.add(laserBeam);
-
-    // Create a helper to visualize the raycaster direction
-    const origin = new THREE.Vector3();
-    const direction = new THREE.Vector3(0, 0, -1);
-    const length = 100;
-    const rayHelperObj = new THREE.ArrowHelper(direction, origin, length, 0xff0000);
-    rayHelperObj.name = 'raycasterDirectionHelper';
-    rayHelperObj.visible = false; // Hide the arrow helper since we have the laser beam
-    scene.add(rayHelperObj);
-
-    // Store all helpers in the ref
-    rayHelper.current = {
-      sphere: sphereHelper,
-      arrow: rayHelperObj,
-      laser: laserBeam,
-    };
-
-    return () => {
-      scene.remove(sphereHelper);
-      scene.remove(rayHelperObj);
-      scene.remove(laserBeam);
-    };
-  }, [scene]);
+  // Add near top of component
+  const isMobile = useRef(false);
 
   // Update raycaster on each frame
   useFrame(() => {
@@ -154,60 +100,6 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     raycaster.current.ray.origin.copy(camera.position);
     raycaster.current.ray.direction.copy(direction);
     raycaster.current.far = 1000; // Match the laser's length
-
-    // Update ray helper
-    if (rayHelper.current) {
-      // Update sphere position at origin
-      rayHelper.current.sphere.position.copy(camera.position);
-      rayHelper.current.sphere.scale.set(1, 1, 1);
-
-      // Update arrow helper (hidden but kept for reference)
-      rayHelper.current.arrow.position.copy(camera.position);
-      rayHelper.current.arrow.setDirection(direction);
-
-      // Update laser beam
-      rayHelper.current.laser.position.copy(camera.position);
-      rayHelper.current.laser.quaternion.copy(camera.quaternion);
-
-      // Get ALL objects in the scene for raycasting
-      const allObjects: THREE.Mesh[] = [];
-      scene.traverse((object) => {
-        if ((object as THREE.Mesh).isMesh && object.name !== 'raycasterHelper' && object.name !== 'laserBeam') {
-          allObjects.push(object as THREE.Mesh);
-        }
-      });
-
-      // Use the SAME raycaster for both visualization and interaction
-      const intersects = raycaster.current.intersectObjects(allObjects, false);
-
-      // If we hit something, adjust the laser length
-      if (intersects.length > 0) {
-        const distance = intersects[0].distance;
-
-        // Update laser geometry to match the hit distance
-        const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -distance)];
-
-        rayHelper.current.laser.geometry.setFromPoints(points);
-        rayHelper.current.laser.geometry.attributes.position.needsUpdate = true;
-
-        // Make the hit point visible
-        rayHelper.current.sphere.scale.set(2, 2, 2);
-        rayHelper.current.sphere.position.copy(intersects[0].point);
-        rayHelper.current.sphere.visible = true;
-      } else {
-        // If no hit, extend the laser to the maximum distance
-        const points = [
-          new THREE.Vector3(0, 0, 0),
-          new THREE.Vector3(0, 0, -1000), // Very long distance
-        ];
-
-        rayHelper.current.laser.geometry.setFromPoints(points);
-        rayHelper.current.laser.geometry.attributes.position.needsUpdate = true;
-
-        // Hide the sphere when not hitting anything
-        rayHelper.current.sphere.visible = false;
-      }
-    }
   });
 
   // Set initial position if provided
@@ -548,7 +440,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
         // Get ALL objects in the scene
         const allObjects: THREE.Object3D[] = [];
         scene.traverse((object) => {
-          if ((object as THREE.Mesh).isMesh && object.name !== 'raycasterHelper' && object.name !== 'laserBeam') {
+          if ((object as THREE.Mesh).isMesh && object.name !== 'raycasterHelper') {
             allObjects.push(object);
           }
         });
@@ -559,11 +451,6 @@ const FPSControls: React.FC<FPSControlsProps> = ({
         if (e.button === 2) {
           // Right click - DELETE objects
           e.preventDefault();
-
-          // console.log('Camera position:', camera.position);
-          // console.log('Raycaster direction:', raycaster.current.ray.direction);
-          // console.log('Total meshes in scene:', allObjects.length);
-          // console.log('Raycaster intersects:', intersects.length, intersects);
 
           if (intersects.length > 0) {
             // Get the first intersected object
@@ -576,8 +463,6 @@ const FPSControls: React.FC<FPSControlsProps> = ({
 
             // Traverse up the parent chain
             while (parent) {
-              // console.log('Checking parent:', parent.name || 'unnamed', parent.userData);
-
               if (
                 parent.userData &&
                 (parent.userData.type === 'image' ||
@@ -592,25 +477,6 @@ const FPSControls: React.FC<FPSControlsProps> = ({
             }
 
             if (foundObject) {
-              // console.log('Found object to remove:', foundObject.userData);
-
-              // Highlight the laser beam red briefly to indicate deletion
-              const materialAsBasic = rayHelper.current?.laser.material as THREE.LineBasicMaterial;
-              const originalColor = materialAsBasic?.color.clone();
-              if (rayHelper.current) {
-                materialAsBasic.color.set(0xff0000);
-                materialAsBasic.opacity = 1.0;
-              }
-
-              setTimeout(() => {
-                if (rayHelper.current && originalColor) {
-                  const material = rayHelper.current.laser.material as THREE.LineBasicMaterial;
-                  material.color.copy(originalColor);
-                  material.opacity = 0.8;
-                }
-              }, 300);
-
-              // Dispatch the remove event
               const removeEvent = new CustomEvent('removeObject', {
                 detail: foundObject.userData,
               });
@@ -628,24 +494,6 @@ const FPSControls: React.FC<FPSControlsProps> = ({
           // If we have an intersection, we can use that point to place a new object
           if (intersects.length > 0) {
             const hitPoint = intersects[0].point;
-            // // console.log('Hit point for new object:', hitPoint);
-
-            // Highlight the laser beam green briefly to indicate addition
-            const material = rayHelper.current?.laser.material as THREE.LineBasicMaterial;
-            const originalColor = material?.color.clone();
-            if (rayHelper.current) {
-              material.color.set(0x00ff00);
-              material.opacity = 1.0;
-            }
-
-            setTimeout(() => {
-              if (rayHelper.current && originalColor) {
-                const material = rayHelper.current.laser.material as THREE.LineBasicMaterial;
-                material.color.copy(originalColor);
-                material.opacity = 0.8;
-              }
-            }, 300);
-
             // Dispatch an event to add a new object at this position
             const addEvent = new CustomEvent('addObject', {
               detail: {
@@ -662,24 +510,6 @@ const FPSControls: React.FC<FPSControlsProps> = ({
             targetPosition.copy(camera.position);
             const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
             targetPosition.addScaledVector(direction, 10); // Place 10 units in front
-
-            // console.log('Placing object at distance:', targetPosition);
-
-            // Highlight the laser beam green briefly
-            const material = rayHelper.current?.laser.material as THREE.LineBasicMaterial;
-            const originalColor = material?.color.clone();
-            if (rayHelper.current) {
-              material.color.set(0x00ff00);
-              material.opacity = 1.0;
-            }
-
-            setTimeout(() => {
-              if (rayHelper.current && originalColor) {
-                const material = rayHelper.current.laser.material as THREE.LineBasicMaterial;
-                material.color.copy(originalColor);
-                material.opacity = 0.8;
-              }
-            }, 300);
 
             // Dispatch an event to add a new object
             const addEvent = new CustomEvent('addObject', {
@@ -710,8 +540,8 @@ const FPSControls: React.FC<FPSControlsProps> = ({
   // Mobile detection
   useEffect(() => {
     const checkMobile = () => {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      onMobileChange?.(isMobile);
+      isMobile.current = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      onMobileChange?.(isMobile.current);
     };
 
     checkMobile();
