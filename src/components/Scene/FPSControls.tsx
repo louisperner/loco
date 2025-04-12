@@ -28,10 +28,10 @@ interface TouchState {
   };
 }
 
-interface RayHelper {
-  sphere: THREE.Mesh;
-  arrow: THREE.ArrowHelper;
-}
+// interface RayHelper {
+//   sphere: THREE.Mesh;
+//   arrow: THREE.ArrowHelper;
+// }
 
 /**
  * FPSControls Component
@@ -53,7 +53,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const controls = useRef<any>(null);
   const raycaster = useRef<THREE.Raycaster>(new THREE.Raycaster());
-  const rayHelper = useRef<RayHelper | null>(null);
+  // const rayHelper = useRef<RayHelper | null>(null);
   const moveForward = useRef<boolean>(false);
   const moveBackward = useRef<boolean>(false);
   const moveLeft = useRef<boolean>(false);
