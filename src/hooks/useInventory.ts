@@ -951,7 +951,7 @@ export const useInventory = (
       const totalInstances = canvasImages.length + canvasModels.length + canvasVideos.length;
 
       if (totalInstances > 0) {
-        const confirmMessage = `Este item tem ${totalInstances} instância(s) no canvas (incluindo clones).\nDeseja remover TODAS?`;
+        const confirmMessage = `Remove ALL Instances?`;
         if (!window.confirm(confirmMessage)) return;
       } else {
         if (!window.confirm(`Deseja excluir permanentemente "${itemToDelete.fileName}"?`)) return;

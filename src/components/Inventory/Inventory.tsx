@@ -4,6 +4,7 @@ import Hotbar from './Hotbar';
 import InventoryGrid from './InventoryGrid';
 import InventoryHeader from './InventoryHeader';
 import { useGameStore } from '../../store/useGameStore';
+import HotbarTopNav from './HotbarTopNav';
 
 interface InventoryProps {
   onSelectImage: (imageData: InventoryItem) => void;
@@ -134,11 +135,13 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
         ></div>
       )}
 
+      <HotbarTopNav />
+
       {hotbarComponent}
 
       {showFullInventory && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center pointer-events-none rounded-md'>
-          <div className='relative w-full max-w-[750px] h-auto max-h-[500px] bg-[#2c2c2ce] rounded-md shadow-2xl flex flex-col overflow-hidden text-white font-minecraft pointer-events-auto '>            
+        <div className='absolute inset-0 z-[9999] w-screen h-screen flex items-center justify-center pointer-events-none rounded-md'>
+          <div className='relative w-screen h-screen lg:max-h-[500px] lg:max-w-[750px] rounded-md shadow-2xl flex flex-col overflow-hidden text-white font-minecraft pointer-events-auto shadow-black/50 opacity-90'>            
             <InventoryHeader
               searchTerm={searchTerm}
               handleSearchChange={handleSearchChange}

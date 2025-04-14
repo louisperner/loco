@@ -101,7 +101,7 @@ const MobileHotbarMenu: React.FC<MobileHotbarMenuProps> = ({
                   </div>
                   
                   <button
-                    className='absolute -top-6 right-0 w-6 h-6 bg-[#C75D5D] text-white/90 border border-[#151515] text-xs flex justify-center items-center hover:bg-[#D46464]'
+                    className='absolute -top-0 right-0 w-6 h-6 bg-[#C75D5D] text-white/90 border border-[#151515] text-xs flex justify-center items-center hover:bg-[#D46464]'
                     onClick={(e) => {
                       e.stopPropagation();
                       handleRemoveFromHotbar(index, e);

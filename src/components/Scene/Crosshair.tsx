@@ -11,7 +11,7 @@ interface CrosshairProps {
 const Crosshair: React.FC<CrosshairProps> = ({ 
   visible = true, 
   size = 5, 
-  color = 'white', 
+  color = '#42ca75', 
   thickness = 1, 
   style = 'circle' 
 }) => {

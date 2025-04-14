@@ -589,7 +589,7 @@ const Player: React.FC = () => {
         {uiVisible && (
           <div
             ref={settingsPanelRef}
-            className={`settings-panel-container ${showSettings ? 'active' : ''}`}
+            className={`settings-panel-container ${showSettings ? 'active' : ''} opacity-30 `}
             onMouseEnter={() => setCanvasInteractive(false)}
             onMouseLeave={() => {
               if (!showColorPicker) {
