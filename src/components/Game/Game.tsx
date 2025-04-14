@@ -15,7 +15,7 @@ import { SettingsPanel } from '@/components/Settings';
 import { useThemeStore } from '../../store/ThemeStore';
 import Inventory from '../Inventory/Inventory';
 import { Bloom, EffectComposer } from '@react-three/postprocessing';
-
+import WebFrames from '../Models/WebFrames';
 // Import separated components
 import { Crosshair, Floor, PreviewFrame, FrameRateLimiter, CameraExposer } from '../Scene';
 import CoordinateDisplay from '../ui/CoordinateDisplay';
@@ -152,6 +152,8 @@ const Player: React.FC = () => {
     setGroundInfinite,
     setTheme,
   } = useThemeStore();
+
+  const frames = useGameStore((state) => state.frames);
 
   // Get file handling functions
   const { isDragging, handleDragOver, handleDragLeave, handleDrop, handleModelDrop, handleImageDrop, handleVideoDrop } =
@@ -544,6 +546,7 @@ const Player: React.FC = () => {
             <ModelManager onSelect={() => {}} />
 
             {/* WebFrames component is currently not in use */}
+            <WebFrames frames={frames} onMediaDragStart={() => {}} onCloseFrame={() => {}} onRestorePosition={() => {}} onUpdateFrameUrl={() => {}} onLoadSavedFrames={() => {}} />
 
             {showPreview && !confirmedPosition && (
               <PreviewFrame

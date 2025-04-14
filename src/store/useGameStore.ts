@@ -4,7 +4,7 @@ import React from 'react';
 
 // Types
 export interface WebFrame {
-  id: number;
+  id: string;
   url: string;
   position: [number, number, number];
   rotation: [number, number, number];
@@ -318,7 +318,7 @@ export const useGameStore = create<GameState & GameStateActions>()(
           frames: [
             ...frames,
             {
-              id: Date.now(),
+              id: Date.now().toString(),
               url,
               position: finalPosition,
               rotation: finalRotation,
@@ -334,13 +334,13 @@ export const useGameStore = create<GameState & GameStateActions>()(
       },
       removeFrame: (frameId: number) => {
         set((state) => ({
-          frames: state.frames.filter((frame) => frame.id !== frameId),
+          frames: state.frames.filter((frame) => frame.id !== frameId.toString()),
         }));
       },
       restoreFramePosition: (frameId: number) => {
         set((state) => ({
           frames: state.frames.map((frame) => {
-            if (frame.id === frameId && frame.originalPosition && frame.originalRotation) {
+            if (frame.id === frameId.toString() && frame.originalPosition && frame.originalRotation) {
               return {
                 ...frame,
                 position: frame.originalPosition,
@@ -353,7 +353,7 @@ export const useGameStore = create<GameState & GameStateActions>()(
       },
       updateFrameUrl: (frameId: number, newUrl: string) => {
         set((state) => ({
-          frames: state.frames.map((frame) => (frame.id === frameId ? { ...frame, url: newUrl } : frame)),
+          frames: state.frames.map((frame) => (frame.id === frameId.toString() ? { ...frame, url: newUrl } : frame)),
         }));
       },
       setSelectedFrame: (frameId: number | null) => set({ selectedFrame: frameId }),
