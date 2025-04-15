@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import nipplejs, { JoystickManager, JoystickOutputData } from 'nipplejs';
 
 interface TouchControlsProps {
@@ -24,6 +24,7 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
   const lookJoystickContainerRef = useRef<HTMLDivElement>(null);
   const moveJoystickRef = useRef<JoystickManager | null>(null);
   const lookJoystickRef = useRef<JoystickManager | null>(null);
+  const [heldButtons, setHeldButtons] = useState<Set<string>>(new Set());
 
   // Função para simular clique do mouse
   const simulateMouseClick = (button: number, e: React.MouseEvent | React.TouchEvent) => {
@@ -84,22 +85,38 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
   };
 
   // Função para simular teclas do teclado
-  const simulateKeyPress = (keyCode: string, e: React.TouchEvent) => {
+  const simulateKeyPress = (keyCode: string, e: React.TouchEvent, isStart: boolean) => {
     // Impedir qualquer propagação de evento
     e.stopPropagation();
     e.preventDefault();
 
-    // Simula keydown
-    const keydownEvent = new KeyboardEvent('keydown', {
-      code: keyCode,
-      key: keyCode === 'Space' ? ' ' : keyCode.replace('Key', '').toLowerCase(),
-      bubbles: true,
-      cancelable: true,
-    });
-    document.dispatchEvent(keydownEvent);
+    if (isStart) {
+      // Se for início do toque e o botão já estiver pressionado, não faz nada
+      if (heldButtons.has(keyCode)) return;
+      
+      // Adiciona o botão ao conjunto de botões pressionados
+      setHeldButtons(prev => new Set(prev).add(keyCode));
 
-    // Simula keyup após um pequeno delay
-    setTimeout(() => {
+      // Simula keydown
+      const keydownEvent = new KeyboardEvent('keydown', {
+        code: keyCode,
+        key: keyCode === 'Space' ? ' ' : keyCode.replace('Key', '').toLowerCase(),
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(keydownEvent);
+    } else {
+      // Se for fim do toque e o botão não estiver pressionado, não faz nada
+      if (!heldButtons.has(keyCode)) return;
+      
+      // Remove o botão do conjunto de botões pressionados
+      setHeldButtons(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(keyCode);
+        return newSet;
+      });
+
+      // Simula keyup
       const keyupEvent = new KeyboardEvent('keyup', {
         code: keyCode,
         key: keyCode === 'Space' ? ' ' : keyCode.replace('Key', '').toLowerCase(),
@@ -107,7 +124,7 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
         cancelable: true,
       });
       document.dispatchEvent(keyupEvent);
-    }, 100);
+    }
   };
 
   // Função para abrir o inventário
@@ -117,7 +134,8 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
     e.preventDefault();
 
     // Simula a tecla E para abrir o inventário
-    simulateKeyPress('KeyE', e);
+    simulateKeyPress('KeyE', e, true);
+    setTimeout(() => simulateKeyPress('KeyE', e, false), 100);
   };
 
   useEffect(() => {
@@ -388,16 +406,11 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
             <button
               className='w-14 h-14 rounded-full bg-green-500/70 border-2 border-white flex items-center justify-center active:bg-green-600 shadow-lg'
               onClick={(e) => e.stopPropagation()}
-              onTouchStart={(e) => simulateKeyPress('Space', e)}
+              onTouchStart={(e) => simulateKeyPress('Space', e, true)}
+              onTouchEnd={(e) => simulateKeyPress('Space', e, false)}
               aria-label='Move Up'
             >
-              <svg xmlns='http://www.w3.org/2000/svg' className='h-8 w-8' viewBox='0 0 20 20' fill='white'>
-                <path
-                  fillRule='evenodd'
-                  d='M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z'
-                  clipRule='evenodd'
-                />
-              </svg>
+              <span className='text-white text-2xl'>↑</span>
             </button>
           </div>
 
@@ -406,16 +419,11 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
             <button
               className='w-14 h-14 rounded-full bg-green-500/70 border-2 border-white flex items-center justify-center active:bg-green-600 shadow-lg'
               onClick={(e) => e.stopPropagation()}
-              onTouchStart={(e) => simulateKeyPress('ControlLeft', e)}
+              onTouchStart={(e) => simulateKeyPress('ControlLeft', e, true)}
+              onTouchEnd={(e) => simulateKeyPress('ControlLeft', e, false)}
               aria-label='Move Down'
             >
-              <svg xmlns='http://www.w3.org/2000/svg' className='h-8 w-8' viewBox='0 0 20 20' fill='white'>
-                <path
-                  fillRule='evenodd'
-                  d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'
-                  clipRule='evenodd'
-                />
-              </svg>
+              <span className='text-white text-2xl'>↓</span>
             </button>
           </div>
         </div>
