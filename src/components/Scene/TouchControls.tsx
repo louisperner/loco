@@ -214,7 +214,7 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
       });
     };
 
-    const handleMoveMove = (_evt: any, data: JoystickOutputData) => {
+    const handleMoveMove = (_evt: nipplejs.EventData, data: JoystickOutputData) => {
       // Extract directional data (using vector instead of angle for more accuracy)
       // Normalize based on distance factor for smoother control
       const maxDistance = 75; // Maximum practical distance in pixels
@@ -280,7 +280,7 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
       });
     };
 
-    const handleLookMove = (_evt: any, data: JoystickOutputData) => {
+    const handleLookMove = (_evt: nipplejs.EventData, data: JoystickOutputData) => {
       // Extract directional data (using vector instead of angle for more accuracy)
       // Normalize based on distance factor for smoother control
       const maxDistance = 75; // Maximum practical distance in pixels
@@ -356,6 +356,7 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
         lookJoystickRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, isMobile, onTouchStateChange]);
 
   useEffect(() => {
