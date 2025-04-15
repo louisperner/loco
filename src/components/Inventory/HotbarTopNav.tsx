@@ -295,8 +295,6 @@ const HotbarTopNav: React.FC = () => {
 
       // Create default code
       const defaultCode = `// Write your React code here
-import React, { useState } from 'react';
-
 function Counter() {
   const [count, setCount] = useState(0);
   

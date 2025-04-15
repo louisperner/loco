@@ -1,10 +1,66 @@
 import React, { useState, useRef } from 'react';
 import { Html, TransformControls } from '@react-three/drei';
 import { Object3D, Vector3 } from 'three';
-import { LiveProvider, LiveEditor, LiveError, LivePreview } from 'react-live';
+import { LiveProvider, LiveEditor, LiveError, LivePreview } from '../../lib/react-live/src/index';
 import { useDrag } from '@use-gesture/react';
 import { a, useSpring } from '@react-spring/three';
 import { CodeInSceneProps, TransformMode } from './types';
+import { ThreeEvent } from '@react-three/fiber';
+import * as Prism from 'prismjs';
+
+// Custom PrismTheme type that matches our theme structure
+type CustomPrismTheme = {
+  plain: {
+    color: string;
+    backgroundColor: string;
+  };
+  styles: {
+    types: string[];
+    style: {
+      color?: string;
+      fontStyle?: string;
+      opacity?: number;
+    };
+  }[];
+};
+
+// Create a custom wrapper for LivePreview to stop propagation
+const SafeLivePreview: React.FC = (props) => {
+  const handleInteraction = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  };
+
+  return (
+    <div 
+      onClick={handleInteraction} 
+      onMouseDown={handleInteraction}
+      onPointerDown={handleInteraction}
+      data-no-pointer-lock="true"
+      className="safe-live-preview"
+    >
+      <LivePreview {...props} />
+    </div>
+  );
+};
+
+// Create a custom wrapper for LiveEditor to stop propagation
+const SafeLiveEditor: React.FC<{onChange?: (code: string) => void, style?: React.CSSProperties}> = (props) => {
+  const handleInteraction = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  };
+
+  return (
+    <div 
+      onClick={handleInteraction} 
+      onMouseDown={handleInteraction}
+      onPointerDown={handleInteraction}
+      data-no-pointer-lock="true"
+      className="safe-live-editor"
+    >
+      <LiveEditor {...props} />
+    </div>
+  );
+};
 
 const CodeInScene: React.FC<CodeInSceneProps> = ({
   codeData,
@@ -116,7 +172,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
   });
 
   // Custom theme for react-live
-  const customTheme = {
+  const customTheme: CustomPrismTheme = {
     plain: {
       color: '#e6e6e6',
       backgroundColor: '#1e1e1e',
@@ -180,20 +236,25 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
     ],
   };
 
+  // Handle all events to prevent them from bubbling up to the canvas
+  const handleInteraction = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <a.group
       ref={groupRef}
       position={initialPosition}
       rotation={initialRotation}
       scale={hoverScale.to((s) => [s * scale, s * scale, s * scale])}
-      onClick={(e) => {
+      onClick={(e: ThreeEvent<MouseEvent>) => {
         e.stopPropagation();
         if (onSelect) onSelect({ ...codeData, type: 'code' });
       }}
     >
-      {showControls && (
+      {showControls && groupRef.current && (
         <TransformControls
-          object={groupRef}
+          object={groupRef.current}
           mode={transformMode}
           size={0.7}
           onMouseUp={handleTransformChange}
@@ -213,10 +274,24 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
         onPointerOut={handlePointerOut}
         onClick={handleClick}
         onContextMenu={handleRightClick}
+        onPointerDown={handleInteraction}
+        onMouseDown={handleInteraction}
+        className="drei-html"
         {...bind()}
       >
-        <div className="code-container bg-[#1e1e1e] rounded-lg overflow-hidden shadow-xl border border-gray-700 transform-gpu">
-          <div className="code-header flex justify-between items-center bg-[#252526] px-3 py-2 border-b border-gray-700">
+        <div 
+          className="code-container bg-[#1e1e1e] rounded-lg overflow-hidden shadow-xl border border-gray-700 transform-gpu"
+          onClick={handleInteraction}
+          onMouseDown={handleInteraction}
+          onPointerDown={handleInteraction}
+          data-no-pointer-lock="true"
+        >
+          <div 
+            className="code-header flex justify-between items-center bg-[#252526] px-3 py-2 border-b border-gray-700"
+            onClick={handleInteraction}
+            onMouseDown={handleInteraction}
+            onPointerDown={handleInteraction}
+          >
             <div className="flex items-center gap-2">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-blue-400">
                 <path d="M8 18L3 12L8 6M16 6L21 12L16 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -229,7 +304,10 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
               {editMode ? (
                 <button
                   className="text-white p-1 rounded hover:bg-gray-700"
-                  onClick={toggleEditMode}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleEditMode();
+                  }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -239,7 +317,10 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
                 <>
                   <button
                     className="text-white p-1 rounded hover:bg-gray-700 mr-1"
-                    onClick={toggleEditMode}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleEditMode();
+                    }}
                     title="Edit Code"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -248,7 +329,10 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
                   </button>
                   <button
                     className="text-white p-1 rounded hover:bg-gray-700"
-                    onClick={() => onRemove()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove();
+                    }}
                     title="Delete"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -264,16 +348,29 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
             code={localCode}
             noInline={noInline}
             language={language}
-            theme={customTheme}
-            scope={{
-              useState,
-              useEffect: React.useEffect,
+            theme={customTheme as any}
+            enableTypeScript
+            transformCode={(code) => {
+              code = code.replace("useState", "React.useState");           
+              return code;
             }}
           >
-            <div className="code-content">
+            <div 
+              className="code-content"
+              onClick={handleInteraction}
+              onMouseDown={handleInteraction}
+              onPointerDown={handleInteraction}
+              data-no-pointer-lock="true"
+            >
               {editMode ? (
-                <div className="editor-container p-2">
-                  <LiveEditor 
+                <div 
+                  className="editor-container p-2"
+                  onClick={handleInteraction}
+                  onMouseDown={handleInteraction}
+                  onPointerDown={handleInteraction}
+                  data-no-pointer-lock="true"
+                >
+                  <SafeLiveEditor 
                     onChange={handleCodeChange}
                     style={{ 
                       fontFamily: 'monospace', 
@@ -283,18 +380,28 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
                       padding: '8px'
                     }}
                   />
-                  <div className="flex justify-end mt-2">
+                  <div className="flex justify-end mt-2" data-no-pointer-lock="true">
                     <button
                       className="bg-teal-600 hover:bg-teal-700 text-white text-xs py-1 px-2 rounded"
-                      onClick={toggleEditMode}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleEditMode();
+                      }}
+                      data-no-pointer-lock="true"
                     >
                       Apply
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="preview-container p-4 bg-white">
-                  <LivePreview />
+                <div 
+                  className="preview-container p-4 bg-white"
+                  onClick={handleInteraction}
+                  onMouseDown={handleInteraction}
+                  onPointerDown={handleInteraction}
+                  data-no-pointer-lock="true"
+                >
+                  <SafeLivePreview />
                   <LiveError 
                     style={{ 
                       backgroundColor: '#FEE2E2',

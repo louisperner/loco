@@ -158,8 +158,44 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     if (!enabled || !controls.current) return;
 
     const handleCanvasClick = (event: MouseEvent): void => {
-      // Only handle clicks on the canvas itself, not on UI elements
+      // First ensure event.target is an Element
+      if (!(event.target instanceof Element)) return;
+      
+      // Check if the click target or any parent element is from our code components
+      const isCodeComponent = (
+        // Check for react-live components
+        (event.target as Element).closest('.react-live') !== null ||
+        // Check for our code container components
+        (event.target as Element).closest('.code-container') !== null ||
+        // Check ancestor elements for editor-related classes
+        (event.target as Element).closest('.editor-container') !== null ||
+        (event.target as Element).closest('.preview-container') !== null ||
+        // Check for HTML elements from drei
+        (event.target as Element).closest('.drei-html') !== null ||
+        // Check for data attribute we can add to code components
+        (event.target as Element).closest('[data-no-pointer-lock]') !== null ||
+        // Check if element contains any text nodes with code-related content
+        /code|editor|preview|live/i.test((event.target as Element).className || '')
+      );
+
+      // Skip pointer lock if the click is inside our code components
+      if (isCodeComponent) {
+        event.stopPropagation();
+        return;
+      }
+
+      // Explicitly check that the target is the canvas element itself
       if (event.target === gl.domElement && !isLocked && enabled) {
+        // Ensure there's no active HTML element that would cause issues
+        const activeElement = document.activeElement;
+        if (activeElement && activeElement !== document.body && activeElement !== gl.domElement) {
+          // If an HTML element has focus, it might be a UI element - don't lock
+          if (activeElement instanceof HTMLElement && 
+              !activeElement.classList.contains('canvas-container')) {
+            return;
+          }
+        }
+        
         try {
           controls.current.connect();
         } catch (err) {

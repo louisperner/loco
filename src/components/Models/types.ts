@@ -169,28 +169,3 @@ export interface StoreVideoData {
   thumbnailUrl: string;
   url?: string;
 }
-
-// Code block types
-export interface CodeBlockDataType {
-  id: string;
-  code: string;
-  fileName?: string;
-  position?: [number, number, number];
-  rotation?: [number, number, number];
-  scale?: number;
-  isInScene?: boolean;
-  noInline?: boolean;
-  language?: string;
-  [key: string]: unknown;
-}
-
-export interface CodeInSceneProps {
-  codeData: CodeBlockDataType;
-  onRemove: () => void;
-  onUpdate: (data: CodeBlockDataType) => void;
-  onSelect?: (data: CodeBlockDataType & { type: string }) => void;
-}
-
-export interface CodeCloneManagerProps {
-  onSelect?: (data: CodeBlockDataType & { type: string }) => void;
-}
