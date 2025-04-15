@@ -41,7 +41,7 @@ const MobileHotbarMenu: React.FC<MobileHotbarMenuProps> = ({
       {/* Menu - Minecraft style */}
       <div
         className={cn(
-          'fixed bottom-0 left-0 right-0 bg-[#3F3F3F]/95 border-t-6 border-[#222222] z-50 transition-transform duration-300 ease-in-out',
+          'select-none fixed bottom-0 left-0 right-0 bg-[#3F3F3F]/95 border-t-6 border-[#222222] z-50 transition-transform duration-300 ease-in-out',
           isOpen ? 'translate-y-0' : 'translate-y-full',
         )}
       >

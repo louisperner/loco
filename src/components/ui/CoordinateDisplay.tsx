@@ -32,7 +32,7 @@ const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({ cameraRef }) => {
   }, [cameraRef]);
 
   return (
-    <div className='fixed top-4 left-4 bg-black/60 text-white px-3 py-2 rounded shadow-lg z-50 border border-gray-700 opacity-30'>
+    <div className='fixed top-4 left-4 bg-black/60 text-white px-3 py-2 rounded shadow-lg z-50 border border-gray-700 opacity-30 select-none'>
       <div className='flex flex-col space-y-1 font-mono text-[10px]'>
         <div className='flex items-center'>
           <span>

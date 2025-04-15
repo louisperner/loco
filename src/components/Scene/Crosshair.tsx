@@ -22,7 +22,7 @@ const Crosshair: React.FC<CrosshairProps> = ({
     case 'circle': // Circular crosshair
       return (
         <div
-          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border pointer-events-none z-[1000] bg-transparent`}
+          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border pointer-events-none z-[1000] bg-transparent select-none`}
           style={{
             width: `${size}px`,
             height: `${size}px`,

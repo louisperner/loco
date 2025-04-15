@@ -383,7 +383,7 @@ export function SettingsPanel({
         <Button
           variant='ghost'
           size='icon'
-          className='fixed top-4 right-4 z-50 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 border border-white/10'
+          className='fixed top-4 right-4 z-50 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 border border-white/10 select-none'
         >
           <FaCog className='w-5 h-5' />
         </Button>

@@ -26,7 +26,7 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div className='fixed inset-0 w-screen h-screen overflow-hidden' draggable={false}>
+    <div className='fixed inset-0 w-screen h-screen overflow-hidden select-none' draggable={false}>
       {isLoading && <SplashScreen />}
       <Player />
       <DrawingOverlay />

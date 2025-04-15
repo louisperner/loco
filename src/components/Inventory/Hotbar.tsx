@@ -53,7 +53,7 @@ const Hotbar: React.FC<HotbarProps> = ({
   return (
     <>
       {/* Complete Hotbar (Landscape and Desktop) */}
-      <div className='hidden landscape:flex md:flex fixed bottom-5 left-1/2 -translate-x-1/2 flex-col items-center z-50 pointer-events-none'>
+      <div className='hidden landscape:flex md:flex fixed bottom-5 left-1/2 -translate-x-1/2 flex-col items-center z-50 pointer-events-none select-none'>
       
         <div className='mt-2 flex gap-1 bg-[#2c2c2c]/90 rounded-lg p-1 shadow-lg pointer-events-auto border border-[#151515] backdrop-blur-sm'>
           {hotbarItems.map((item, index) => (
@@ -128,7 +128,7 @@ const Hotbar: React.FC<HotbarProps> = ({
       </div>
 
       {/* Single Icon Hotbar (Portrait Mobile Only) */}
-      <div className='landscape:hidden md:hidden fixed bottom-[50px] left-1/2 -translate-x-1/2 z-50 pointer-events-none'>
+      <div className='landscape:hidden md:hidden fixed bottom-[50px] left-1/2 -translate-x-1/2 z-50 pointer-events-none select-none'>
         <div
           className='w-[60px] h-[60px] bg-[#0F0F0F]/90 rounded-lg shadow-lg pointer-events-auto border border-white/10 flex justify-center items-center cursor-pointer transition-all duration-200 hover:bg-[#1A1A1A] hover:scale-105 active:scale-95 overflow-hidden backdrop-blur-sm'
           onClick={() => setIsMobileMenuOpen(true)}
@@ -170,7 +170,7 @@ const Hotbar: React.FC<HotbarProps> = ({
               </div>
             </>
           ) : (
-            <div className='w-8 h-8 text-white/40'>
+            <div className='w-8 h-8 text-white/40 select-none'>
               <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor' className='w-full h-full'>
                 <path d='M12 6.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' />
               </svg>

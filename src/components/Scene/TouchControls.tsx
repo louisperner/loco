@@ -364,7 +364,7 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
   if (!isMobile || !enabled) return null;
 
   return (
-    <div className='fixed inset-0 pointer-events-none z-50 opacity-10'>
+    <div className='fixed inset-0 pointer-events-none z-50 opacity-10 select-none'>
       {/* Movement Joystick com botões acima */}
       <div className='absolute left-2 bottom-4'>
         {/* Control buttons div separado e posicionado acima do joystick esquerdo */}
@@ -423,7 +423,7 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
         {/* O joystick esquerdo com nipplejs */}
         <div
           ref={moveJoystickContainerRef}
-          className='w-32 h-32 pointer-events-auto relative rounded-full bg-slate-800/40 backdrop-blur-sm border-2 border-white/50 shadow-lg'
+          className='w-32 h-32 pointer-events-auto relative rounded-full bg-slate-800/40 backdrop-blur-sm border-2 border-white/50 shadow-lg select-none'
           style={{ touchAction: 'none' }}
         />
       </div>
@@ -476,7 +476,7 @@ const TouchControls: React.FC<TouchControlsProps> = ({ enabled, isMobile, touchS
         {/* O joystick direito com nipplejs */}
         <div
           ref={lookJoystickContainerRef}
-          className='w-32 h-32 pointer-events-auto relative rounded-full bg-slate-800/40 backdrop-blur-sm border-2 border-white/50 shadow-lg'
+          className='w-32 h-32 pointer-events-auto relative rounded-full bg-slate-800/40 backdrop-blur-sm border-2 border-white/50 shadow-lg select-none'
           style={{ touchAction: 'none' }}
         />
       </div>
