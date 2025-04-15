@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Html, TransformControls } from '@react-three/drei';
 import { Object3D, Vector3 } from 'three';
-import { LiveProvider, LiveEditor, LiveError, LivePreview } from '../../lib/react-live/src/index';
+import { LiveProvider, LiveEditor, LiveError, LivePreview } from 'react-live';
 import { useDrag } from '@use-gesture/react';
 import { a, useSpring } from '@react-spring/three';
 import { CodeInSceneProps, TransformMode } from './types';
@@ -350,10 +350,10 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
             language={language}
             theme={customTheme as any}
             enableTypeScript
-            transformCode={(code) => {
-              code = code.replace("useState", "React.useState");           
-              return code;
-            }}
+            // transformCode={(code) => {
+            //   code = code.replace("useState", "React.useState");           
+            //   return code;
+            // }}
           >
             <div 
               className="code-content"
