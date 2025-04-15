@@ -368,7 +368,7 @@ const HotbarTopNav: React.FC = () => {
   
     return (
        <>
-        <div className="absolute portrait:top-[80px] portrait:opacity-30 lg:top-[unset] md:bottom-[95px] left-1/2 -translate-x-1/2 z-[9999]">
+        <div className="absolute portrait:top-[80px] portrait:opacity-30 lg:top-[unset] sm:bottom-[75px] md:bottom-[95px] left-1/2 -translate-x-1/2 z-[9999]">
             <div className="flex gap-1 bg-[#2c2c2c]/90 rounded-lg p-1 shadow-lg pointer-events-auto border border-[#151515] backdrop-blur-sm">
                 <input
                 ref={fileInputRef}
