@@ -6,10 +6,12 @@ import Spotlight from '../ui/Spotlight';
 import FPSControls from '../Scene/FPSControls';
 import ImageCloneManager from '../Models/ImageCloneManager';
 import VideoCloneManager from '../Models/VideoCloneManager';
+import CodeCloneManager from '../Models/CodeCloneManager';
 import MessageManager from '../Scene/MessageManager';
 import { useImageStore } from '../../store/useImageStore';
 import { useVideoStore } from '../../store/videoStore';
 import { useModelStore } from '../../store/useModelStore';
+import { useCodeStore } from '../../store/useCodeStore';
 import ModelManager from '../Models/ModelManager';
 import { SettingsPanel } from '@/components/Settings';
 import { useThemeStore } from '../../store/ThemeStore';
@@ -544,6 +546,7 @@ const Player: React.FC = () => {
             <ImageCloneManager onSelect={() => {}} />
             <VideoCloneManager onSelect={() => {}} />
             <ModelManager onSelect={() => {}} />
+            <CodeCloneManager onSelect={() => {}} />
 
             {/* WebFrames component is currently not in use */}
             <WebFrames frames={frames} onMediaDragStart={() => {}} onCloseFrame={() => {}} onRestorePosition={() => {}} onUpdateFrameUrl={() => {}} onLoadSavedFrames={() => {}} />

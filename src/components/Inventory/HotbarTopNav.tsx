@@ -2,6 +2,7 @@ import { useGameStore } from "@/store/useGameStore";
 import { useImageStore } from "@/store/useImageStore";
 import { useModelStore } from "@/store/useModelStore";
 import { useVideoStore } from "@/store/videoStore";
+import { useCodeStore } from "@/store/useCodeStore";
 import { saveModelThumbnail } from "@/utils/modelThumbnailGenerator";
 import React from "react";
 import { useRef } from "react";
@@ -15,6 +16,7 @@ const HotbarTopNav: React.FC = () => {
     const addImage = useImageStore(state => state.addImage);
     const addVideo = useVideoStore(state => state.addVideo);
     const addModel = useModelStore(state => state.addModel);
+    const addCodeBlock = useCodeStore(state => state.addCodeBlock);
     const updateModel = useModelStore(state => state.updateModel);
     const setShowDrawingOverlay = useGameStore(state => state.setShowDrawingOverlay);
   
@@ -264,6 +266,9 @@ const HotbarTopNav: React.FC = () => {
         case 'plane':
           handlePrimitiveSelect('plane');
           break;
+        case 'code':
+          handleCodeAdd();
+          break;
         default:
           break;
       }
@@ -271,6 +276,62 @@ const HotbarTopNav: React.FC = () => {
   
     const handleDraw = () => {
       setShowDrawingOverlay(true);
+    };
+
+    const handleCodeAdd = () => {
+      // Get camera position if available
+      let position: [number, number, number] = [0, 1, 0];
+      if (window.mainCamera) {
+        const camera = window.mainCamera;
+        const direction = new THREE.Vector3(0, 0, -1);
+        direction.applyQuaternion(camera.quaternion);
+
+        const pos = new THREE.Vector3();
+        pos.copy(camera.position);
+        direction.multiplyScalar(3); // Place 3 units in front of camera
+        pos.add(direction);
+        position = [pos.x, pos.y, pos.z];
+      }
+
+      // Create default code
+      const defaultCode = `// Write your React code here
+import React, { useState } from 'react';
+
+function Counter() {
+  const [count, setCount] = useState(0);
+  
+  return (
+    <div style={{ padding: '1rem', backgroundColor: '#fff', borderRadius: '0.5rem' }}>
+      <h3>Counter: {count}</h3>
+      <button 
+        onClick={() => setCount(count + 1)}
+        style={{ 
+          padding: '0.5rem 1rem', 
+          backgroundColor: '#4ade80', 
+          border: 'none', 
+          borderRadius: '0.25rem',
+          cursor: 'pointer'
+        }}
+      >
+        Click me!
+      </button>
+    </div>
+  );
+}
+
+render(<Counter />);`;
+
+      // Add code block to the store
+      addCodeBlock({
+        code: defaultCode,
+        fileName: 'Counter.jsx',
+        position,
+        rotation: [0, 0, 0],
+        scale: 1,
+        isInScene: true,
+        noInline: true,
+        language: 'jsx'
+      });
     };
   
     const navItems = [
