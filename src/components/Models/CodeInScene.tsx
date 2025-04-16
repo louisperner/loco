@@ -6,7 +6,6 @@ import { useDrag } from '@use-gesture/react';
 import { a, useSpring } from '@react-spring/three';
 import { CodeInSceneProps, TransformMode } from './types';
 import { ThreeEvent } from '@react-three/fiber';
-import * as Prism from 'prismjs';
 
 // Custom PrismTheme type that matches our theme structure
 type CustomPrismTheme = {
@@ -350,6 +349,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
             language={language}
             theme={customTheme as any}
             enableTypeScript
+            
             // transformCode={(code) => {
             //   code = code.replace("useState", "React.useState");           
             //   return code;

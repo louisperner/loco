@@ -296,7 +296,7 @@ const HotbarTopNav: React.FC = () => {
       // Create default code
       const defaultCode = `// Write your React code here
 function Counter() {
-  const [count, setCount] = useState(0);
+  const [count, setCount] = React.useState(0);
   
   return (
     <div style={{ padding: '1rem', backgroundColor: '#fff', borderRadius: '0.5rem' }}>
