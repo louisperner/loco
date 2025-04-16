@@ -3,7 +3,6 @@ import { Html, TransformControls } from '@react-three/drei';
 import { Object3D, Vector3 } from 'three';
 import { LiveProvider, LiveEditor, LiveError, LivePreview } from 'react-live';
 import { useDrag } from '@use-gesture/react';
-import { a, useSpring } from '@react-spring/three';
 import { CodeInSceneProps, TransformMode } from './types';
 import { ThreeEvent } from '@react-three/fiber';
 
@@ -88,12 +87,6 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
   const [editMode, setEditMode] = useState<boolean>(false);
   const [localCode, setLocalCode] = useState<string>(code);
   
-  // Spring animation for hover effect
-  const { hoverScale } = useSpring({
-    hoverScale: hovered ? 1.05 : 1,
-    config: { mass: 1, tension: 280, friction: 60 },
-  });
-
   // Handle pointer events
   const handlePointerOver = () => {
     setHovered(true);
@@ -241,11 +234,10 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
   };
 
   return (
-    <a.group
+    <group
       ref={groupRef}
       position={initialPosition}
       rotation={initialRotation}
-      scale={hoverScale.to((s) => [s * scale, s * scale, s * scale])}
       onClick={(e: ThreeEvent<MouseEvent>) => {
         e.stopPropagation();
         if (onSelect) onSelect({ ...codeData, type: 'code' });
@@ -420,7 +412,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
           </LiveProvider>
         </div>
       </Html>
-    </a.group>
+    </group>
   );
 };
 

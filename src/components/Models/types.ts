@@ -112,6 +112,22 @@ export interface InternalImageProps {
 
 export type TransformMode = 'translate' | 'rotate' | 'scale';
 
+export interface CodeInSceneProps {
+  codeData: {
+    id: string;
+    code: string;
+    position?: [number, number, number];
+    rotation?: [number, number, number];
+    scale?: number;
+    noInline?: boolean;
+    language?: string;
+    fileName?: string;
+  };
+  onRemove: () => void;
+  onUpdate: (data: any) => void;
+  onSelect?: (data: any) => void;
+}
+
 // Video types
 export interface VideoDataType {
   id: string;
