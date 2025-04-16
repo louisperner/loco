@@ -55,6 +55,8 @@ export default defineConfig({
   },
   server: {
     hmr: {
+      protocol: 'wss',
+      host: 'localhost',
       timeout: 60000 // Increase timeout to 60 seconds
     },
     proxy: {

@@ -35,6 +35,8 @@ export default defineConfig({
   },
   server: {
     hmr: {
+      protocol: 'wss',
+      host: 'localhost',
       timeout: 60000,
     },
   },

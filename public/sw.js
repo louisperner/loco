@@ -17,8 +17,6 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Opened cache');
-        // Instead of addAll which fails if any resource fails,
-        // we'll use individual add operations that won't fail the entire batch
         return Promise.allSettled(
           urlsToCache.map(url => 
             cache.add(url).catch(error => {
@@ -32,12 +30,26 @@ self.addEventListener('install', (event) => {
 
 // Listen for requests
 self.addEventListener('fetch', (event) => {
+  // Skip caching for Vite HMR requests
+  if (event.request.url.includes('localhost:5173') && 
+      (event.request.url.includes('?v=') || event.request.url.includes('&v='))) {
+    return fetch(event.request);
+  }
+
   event.respondWith(
     caches
       .match(event.request)
       .then((response) => {
         // Cache hit - return the response
         if (response) {
+          // Always try to update the cache in the background
+          fetch(event.request).then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, networkResponse.clone());
+              });
+            }
+          });
           return response;
         }
         return fetch(event.request).then((response) => {
