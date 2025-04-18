@@ -322,7 +322,7 @@ render(<Counter />);`;
       // Add code block to the store
       addCodeBlock({
         code: defaultCode,
-        fileName: 'Counter.jsx',
+        fileName: 'Code Block',
         position,
         rotation: [0, 0, 0],
         scale: 1,

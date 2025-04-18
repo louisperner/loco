@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Html, TransformControls } from '@react-three/drei';
 import { Object3D, Vector3 } from 'three';
 import { LiveProvider, LiveEditor, LiveError, LivePreview } from 'react-live';
@@ -67,7 +67,6 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
   onSelect,
 }) => {
   const {
-    id,
     code,
     position: initialPosition = [0, 1, 0],
     rotation: initialRotation = [0, 0, 0],
@@ -86,6 +85,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
   const [scale, setScale] = useState<number>(initialScale);
   const [editMode, setEditMode] = useState<boolean>(false);
   const [localCode, setLocalCode] = useState<string>(code);
+  const editorRef = useRef<HTMLDivElement>(null);
   
   // Handle pointer events
   const handlePointerOver = () => {
@@ -233,6 +233,23 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
     e.stopPropagation();
   };
 
+  // Handle keyboard events when editor is active
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Stop propagation of all keyboard events when in edit mode
+      if (editMode) {
+        e.stopPropagation();
+      }
+    };
+
+    // Add global event listener for keyboard events
+    window.addEventListener('keydown', handleKeyDown, true);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [editMode]);
+
   return (
     <group
       ref={groupRef}
@@ -255,7 +272,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
       <Html
         transform
         distanceFactor={10}
-        position={[0, 0, 0]}
+        position={[0, 0, -5]}
         style={{
           width: '300px',
           height: 'auto',
@@ -270,15 +287,8 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
         className="drei-html"
         {...bind()}
       >
-        <div 
-          className="code-container bg-[#1e1e1e] rounded-lg overflow-hidden shadow-xl border border-gray-700 transform-gpu"
-          onClick={handleInteraction}
-          onMouseDown={handleInteraction}
-          onPointerDown={handleInteraction}
-          data-no-pointer-lock="true"
-        >
-          <div 
-            className="code-header flex justify-between items-center bg-[#252526] px-3 py-2 border-b border-gray-700"
+         <div 
+            className="code-header flex justify-between items-center bg-[#252526] px-3 py-2 border-b border-gray-700 mb-2 rounded-lg"
             onClick={handleInteraction}
             onMouseDown={handleInteraction}
             onPointerDown={handleInteraction}
@@ -288,7 +298,8 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
                 <path d="M8 18L3 12L8 6M16 6L21 12L16 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               <span className="text-gray-300 text-sm font-medium truncate">
-                {codeData.fileName || `Code Block: ${id.substring(0, 6)}`}
+                {/* {codeData.fileName || `Code Block: ${id.substring(0, 6)}`} */}
+                code
               </span>
             </div>
             <div className="flex items-center">
@@ -334,7 +345,13 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
               )}
             </div>
           </div>
-
+        <div 
+          className="code-container bg-[#1e1e1e] rounded-lg overflow-hidden shadow-xl border border-gray-700 transform-gpu"
+          onClick={handleInteraction}
+          onMouseDown={handleInteraction}
+          onPointerDown={handleInteraction}
+          data-no-pointer-lock="true"
+        >
           <LiveProvider
             code={localCode}
             noInline={noInline}
@@ -356,6 +373,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
             >
               {editMode ? (
                 <div 
+                  ref={editorRef}
                   className="editor-container p-2"
                   onClick={handleInteraction}
                   onMouseDown={handleInteraction}

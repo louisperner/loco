@@ -11,7 +11,6 @@ import MessageManager from '../Scene/MessageManager';
 import { useImageStore } from '../../store/useImageStore';
 import { useVideoStore } from '../../store/videoStore';
 import { useModelStore } from '../../store/useModelStore';
-import { useCodeStore } from '../../store/useCodeStore';
 import ModelManager from '../Models/ModelManager';
 import { SettingsPanel } from '@/components/Settings';
 import { useThemeStore } from '../../store/ThemeStore';
