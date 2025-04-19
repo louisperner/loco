@@ -4,7 +4,12 @@ import { Object3D, Vector3 } from 'three';
 import { LiveProvider, LiveEditor, LiveError, LivePreview } from 'react-live';
 import { useDrag } from '@use-gesture/react';
 import { CodeInSceneProps, TransformMode } from './types';
-import { ThreeEvent } from '@react-three/fiber';
+import { ThreeEvent, useThree, useFrame } from '@react-three/fiber';
+import { BiSolidCameraHome } from 'react-icons/bi';
+import { FaArrowsAlt } from 'react-icons/fa';
+import { BsArrowsMove } from 'react-icons/bs';
+import { TbRotate360 } from 'react-icons/tb';
+import * as THREE from 'three';
 
 // Custom PrismTheme type that matches our theme structure
 type CustomPrismTheme = {
@@ -73,10 +78,12 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
     scale: initialScale = 1,
     noInline = true,
     language = 'jsx',
+    lookAtUser: initialLookAtUser = false,
   } = codeData;
 
   // Ref to the group
   const groupRef = useRef<Object3D>(null);
+  const transformControlsRef = useRef<any>(null);
   
   // State for control elements
   const [hovered, setHovered] = useState<boolean>(false);
@@ -85,8 +92,89 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
   const [scale, setScale] = useState<number>(initialScale);
   const [editMode, setEditMode] = useState<boolean>(false);
   const [localCode, setLocalCode] = useState<string>(code);
+  const [lookAtUser, setLookAtUser] = useState<boolean>(initialLookAtUser);
+  const [isHovered, setIsHovered] = useState<boolean>(false);
   const editorRef = useRef<HTMLDivElement>(null);
   
+  const { camera } = useThree();
+
+  // Initial position setup
+  useEffect(() => {
+    if (groupRef.current) {
+      // For new code blocks (position is [0,0,0]), position it in front of the camera
+      if (initialPosition[0] === 0 && initialPosition[1] === 0 && initialPosition[2] === 0) {
+        const cameraDirection = new THREE.Vector3();
+        camera.getWorldDirection(cameraDirection);
+        
+        // Position the code block 5 units in front of the camera
+        const distance = 5;
+        const position = new THREE.Vector3();
+        position.copy(camera.position).add(cameraDirection.multiplyScalar(distance));
+        
+        groupRef.current.position.copy(position);
+        
+        // Make the code block face the camera
+        groupRef.current.lookAt(camera.position);
+        
+        // Save the initial position and rotation
+        const currentRotation: [number, number, number] = [
+          groupRef.current.rotation.x,
+          groupRef.current.rotation.y,
+          groupRef.current.rotation.z
+        ];
+
+        handleUpdate({
+          position: [position.x, position.y, position.z],
+          rotation: currentRotation
+        });
+      } else {
+        // For existing code blocks, set the saved position
+        groupRef.current.position.set(...initialPosition);
+        groupRef.current.rotation.set(...initialRotation);
+        
+        // If lookAtUser was enabled, make it face the camera again
+        if (lookAtUser) {
+          groupRef.current.lookAt(camera.position);
+          
+          // Save the new rotation after lookAt
+          const currentRotation: [number, number, number] = [
+            groupRef.current.rotation.x,
+            groupRef.current.rotation.y,
+            groupRef.current.rotation.z
+          ];
+          
+          handleUpdate({
+            rotation: currentRotation
+          });
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Update position and rotation in useFrame to ensure synchronization
+  useFrame(() => {
+    if (groupRef.current && lookAtUser) {
+      const lookAtPosition = new THREE.Vector3();
+      camera.getWorldPosition(lookAtPosition);
+      groupRef.current.lookAt(lookAtPosition);
+      
+      // Save new rotation after lookAt
+      const newRotation: [number, number, number] = [
+        groupRef.current.rotation.x,
+        groupRef.current.rotation.y,
+        groupRef.current.rotation.z
+      ];
+      
+      if (JSON.stringify(newRotation) !== JSON.stringify(codeData.rotation)) {
+        onUpdate({
+          ...codeData,
+          rotation: newRotation
+        });
+      }
+    }
+  });
+
   // Handle pointer events
   const handlePointerOver = () => {
     setHovered(true);
@@ -114,23 +202,36 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
     setTransformMode(transformMode === 'translate' ? 'rotate' : 'translate');
   };
 
-  // Transform controls handler
-  const handleTransformChange = () => {
+  // Function to update all changes
+  const handleUpdate = (changes: Partial<typeof codeData>): void => {
     if (groupRef.current) {
-      const position = groupRef.current.position.toArray() as [number, number, number];
-      const rotation = [
+      // Convert Vector3 and Euler to arrays if needed
+      const currentPosition: [number, number, number] = changes.position || [
+        groupRef.current.position.x,
+        groupRef.current.position.y,
+        groupRef.current.position.z
+      ];
+      const currentRotation: [number, number, number] = changes.rotation || [
         groupRef.current.rotation.x,
         groupRef.current.rotation.y,
-        groupRef.current.rotation.z,
-      ] as [number, number, number];
-      
+        groupRef.current.rotation.z
+      ];
+
       onUpdate({
         ...codeData,
-        position,
-        rotation,
+        ...changes,
+        position: currentPosition,
+        rotation: currentRotation,
         scale,
+        lookAtUser,
       });
     }
+  };
+
+  // Look at user handler
+  const handleLookAtUser = (value: boolean): void => {
+    setLookAtUser(value);
+    handleUpdate({ lookAtUser: value });
   };
 
   // Handle edit mode
@@ -138,8 +239,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
     setEditMode(!editMode);
     if (editMode) {
       // Save changes when exiting edit mode
-      onUpdate({
-        ...codeData,
+      handleUpdate({
         code: localCode,
       });
     }
@@ -156,8 +256,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
       position.applyQuaternion(groupRef.current.quaternion);
       groupRef.current.position.add(position);
       
-      onUpdate({
-        ...codeData,
+      handleUpdate({
         position: groupRef.current.position.toArray() as [number, number, number],
       });
     }
@@ -233,6 +332,48 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
     e.stopPropagation();
   };
 
+  // Prevent infinite loops with TransformControls
+  useEffect(() => {
+    if (transformControlsRef.current && groupRef.current) {
+      const controls = transformControlsRef.current;
+      
+      // Important - allow all rotation axes to be modified
+      if (transformMode === 'rotate') {
+        controls.showX = true;
+        controls.showY = true;
+        controls.showZ = true;
+      }
+      
+      controls.addEventListener('dragging-changed', (event: { value: boolean }) => {
+        if (event.value) {
+          // While dragging, prevent updating to avoid recursive matrix calculation
+          groupRef.current!.matrixAutoUpdate = false;
+        } else {
+          groupRef.current!.matrixAutoUpdate = true;
+          groupRef.current!.updateMatrix();
+          
+          // Save position and rotation after dragging
+          handleUpdate({
+            position: [
+              groupRef.current!.position.x,
+              groupRef.current!.position.y,
+              groupRef.current!.position.z
+            ],
+            rotation: [
+              groupRef.current!.rotation.x,
+              groupRef.current!.rotation.y,
+              groupRef.current!.rotation.z
+            ]
+          });
+        }
+      });
+
+      return () => {
+        controls.removeEventListener('dragging-changed', () => {});
+      };
+    }
+  }, [showControls, transformMode]);
+
   // Handle keyboard events when editor is active
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -250,6 +391,58 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
     };
   }, [editMode]);
 
+  // Control panel component
+  const ControlPanel: React.FC = () => (
+    <div
+      className="flex items-center gap-2 p-2 bg-gray-800/80 rounded-lg absolute bottom-[-40px] left-1/2 transform -translate-x-1/2 transition-all duration-300"
+      style={{
+        opacity: isHovered ? 1 : 0,
+        visibility: isHovered ? 'visible' : 'hidden',
+        zIndex: 1000,
+      }}
+    >
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          handleLookAtUser(!lookAtUser);
+        }}
+        className={`p-1.5 rounded-md ${lookAtUser ? 'bg-blue-500' : 'bg-gray-700'} hover:opacity-80 transition-colors`}
+        title="Look at user"
+      >
+        <BiSolidCameraHome size={14} className="text-white" />
+      </button>
+      
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowControls(!showControls);
+        }}
+        className={`p-1.5 rounded-md ${showControls ? 'bg-blue-500' : 'bg-gray-700'} hover:opacity-80 transition-colors`}
+        title="Show transform controls"
+      >
+        <FaArrowsAlt size={14} className="text-white" />
+      </button>
+      
+      {showControls && (
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            setTransformMode(
+              transformMode === 'translate' ? 'rotate' :
+              transformMode === 'rotate' ? 'scale' : 'translate'
+            );
+          }}
+          className="p-1.5 rounded-md bg-blue-500 hover:opacity-80 transition-colors"
+          title={`Current mode: ${transformMode}`}
+        >
+          {transformMode === 'translate' && <BsArrowsMove size={14} className="text-white" />}
+          {transformMode === 'rotate' && <TbRotate360 size={14} className="text-white" />}
+          {transformMode === 'scale' && <FaArrowsAlt size={14} className="text-white" />}
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <group
       ref={groupRef}
@@ -262,10 +455,16 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
     >
       {showControls && groupRef.current && (
         <TransformControls
+          ref={transformControlsRef}
           object={groupRef.current}
           mode={transformMode}
           size={0.7}
-          onMouseUp={handleTransformChange}
+          space="world"
+          showX={true}
+          showY={true}
+          showZ={true}
+          rotationSnap={null}
+          translationSnap={0.5}
         />
       )}
 
@@ -292,13 +491,14 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
             onClick={handleInteraction}
             onMouseDown={handleInteraction}
             onPointerDown={handleInteraction}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
           >
             <div className="flex items-center gap-2">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-blue-400">
                 <path d="M8 18L3 12L8 6M16 6L21 12L16 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               <span className="text-gray-300 text-sm font-medium truncate">
-                {/* {codeData.fileName || `Code Block: ${id.substring(0, 6)}`} */}
                 code
               </span>
             </div>
@@ -346,11 +546,13 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
             </div>
           </div>
         <div 
-          className="code-container bg-[#1e1e1e] rounded-lg overflow-hidden shadow-xl border border-gray-700 transform-gpu"
+          className="code-container bg-[#1e1e1e] rounded-lg overflow-hidden shadow-xl border border-gray-700 transform-gpu relative"
           onClick={handleInteraction}
           onMouseDown={handleInteraction}
           onPointerDown={handleInteraction}
           data-no-pointer-lock="true"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
         >
           <LiveProvider
             code={localCode}
@@ -358,11 +560,6 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
             language={language}
             theme={customTheme as any}
             enableTypeScript
-            
-            // transformCode={(code) => {
-            //   code = code.replace("useState", "React.useState");           
-            //   return code;
-            // }}
           >
             <div 
               className="code-content"
@@ -428,6 +625,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
               )}
             </div>
           </LiveProvider>
+          <ControlPanel />
         </div>
       </Html>
     </group>
