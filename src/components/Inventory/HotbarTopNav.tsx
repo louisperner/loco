@@ -20,6 +20,9 @@ const HotbarTopNav: React.FC = () => {
   const updateModel = useModelStore((state) => state.updateModel);
   const setShowDrawingOverlay = useGameStore((state) => state.setShowDrawingOverlay);
 
+  let position: [number, number, number] = [0, 1, 0];
+  let rotation: [number, number, number] = [0, 0, 0];
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -36,7 +39,6 @@ const HotbarTopNav: React.FC = () => {
             : ([1, 1 / aspectRatio, 1] as [number, number, number]);
 
         // Get camera position if available
-        let position: [number, number, number] = [0, 1, 0];
         if (window.mainCamera) {
           const camera = window.mainCamera;
           const direction = new THREE.Vector3(0, 0, -1);
@@ -47,6 +49,7 @@ const HotbarTopNav: React.FC = () => {
           direction.multiplyScalar(3); // Place 3 units in front of camera
           pos.add(direction);
           position = [pos.x, pos.y, pos.z];
+          rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
         }
 
         // Add image to the store
@@ -57,7 +60,7 @@ const HotbarTopNav: React.FC = () => {
           width: img.width,
           height: img.height,
           position,
-          rotation: [0, 0, 0],
+          rotation,
           scale,
           isInScene: true,
         });
@@ -91,7 +94,6 @@ const HotbarTopNav: React.FC = () => {
         const thumbnailUrl = await generateVideoThumbnail(objectUrl);
 
         // Get camera position if available
-        let position: [number, number, number] = [0, 1, 0];
         if (window.mainCamera) {
           const camera = window.mainCamera;
           const direction = new THREE.Vector3(0, 0, -1);
@@ -102,6 +104,7 @@ const HotbarTopNav: React.FC = () => {
           direction.multiplyScalar(3); // Place 3 units in front of camera
           pos.add(direction);
           position = [pos.x, pos.y, pos.z];
+          rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
         }
 
         // Add video to the store
@@ -110,7 +113,7 @@ const HotbarTopNav: React.FC = () => {
           fileName: file.name,
           thumbnailUrl,
           position,
-          rotation: [0, 0, 0],
+          rotation,
           scale: 3,
           isPlaying: true,
           volume: 0.5,
@@ -143,7 +146,6 @@ const HotbarTopNav: React.FC = () => {
 
       try {
         // Get camera position if available
-        let position: [number, number, number] = [0, 1, 0];
         if (window.mainCamera) {
           const camera = window.mainCamera;
           const direction = new THREE.Vector3(0, 0, -1);
@@ -154,6 +156,7 @@ const HotbarTopNav: React.FC = () => {
           direction.multiplyScalar(3); // Place 3 units in front of camera
           pos.add(direction);
           position = [pos.x, pos.y, pos.z];
+          rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
         }
 
         // Store the file in the model cache
@@ -169,7 +172,7 @@ const HotbarTopNav: React.FC = () => {
           url: objectUrl,
           fileName: file.name,
           position,
-          rotation: [0, 0, 0],
+          rotation,
           scale: 1,
           isInScene: true,
         });
@@ -199,7 +202,6 @@ const HotbarTopNav: React.FC = () => {
 
   const handlePrimitiveSelect = (type: 'cube' | 'sphere' | 'plane') => {
     // Get camera position if available
-    let position: [number, number, number] = [0, 1, 0];
     if (window.mainCamera) {
       const camera = window.mainCamera;
       const direction = new THREE.Vector3(0, 0, -1);
@@ -210,6 +212,7 @@ const HotbarTopNav: React.FC = () => {
       direction.multiplyScalar(3); // Place 3 units in front of camera
       pos.add(direction);
       position = [pos.x, pos.y, pos.z];
+      rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
     }
 
     // Create a unique ID for the primitive
@@ -235,7 +238,7 @@ const HotbarTopNav: React.FC = () => {
       url: `primitive://${type}`,
       fileName: `${type}.${type === 'plane' ? 'glb' : 'gltf'}`,
       position,
-      rotation: [0, 0, 0],
+      rotation,
       scale: 1,
       isInScene: true,
       isPrimitive: true,
@@ -282,7 +285,6 @@ const HotbarTopNav: React.FC = () => {
 
   const handleCodeAdd = () => {
     // Get camera position if available
-    let position: [number, number, number] = [0, 1, 0];
     if (window.mainCamera) {
       const camera = window.mainCamera;
       const direction = new THREE.Vector3(0, 0, -1);
@@ -293,6 +295,7 @@ const HotbarTopNav: React.FC = () => {
       direction.multiplyScalar(3); // Place 3 units in front of camera
       pos.add(direction);
       position = [pos.x, pos.y, pos.z];
+      rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
     }
 
     // Create default code
@@ -326,7 +329,7 @@ const HotbarTopNav: React.FC = () => {
       code: defaultCode,
       fileName: 'Code Block',
       position,
-      rotation: [0, 0, 0],
+      rotation,
       scale: 1,
       isInScene: true,
       noInline: true,

@@ -65,6 +65,10 @@ const Player: React.FC = () => {
     Record<string, HTMLDivElement | null>
   >;
 
+  // Calculate position in front of camera
+  let position = new THREE.Vector3();
+  let rotation: [number, number, number] = [0, 0, 0];
+
   // Define InventoryRefHandle interface with reloadInventory method
   interface InventoryRefHandle {
     reloadInventory: () => void;
@@ -737,9 +741,6 @@ const Player: React.FC = () => {
                 return;
               }
 
-              // Calculate position in front of camera
-              const position = new THREE.Vector3();
-
               if (cameraRef.current) {
                 const camera = cameraRef.current;
                 const direction = new THREE.Vector3();
@@ -752,9 +753,11 @@ const Player: React.FC = () => {
                 const distance = 3; // 3 units away
                 direction.multiplyScalar(distance);
                 position.add(direction);
+                rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
               } else {
                 // Default position if camera not available
                 position.set(0, 1, -3);
+                rotation = [0, 0, 0];
               }
 
               // Check if this image is already in the store
@@ -767,7 +770,7 @@ const Player: React.FC = () => {
                   src: image.url,
                   fileName: image.fileName,
                   position: [position.x, position.y, position.z],
-                  rotation: [0, 0, 0],
+                  rotation,
                   scale: 1,
                   isInScene: true,
                 });
@@ -777,7 +780,7 @@ const Player: React.FC = () => {
                   src: image.url,
                   fileName: image.fileName,
                   position: [position.x, position.y, position.z],
-                  rotation: [0, 0, 0],
+                  rotation,
                   scale: 1,
                   isInScene: true,
                 });
@@ -807,9 +810,11 @@ const Player: React.FC = () => {
                 // Place model at a comfortable distance in front of camera
                 direction.multiplyScalar(3);
                 position.add(direction);
+                rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
               } else {
                 // Default position if camera not available
                 position.set(0, 1, 0);
+                rotation = [0, 0, 0];
               }
 
               // Always create a new model instance (clone) to add to the scene
@@ -818,7 +823,7 @@ const Player: React.FC = () => {
                 url: model.url,
                 fileName: model.fileName,
                 position: [position.x, position.y, position.z],
-                rotation: [0, 0, 0],
+                rotation,
                 scale: 1,
                 isInScene: true,
                 // Keep track of the original inventory item ID for reference
@@ -850,9 +855,11 @@ const Player: React.FC = () => {
                 const distance = 3; // 3 units away
                 direction.multiplyScalar(distance);
                 position.add(direction);
+                rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
               } else {
                 // Default position if camera not available
                 position.set(0, 1, -3);
+                rotation = [0, 0, 0];
               }
 
               // Always create a new video instance when adding from hotbar

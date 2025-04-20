@@ -122,6 +122,7 @@ export interface CodeInSceneProps {
     noInline?: boolean;
     language?: string;
     fileName?: string;
+    lookAtUser?: boolean;
   };
   onRemove: () => void;
   onUpdate: (data: any) => void;
@@ -184,4 +185,22 @@ export interface StoreVideoData {
   fileName: string;
   thumbnailUrl: string;
   url?: string;
+}
+
+export interface CodeBlockDataType {
+  id: string;
+  code: string;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number;
+  noInline?: boolean;
+  language?: string;
+  fileName?: string;
+  lookAtUser?: boolean;
+  isInScene?: boolean;
+  [key: string]: unknown;
+}
+
+export interface CodeCloneManagerProps {
+  onSelect?: (data: CodeBlockDataType & { type: string }) => void;
 }

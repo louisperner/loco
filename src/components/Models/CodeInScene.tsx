@@ -100,20 +100,21 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
 
   // Initial position setup
   useEffect(() => {
+    // debugger;
     if (groupRef.current) {
       // For new code blocks (position is [0,0,0]), position it in front of the camera
       if (initialPosition[0] === 0 && initialPosition[1] === 0 && initialPosition[2] === 0) {
         const cameraDirection = new THREE.Vector3();
         camera.getWorldDirection(cameraDirection);
         
-        // Position the code block 5 units in front of the camera
+        // Position the image 2 units in front of the camera
         const distance = 5;
         const position = new THREE.Vector3();
         position.copy(camera.position).add(cameraDirection.multiplyScalar(distance));
         
         groupRef.current.position.copy(position);
         
-        // Make the code block face the camera
+        // Make the image face the camera
         groupRef.current.lookAt(camera.position);
         
         // Save the initial position and rotation
@@ -128,25 +129,8 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
           rotation: currentRotation
         });
       } else {
-        // For existing code blocks, set the saved position
         groupRef.current.position.set(...initialPosition);
         groupRef.current.rotation.set(...initialRotation);
-        
-        // If lookAtUser was enabled, make it face the camera again
-        if (lookAtUser) {
-          groupRef.current.lookAt(camera.position);
-          
-          // Save the new rotation after lookAt
-          const currentRotation: [number, number, number] = [
-            groupRef.current.rotation.x,
-            groupRef.current.rotation.y,
-            groupRef.current.rotation.z
-          ];
-          
-          handleUpdate({
-            rotation: currentRotation
-          });
-        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

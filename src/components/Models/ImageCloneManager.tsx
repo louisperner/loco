@@ -71,6 +71,7 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
 
   // Set initial position based on camera direction
   useEffect(() => {
+    debugger;
     if (groupRef.current) {
       // Only set initial position if it's a new image (position is [0,0,0])
       if (initialPosition[0] === 0 && initialPosition[1] === 0 && initialPosition[2] === 0) {
@@ -99,20 +100,8 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
           rotation: currentRotation
         });
       } else {
-        // For existing images, set the saved position and make it look at camera
         groupRef.current.position.set(...initialPosition);
-        groupRef.current.lookAt(camera.position);
-        
-        // Save the new rotation after lookAt
-        const currentRotation: [number, number, number] = [
-          groupRef.current.rotation.x,
-          groupRef.current.rotation.y,
-          groupRef.current.rotation.z
-        ];
-        
-        saveChanges({
-          rotation: currentRotation
-        });
+        groupRef.current.rotation.set(...initialRotation);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
