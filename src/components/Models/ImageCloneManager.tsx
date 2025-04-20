@@ -71,7 +71,6 @@ const ImageInScene: React.FC<ImageInSceneProps> = ({ imageData, onRemove, onUpda
 
   // Set initial position based on camera direction
   useEffect(() => {
-    debugger;
     if (groupRef.current) {
       // Only set initial position if it's a new image (position is [0,0,0])
       if (initialPosition[0] === 0 && initialPosition[1] === 0 && initialPosition[2] === 0) {

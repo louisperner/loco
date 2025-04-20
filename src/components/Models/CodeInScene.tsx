@@ -100,7 +100,6 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
 
   // Initial position setup
   useEffect(() => {
-    // debugger;
     if (groupRef.current) {
       // For new code blocks (position is [0,0,0]), position it in front of the camera
       if (initialPosition[0] === 0 && initialPosition[1] === 0 && initialPosition[2] === 0) {
