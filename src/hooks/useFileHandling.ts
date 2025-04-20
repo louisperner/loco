@@ -63,6 +63,8 @@ export const useFileHandling = (
         const objectUrl = URL.createObjectURL(file);
         // console.log('Created blob URL for model:', objectUrl);
 
+
+
         // Store the file in the model store to ensure it's not garbage collected
         window._modelFileCache = window._modelFileCache || {};
         window._modelFileCache[objectUrl] = file;
@@ -142,9 +144,11 @@ export const useFileHandling = (
         direction.applyQuaternion(camera.quaternion);
 
         const position = new THREE.Vector3();
+        let rotation: [number, number, number] = [0, 0, 0];
         position.copy(camera.position);
         direction.multiplyScalar(3); // Place 3 units in front of camera
         position.add(direction);
+        rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
 
         // console.log('Placing model at position:', position);
 
@@ -153,7 +157,7 @@ export const useFileHandling = (
           url: objectUrl,
           fileName: file.name,
           position: [position.x, position.y, position.z],
-          rotation: [0, 0, 0],
+          rotation,
           scale: 1,
         });
 
@@ -275,9 +279,11 @@ export const useFileHandling = (
         direction.applyQuaternion(camera.quaternion);
 
         const position = new THREE.Vector3();
+        let rotation: [number, number, number] = [0, 0, 0];
         position.copy(camera.position);
         direction.multiplyScalar(3); // Place 3 units in front of camera
         position.add(direction);
+        rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
 
         // console.log('Placing image at position:', position);
 
@@ -298,7 +304,7 @@ export const useFileHandling = (
             width: img.width,
             height: img.height,
             position: [position.x, position.y, position.z],
-            rotation: [0, 0, 0],
+            rotation,
             scale,
           });
 
@@ -342,7 +348,7 @@ export const useFileHandling = (
             src: objectUrl,
             fileName: file.name,
             position: [position.x, position.y, position.z],
-            rotation: [0, 0, 0],
+            rotation,
             scale: 1,
           });
 
@@ -456,9 +462,11 @@ export const useFileHandling = (
         direction.applyQuaternion(camera.quaternion);
 
         const position = new THREE.Vector3();
+        let rotation: [number, number, number] = [0, 0, 0];
         position.copy(camera.position);
         direction.multiplyScalar(3); // Place 3 units in front of camera
         position.add(direction);
+        rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
 
         // Add video to the store
         const id = addVideo({
@@ -466,7 +474,7 @@ export const useFileHandling = (
           fileName: file.name,
           thumbnailUrl,
           position: [position.x, position.y, position.z],
-          rotation: [0, 0, 0],
+          rotation,
           scale: 3,
           isPlaying: true,
           volume: 0.5,
@@ -550,7 +558,7 @@ export const useFileHandling = (
                 // Add the selected image to the scene
                 if (item && item.url) {
                   const position = new THREE.Vector3();
-
+                  let rotation: [number, number, number] = [0, 0, 0];
                   // If camera is available, place in front of camera
                   if (cameraRef.current) {
                     const camera = cameraRef.current;
@@ -560,6 +568,7 @@ export const useFileHandling = (
                     position.copy(camera.position);
                     direction.multiplyScalar(3); // Place 3 units in front of camera
                     position.add(direction);
+                    rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
                   } else {
                     // Default position if camera not available
                     position.set(0, 1, 0);
@@ -570,7 +579,7 @@ export const useFileHandling = (
                     src: item.url,
                     fileName: item.fileName || 'Untitled Image',
                     position: [position.x, position.y, position.z],
-                    rotation: [0, 0, 0],
+                    rotation,
                     scale: 1,
                   });
 
@@ -581,7 +590,7 @@ export const useFileHandling = (
                 // Add the selected model to the scene
                 if (item && item.url) {
                   const position = new THREE.Vector3();
-
+                  let rotation: [number, number, number] = [0, 0, 0];
                   // If camera is available, place in front of camera
                   if (cameraRef.current) {
                     const camera = cameraRef.current;
@@ -591,9 +600,11 @@ export const useFileHandling = (
                     position.copy(camera.position);
                     direction.multiplyScalar(3); // Place 3 units in front of camera
                     position.add(direction);
+                    rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
                   } else {
                     // Default position if camera not available
                     position.set(0, 1, 0);
+                    rotation = [0, 0, 0];
                   }
 
                   // Add model to the store
@@ -601,7 +612,7 @@ export const useFileHandling = (
                     url: item.url,
                     fileName: item.fileName || 'Untitled Model',
                     position: [position.x, position.y, position.z],
-                    rotation: [0, 0, 0],
+                    rotation,
                     scale: 1,
                   });
 
@@ -612,7 +623,7 @@ export const useFileHandling = (
                 // Add the selected video to the scene
                 if (item && item.url) {
                   const position = new THREE.Vector3();
-
+                  let rotation: [number, number, number] = [0, 0, 0];
                   // If camera is available, place in front of camera
                   if (cameraRef.current) {
                     const camera = cameraRef.current;
@@ -622,9 +633,11 @@ export const useFileHandling = (
                     position.copy(camera.position);
                     direction.multiplyScalar(3); // Place 3 units in front of camera
                     position.add(direction);
+                    rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
                   } else {
                     // Default position if camera not available
                     position.set(0, 1, 0);
+                    rotation = [0, 0, 0];
                   }
 
                   // Add video to the store
@@ -632,7 +645,7 @@ export const useFileHandling = (
                     src: item.url,
                     fileName: item.fileName || 'Untitled Video',
                     position: [position.x, position.y, position.z],
-                    rotation: [0, 0, 0],
+                    rotation,
                     scale: 3,
                     isPlaying: true,
                     volume: 0.5,
