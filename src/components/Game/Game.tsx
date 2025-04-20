@@ -839,9 +839,9 @@ const Player: React.FC = () => {
                 handleInventoryToggle(false);
                 return;
               }
-
               // Calculate position in front of camera
-              const position = new THREE.Vector3();
+              let position = new THREE.Vector3();
+              let rotation: [number, number, number] = [0, 0, 0];
 
               if (cameraRef.current) {
                 const camera = cameraRef.current;
@@ -867,7 +867,7 @@ const Player: React.FC = () => {
                 src: video.url,
                 fileName: video.fileName,
                 position: [position.x, position.y, position.z],
-                rotation: (video.rotation as [number, number, number]) || [0, 0, 0],
+                rotation,
                 scale: (video.scale as number) || 3,
                 isPlaying: (video.isPlaying as boolean) || true,
                 volume: (video.volume as number) || 0.5,

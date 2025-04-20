@@ -612,15 +612,6 @@ export const useInventory = (
         // Restore canvas interactivity
         useGameStore.getState().setCanvasInteractive(true);
       }
-
-      // Handle B key to toggle adding items to hotbar
-      if (e.key === 'b' || e.key === 'B') {
-        e.preventDefault();
-        // eslint-disable-next-line no-console
-        // console.log('B key pressed, toggling add to hotbar mode');
-        setIsAddingToHotbar(!isAddingToHotbar);
-      }
-
       // Note: number keys are handled by the global keyboard handler
     };
 
@@ -628,12 +619,9 @@ export const useInventory = (
     const inventoryKeydownListener = handleKeyDown as unknown as EventListener;
     document.addEventListener('keydown', inventoryKeydownListener);
 
-    // console.log("Inventory-specific keyboard handler initialized");
-
     return () => {
       document.removeEventListener('keydown', inventoryKeydownListener);
       // eslint-disable-next-line no-console
-      //console.log("Inventory-specific keyboard handler removed");
     };
   }, [
     showFullInventory,
@@ -654,11 +642,6 @@ export const useInventory = (
       if (e.target === canvas || canvas.contains(e.target as Node)) {
         // Left click and we have a selected hotbar slot with an item
         if (e.button === 0 && selectedHotbarSlot !== null && hotbarItems[selectedHotbarSlot]) {
-          // Debug information
-          // eslint-disable-next-line no-console
-          // console.log(`Left click on canvas with hotbar slot ${selectedHotbarSlot} selected, placing item:`,
-          //   hotbarItems[selectedHotbarSlot]?.fileName);
-
           // Add the selected item to the canvas
           handleAddToCanvas(hotbarItems[selectedHotbarSlot]!);
         }

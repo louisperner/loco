@@ -301,18 +301,7 @@ const VideoInScene: React.FC<VideoInSceneProps> = ({ videoData, onRemove, onUpda
       } else {
         // For existing videos, set the saved position and make it look at camera
         groupRef.current.position.set(...initialPosition);
-        groupRef.current.lookAt(camera.position);
-
-        // Save the new rotation after lookAt
-        const currentRotation: [number, number, number] = [
-          groupRef.current.rotation.x,
-          groupRef.current.rotation.y,
-          groupRef.current.rotation.z,
-        ];
-
-        saveChanges({
-          rotation: currentRotation,
-        });
+        groupRef.current.rotation.set(...initialRotation);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -127,7 +127,7 @@ const HotbarTopNav: React.FC = () => {
           src: objectUrl,
           fileName: file.name,
           position: [0, 1, 0],
-          rotation: [0, 0, 0],
+          rotation,
           scale: 3,
           isPlaying: true,
           volume: 0.5,
