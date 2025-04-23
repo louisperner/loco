@@ -7,15 +7,21 @@ interface CoordinateDisplayProps {
 
 const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({ cameraRef }) => {
   const [coordinates, setCoordinates] = useState({ x: 0, y: 0, z: 0 });
-
+  const [rotations, setRotations] = useState({ x: 0, y: 0, z: 0 });
   useEffect(() => {
     const updateCoordinates = () => {
       if (cameraRef.current) {
         const position = cameraRef.current.position;
+        const rotation = cameraRef.current.rotation;
         setCoordinates({
           x: Math.round(position.x * 100) / 100,
           y: Math.round(position.y * 100) / 100,
           z: Math.round(position.z * 100) / 100,
+        });
+        setRotations({
+          x: Math.round(rotation.x * 100) / 100,
+          y: Math.round(rotation.y * 100) / 100,
+          z: Math.round(rotation.z * 100) / 100,
         });
       }
     };
@@ -36,7 +42,9 @@ const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({ cameraRef }) => {
       <div className='flex flex-col space-y-1 font-mono text-[10px]'>
         <div className='flex items-center'>
           <span>
-            v0.1: {coordinates.x}, {coordinates.y}, {coordinates.z}
+            v0.2: {coordinates.x}, {coordinates.y}, {coordinates.z}
+            <br />
+            {rotations.x}, {rotations.y}, {rotations.z}
           </span>
         </div>
       </div>

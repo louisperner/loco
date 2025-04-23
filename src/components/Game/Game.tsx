@@ -32,6 +32,7 @@ import { useGameStore, HotbarContext, EnvironmentSettings } from '../../store/us
 
 // Import TouchControls
 import TouchControls from '../Scene/TouchControls';
+import GamepadController from '../GamepadController';
 
 // Types for inventory
 interface InventoryItem {
@@ -593,6 +594,9 @@ const Player: React.FC = () => {
           touchState={touchState}
           onTouchStateChange={setTouchState}
         />
+
+        {/* Gamepad Controller */}
+        <GamepadController />
 
         {/* Settings Panel */}
         {uiVisible && (

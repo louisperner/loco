@@ -643,6 +643,27 @@ const FPSControls: React.FC<FPSControlsProps> = ({
               });
             }
             break;
+            
+          case 'look:move':
+            // Handle camera rotation from right joystick
+            if (controls.current && event.detail.x !== undefined && event.detail.y !== undefined) {
+              // Update touch state for camera rotation
+              // This will be handled by the useFrame hook that already has 
+              // proper camera rotation logic for touch joysticks
+              onTouchStateChange?.({
+                moveJoystick: touchState?.moveJoystick || {
+                  active: false,
+                  currentX: 0,
+                  currentY: 0
+                },
+                lookJoystick: {
+                  active: true,
+                  currentX: event.detail.x,
+                  currentY: event.detail.y
+                }
+              });
+            }
+            break;
         }
       }
     };
