@@ -211,7 +211,19 @@ const HotbarTopNav: React.FC = () => {
       pos.copy(camera.position);
       direction.multiplyScalar(3); // Place 3 units in front of camera
       pos.add(direction);
-      position = [pos.x, pos.y, pos.z];
+      
+      // For cubes, snap to grid (Minecraft-like behavior)
+      if (type === 'cube') {
+        // Round to nearest integer for grid alignment
+        position = [
+          Math.round(pos.x), 
+          Math.max(0, Math.round(pos.y)), // Ensure y is not below ground
+          Math.round(pos.z)
+        ];
+      } else {
+        position = [pos.x, pos.y, pos.z];
+      }
+      
       rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
     }
 

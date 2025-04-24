@@ -133,6 +133,11 @@ const PrimitiveModel: React.FC<PrimitiveModelProps> = ({ type, scale, color = '#
         <mesh scale={scale}>
           <boxGeometry args={[1, 1, 1]} />
           <primitive object={material} />
+          {/* Add grid lines to make it look more like a Minecraft block */}
+          <lineSegments>
+            <edgesGeometry args={[new THREE.BoxGeometry(1.001, 1.001, 1.001)]} />
+            <lineBasicMaterial color="#000000" transparent opacity={0.3} />
+          </lineSegments>
         </mesh>
       );
     case 'sphere':
@@ -447,13 +452,22 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     if (groupRef.current) {
       const position = groupRef.current.position;
       const rotation = groupRef.current.rotation;
+      
+      // For cube primitives, implement grid snapping (Minecraft-like)
+      if (isPrimitive && primitiveData?.primitiveType === 'cube') {
+        // Snap to grid by rounding to nearest integer
+        position.x = Math.round(position.x);
+        position.y = Math.round(position.y);
+        position.z = Math.round(position.z);
+      }
+      
       onUpdate({
         ...modelData,
         position: [position.x, position.y, position.z],
         rotation: [rotation.x, rotation.y, rotation.z]
       } as ModelDataType);
     }
-  }, [modelData, onUpdate]);
+  }, [modelData, onUpdate, isPrimitive, primitiveData]);
 
   // Highly optimized raycast function using cached bounding box and throttling
   const optimizedRaycast = useCallback((raycaster: THREE.Raycaster, intersects: THREE.Intersection[]) => {
@@ -571,7 +585,11 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         onClick={handleClick}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
-        userData={{ type: 'model', id }}
+        userData={{ 
+          type: 'model', 
+          id,
+          primitiveType: isPrimitive ? primitiveData?.primitiveType : undefined
+        }}
         name={`model-${id}`}
       >
         {/* Add simple collider with optimized raycast */}
