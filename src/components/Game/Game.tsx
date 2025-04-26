@@ -65,6 +65,8 @@ const Player: React.FC = () => {
   const colorPickerRefs = useRef<Record<string, HTMLDivElement | null>>({}) as React.MutableRefObject<
     Record<string, HTMLDivElement | null>
   >;
+  const movementKeys = useRef(new Set<string>()); // Ref to track pressed movement keys
+  const [isMoving, setIsMoving] = useState(false); // State to control frameloop
 
   // Calculate position in front of camera
   let position = new THREE.Vector3();
@@ -291,6 +293,16 @@ const Player: React.FC = () => {
         return;
       }
 
+      // Handle frameloop toggle based on movement keys
+      if (['w', 'a', 's', 'd', 'W', 'A', 'S', 'D', ' ', 'Control'].includes(e.key)) {
+        if (!movementKeys.current.has(e.key.toLowerCase())) {
+          movementKeys.current.add(e.key.toLowerCase());
+          if (!isMoving) {
+             setIsMoving(true);
+          }
+        }
+      }
+
       if (e.key === 'Tab') {
         e.preventDefault();
         setUiVisible(!uiVisible);
@@ -317,8 +329,23 @@ const Player: React.FC = () => {
       // }
     };
 
+    const handleKeyUp = (e: KeyboardEvent): void => {
+      // Handle frameloop toggle based on movement keys
+      if (['w', 'a', 's', 'd', 'W', 'A', 'S', 'D', ' ', 'Control'].includes(e.key)) {
+        movementKeys.current.delete(e.key.toLowerCase());
+        if (movementKeys.current.size === 0 && isMoving) {
+          setIsMoving(false);
+        }
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp); // Add keyup listener
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp); // Remove keyup listener
+    }
   }, [
     showCatalog,
     showHelp,
@@ -334,6 +361,7 @@ const Player: React.FC = () => {
     handleToggleHelp,
     handleInventoryToggle,
     handleSettingsToggle,
+    isMoving // Add isMoving to dependency array if it's used in calculations triggered by other dependencies
   ]);
 
   const onRemoveObject = useCallback((dataOrId?: { type: string; id: string } | string): void => {
@@ -479,7 +507,7 @@ const Player: React.FC = () => {
         <Canvas
           camera={{ position: [0, 0, 0], fov: 65 }}
           className={`z-0 ${canvasInteractive ? '' : 'pointer-events-none'}`}
-          frameloop='always'
+          frameloop={isMoving ? 'always' : 'demand'} // Conditional frameloop
           onPointerMissed={() => setSelectedFrame(null)}
           gl={{
             // Preserve the WebGL context to prevent it from being killed
@@ -890,6 +918,12 @@ const Player: React.FC = () => {
 
         {/* Coordinate Display */}
         {uiVisible && showCoordinates && <CoordinateDisplay cameraRef={cameraRef} />}
+
+        {/* FrameLoop Indicator */}
+        <div
+          className={`absolute bottom-4 right-4 w-3 h-3 rounded-full ${isMoving ? 'bg-green-500' : 'bg-orange-500'}`}
+          title={`FrameLoop: ${isMoving ? 'Always' : 'Demand'}`}
+        />
       </div>
     </HotbarContext.Provider>
   );

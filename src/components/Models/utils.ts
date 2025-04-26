@@ -221,6 +221,27 @@ export const generateVideoThumbnail = async (videoUrl: string): Promise<string> 
       reject(new Error('No video URL provided'));
       return;
     }
+    
+    // Check for common unsupported formats
+    const lowerCaseUrl = videoUrl.toLowerCase();
+    const potentiallyUnsupportedFormat = 
+      !lowerCaseUrl.endsWith('.mp4') && 
+      !lowerCaseUrl.endsWith('.webm') && 
+      !lowerCaseUrl.endsWith('.ogg') &&
+      !lowerCaseUrl.endsWith('.mov');
+    
+    // For blob URLs or potentially unsupported formats, we need to check formats more carefully
+    if (lowerCaseUrl.startsWith('blob:') || potentiallyUnsupportedFormat) {
+      console.log('Video format may not be supported natively, using fallback method');
+    }
+
+    // Set a timeout for the thumbnail generation - shorter for potentially problematic formats
+    const timeoutId = setTimeout(() => {
+      // If we timeout, clean up and provide a fallback thumbnail
+      cleanupVideo();
+      console.log('Video thumbnail generation timed out');
+      resolve(generateFallbackThumbnail());
+    }, potentiallyUnsupportedFormat ? 2000 : 5000); // Shorter timeout for potentially unsupported formats
 
     // Create a hidden video element
     const video = document.createElement('video');
@@ -234,50 +255,120 @@ export const generateVideoThumbnail = async (videoUrl: string): Promise<string> 
     const ctx = canvas.getContext('2d');
     
     if (!ctx) {
+      clearTimeout(timeoutId);
       reject(new Error('Could not get canvas context'));
       return;
     }
     
-    // Listen for metadata to load
-    video.addEventListener('loadedmetadata', () => {
-      // Set video to a specific time (4 seconds in, or middle of video if shorter)
-      video.currentTime = Math.min(4, video.duration / 2);
-    });
+    // Function to clean up resources
+    const cleanupVideo = () => {
+      clearTimeout(timeoutId);
+      video.removeAttribute('src');
+      video.load();
+      // Remove event listeners to prevent memory leaks
+      video.onloadedmetadata = null;
+      video.onseeked = null;
+      video.onerror = null;
+    };
     
-    // Once we can actually get a frame
-    video.addEventListener('seeked', () => {
-      // Set canvas size to match video dimensions (with max dimensions)
-      const maxWidth = 320;
-      const width = Math.min(video.videoWidth, maxWidth);
-      const aspectRatio = video.videoWidth / video.videoHeight;
-      
-      canvas.width = width;
-      canvas.height = width / aspectRatio;
-      
-      // Draw the video frame on the canvas
-      ctx.drawImage(video, 0, 0, width, canvas.height);
-      
-      // Convert canvas to data URL
+    // Generate a generic fallback thumbnail
+    const generateFallbackThumbnail = (): string => {
+      // Create a simple SVG for video thumbnail
+      const svgString = `
+        <svg width="320" height="180" viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg">
+          <rect width="320" height="180" fill="#1A1A1A"/>
+          <rect x="135" y="65" width="50" height="50" rx="25" fill="#4ade80" stroke="#2dd4bf" stroke-width="2"/>
+          <polygon points="145,90 145,65 170,90" fill="white"/>
+          <text x="160" y="150" font-family="Arial" font-size="12" fill="white" text-anchor="middle">Video Preview</text>
+        </svg>
+      `;
+      return `data:image/svg+xml;base64,${btoa(svgString)}`;
+    };
+    
+    // Listen for metadata to load
+    video.onloadedmetadata = () => {
       try {
+        // Check if video has valid dimensions
+        if (!video.videoWidth || !video.videoHeight) {
+          console.warn('Video has invalid dimensions, using fallback');
+          cleanupVideo();
+          resolve(generateFallbackThumbnail());
+          return;
+        }
+        
+        // Set video to a specific time (4 seconds in, or middle of video if shorter)
+        video.currentTime = Math.min(4, video.duration / 2);
+      } catch (err) {
+        console.warn('Error setting video currentTime:', err);
+        // If setting currentTime fails, try to generate thumbnail anyway
+        captureFrame();
+      }
+    };
+    
+    // Function to capture a frame from the video
+    const captureFrame = () => {
+      try {
+        // Check if video has valid dimensions before capturing
+        if (!video.videoWidth || !video.videoHeight) {
+          console.warn('Cannot capture frame: video has no dimensions');
+          cleanupVideo();
+          resolve(generateFallbackThumbnail());
+          return;
+        }
+        
+        // Set canvas size to match video dimensions (with max dimensions)
+        const maxWidth = 320;
+        const width = Math.min(video.videoWidth, maxWidth);
+        const aspectRatio = video.videoWidth / video.videoHeight;
+        
+        canvas.width = width;
+        canvas.height = width / aspectRatio;
+        
+        // Draw the video frame on the canvas
+        ctx.drawImage(video, 0, 0, width, canvas.height);
+        
+        // Convert canvas to data URL
         const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
         
         // Clean up
-        video.removeAttribute('src');
-        video.load();
+        cleanupVideo();
         
         resolve(dataUrl);
       } catch (e) {
-        reject(new Error(`Failed to generate thumbnail: ${e instanceof Error ? e.message : String(e)}`));
+        console.error('Error capturing video frame:', e);
+        cleanupVideo();
+        resolve(generateFallbackThumbnail());
       }
-    });
+    };
+    
+    // Once we can actually get a frame
+    video.onseeked = captureFrame;
     
     // Handle errors
-    video.addEventListener('error', () => {
-      reject(new Error(`Error loading video for thumbnail: ${video.error?.message || 'Unknown error'}`));
-    });
+    video.onerror = () => {
+      const errorMessage = video.error?.message || 'Unknown error';
+      console.error('Video error:', errorMessage);
+      
+      // If we get the DEMUXER_ERROR_NO_SUPPORTED_STREAMS error, log more specific information
+      if (errorMessage.includes('DEMUXER_ERROR_NO_SUPPORTED_STREAMS') || 
+          errorMessage.includes('FFmpegDemuxer')) {
+        console.warn('Browser cannot demux this video format. Using fallback thumbnail.');
+      }
+      
+      cleanupVideo();
+      resolve(generateFallbackThumbnail());
+    };
     
     // Set the source last
-    video.src = videoUrl;
+    try {
+      video.src = videoUrl;
+      // Try to load at least the first frame
+      video.load();
+    } catch (err) {
+      console.error('Error loading video:', err);
+      cleanupVideo();
+      resolve(generateFallbackThumbnail());
+    }
   });
 };
 

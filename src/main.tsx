@@ -5,11 +5,13 @@ import SplashScreen from './components/Game/SplashScreen';
 import { useImageStore } from './store/useImageStore';
 import PWAInstallPrompts from './components/PWAInstallPrompts';
 import DrawingOverlay from './components/ui/DrawingOverlay';
+import MacOsSpotlight from './components/ui/MacOsSpotlight';
 //
 import { Analytics } from '@vercel/analytics/react';
 
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
 
   useEffect(() => {
     const initializeApp = async (): Promise<void> => {
@@ -25,11 +27,34 @@ const App: React.FC = () => {
     initializeApp();
   }, []);
 
+  const handleSpotlightSearch = (query: string) => {
+    console.log('Search query:', query);
+    
+    // Example of how we might handle different searches
+    const lowerQuery = query.toLowerCase();
+    
+    if (lowerQuery.includes('settings')) {
+      // Open settings dialog
+      setShowSettings(true);
+    } else if (lowerQuery.includes('image') || lowerQuery.includes('welcome')) {
+      // Could load a specific image
+      const imageStore = useImageStore.getState();
+      // Example action - focus on welcome image
+    } else if (lowerQuery.includes('game') || lowerQuery.includes('scene')) {
+      // Game scene related action
+      console.log('Navigate to game scene');
+    } else if (lowerQuery.includes('inventory')) {
+      // Inventory related action
+      console.log('Open inventory');
+    }
+  };
+
   return (
     <div className='fixed inset-0 w-screen h-screen overflow-hidden select-none' draggable={false}>
       {isLoading && <SplashScreen />}
       <Player />
       <DrawingOverlay />
+      <MacOsSpotlight onSearch={handleSpotlightSearch} />
       {typeof window !== 'undefined' && 
         !window.navigator.userAgent.toLowerCase().includes('electron') && 
         /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(window.navigator.userAgent.toLowerCase()) && 

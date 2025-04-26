@@ -88,10 +88,70 @@ const HotbarTopNav: React.FC = () => {
     if (files && files.length > 0) {
       const file = files[0];
       const objectUrl = URL.createObjectURL(file);
+      
+      // Check file extension for supported formats
+      const fileName = file.name.toLowerCase();
+      const isSupportedFormat = 
+        fileName.endsWith('.mp4') || 
+        fileName.endsWith('.webm') || 
+        fileName.endsWith('.ogg') || 
+        fileName.endsWith('.mov');
+      
+      if (!isSupportedFormat) {
+        console.warn(`Video format may not be supported: ${fileName}`);
+      }
 
       try {
-        // Generate thumbnail for the video
-        const thumbnailUrl = await generateVideoThumbnail(objectUrl);
+        // Try to generate thumbnail for the video
+        let thumbnailUrl = '';
+        try {
+          thumbnailUrl = await generateVideoThumbnail(objectUrl);
+        } catch (thumbnailError) {
+          console.warn('Could not generate video thumbnail:', thumbnailError);
+          // Continue without thumbnail
+        }
+
+        // Check for specific demuxer error during thumbnail generation
+        const video = document.createElement('video');
+        video.src = objectUrl;
+        
+        // Set up event handlers to check for demuxer error
+        const videoErrorPromise = new Promise<boolean>((resolve) => {
+          video.onerror = () => {
+            const errorMessage = video.error?.message || '';
+            if (errorMessage.includes('DEMUXER_ERROR_NO_SUPPORTED_STREAMS') || 
+                errorMessage.includes('FFmpegDemuxer: no supported streams')) {
+              console.error('Unsupported video format detected:', errorMessage);
+              alert(`This video format is not supported by your browser. Please try a different format like MP4, WebM, or OGG.`);
+              URL.revokeObjectURL(objectUrl);
+              resolve(true); // Error occurred
+            } else {
+              resolve(false); // Other error or no error
+            }
+          };
+          
+          // If video loads metadata, assume it's playable
+          video.onloadedmetadata = () => resolve(false);
+          
+          // Set a timeout in case neither event fires
+          setTimeout(() => resolve(false), 3000);
+        });
+        
+        // Load the video to trigger error if format is not supported
+        video.load();
+        
+        // Wait to see if demuxer error occurs
+        const hasError = await videoErrorPromise;
+        if (hasError) {
+          // Clean up and exit
+          video.src = '';
+          video.load();
+          return;
+        }
+        
+        // Clean up test video element
+        video.src = '';
+        video.load();
 
         // Get camera position if available
         if (window.mainCamera) {
@@ -111,7 +171,7 @@ const HotbarTopNav: React.FC = () => {
         addVideo({
           src: objectUrl,
           fileName: file.name,
-          thumbnailUrl,
+          thumbnailUrl, // This might be empty string if thumbnail generation failed
           position,
           rotation,
           scale: 3,
@@ -120,20 +180,42 @@ const HotbarTopNav: React.FC = () => {
           loop: true,
           isInScene: true,
         });
+        
+        // If format is not supported but didn't trigger demuxer error, show a warning
+        if (!isSupportedFormat) {
+          setTimeout(() => {
+            alert(`Note: The video format '${fileName.split('.').pop()}' may not play correctly in all browsers. For best compatibility, use MP4, WebM, or OGG formats.`);
+          }, 500);
+        }
       } catch (error) {
         console.error('Error processing video:', error);
-        // Add video without thumbnail if generation fails
-        addVideo({
-          src: objectUrl,
-          fileName: file.name,
-          position: [0, 1, 0],
-          rotation,
-          scale: 3,
-          isPlaying: true,
-          volume: 0.5,
-          loop: true,
-          isInScene: true,
-        });
+        
+        // Check if this is the specific demuxer error
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (errorMsg.includes('DEMUXER_ERROR_NO_SUPPORTED_STREAMS') || 
+            errorMsg.includes('FFmpegDemuxer: no supported streams')) {
+          alert(`This video format is not supported by your browser. Please try a different format like MP4, WebM, or OGG.`);
+          URL.revokeObjectURL(objectUrl);
+          return; // Exit without adding video
+        }
+        
+        // For other errors, try to add the video anyway
+        try {
+          addVideo({
+            src: objectUrl,
+            fileName: file.name,
+            position: [0, 1, 0],
+            rotation: [0, 0, 0],
+            scale: 3,
+            isPlaying: true,
+            volume: 0.5,
+            loop: true,
+            isInScene: true,
+          });
+        } catch (addError) {
+          console.error('Fatal error adding video:', addError);
+          alert('Could not add video: ' + (addError instanceof Error ? addError.message : 'Unknown error'));
+        }
       }
     }
   };

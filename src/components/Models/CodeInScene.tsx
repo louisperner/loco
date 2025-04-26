@@ -243,6 +243,17 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
         position: groupRef.current.position.toArray() as [number, number, number],
       });
     }
+  }, {
+    // Configurações adicionais para evitar problemas de captura de ponteiro
+    pointer: {
+      capture: false,
+      buttons: 1 // Apenas botão esquerdo do mouse
+    },
+    // Desativa eventos de ponteiro nativos, usando apenas mouse para maior compatibilidade
+    eventOptions: { 
+      passive: true,
+      capture: false
+    }
   });
 
   // Custom theme for react-live
@@ -326,8 +337,9 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
         controls.showY = true;
         controls.showZ = true;
       }
-      
-      controls.addEventListener('dragging-changed', (event: { value: boolean }) => {
+
+      // This function is defined outside to properly remove the listener
+      const handleDraggingChanged = (event: { value: boolean }) => {
         if (event.value) {
           // While dragging, prevent updating to avoid recursive matrix calculation
           groupRef.current!.matrixAutoUpdate = false;
@@ -349,10 +361,12 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
             ]
           });
         }
-      });
+      };
+      
+      controls.addEventListener('dragging-changed', handleDraggingChanged);
 
       return () => {
-        controls.removeEventListener('dragging-changed', () => {});
+        controls.removeEventListener('dragging-changed', handleDraggingChanged);
       };
     }
   }, [showControls, transformMode]);
@@ -427,15 +441,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
   );
 
   return (
-    <group
-      ref={groupRef}
-      position={initialPosition}
-      rotation={initialRotation}
-      onClick={(e: ThreeEvent<MouseEvent>) => {
-        e.stopPropagation();
-        if (onSelect) onSelect({ ...codeData, type: 'code' });
-      }}
-    >
+    <>
       {showControls && groupRef.current && (
         <TransformControls
           ref={transformControlsRef}
@@ -450,168 +456,233 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
           translationSnap={0.5}
         />
       )}
-
-      <Html
-        transform
-        distanceFactor={10}
-        position={[0, 0, -5]}
-        style={{
-          width: '300px',
-          height: 'auto',
-          opacity: 0.95,
+      
+      <group
+        ref={groupRef}
+        position={initialPosition}
+        rotation={initialRotation}
+        onClick={(e: ThreeEvent<MouseEvent>) => {
+          e.stopPropagation();
+          if (onSelect) onSelect({ ...codeData, type: 'code' });
         }}
-        onPointerOver={handlePointerOver}
-        onPointerOut={handlePointerOut}
-        onClick={handleClick}
-        onContextMenu={handleRightClick}
-        onPointerDown={handleInteraction}
-        onMouseDown={handleInteraction}
-        className="drei-html"
-        {...bind()}
       >
-         <div 
-            className="code-header flex justify-between items-center bg-[#252526] px-3 py-2 border-b border-gray-700 mb-2 rounded-lg"
-            onClick={handleInteraction}
-            onMouseDown={handleInteraction}
-            onPointerDown={handleInteraction}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+        <Html
+          transform
+          occlude="blending"
+          distanceFactor={10}
+          position={[0, 0, -5]}
+          style={{
+            width: '300px',
+            height: 'auto',
+            opacity: 0.95,
+            pointerEvents: 'none'
+          }}
+          className="drei-html-wrapper"
+        >
+          <div
+            style={{ pointerEvents: 'auto' }}
+            onPointerOver={(e) => { e.stopPropagation(); handlePointerOver(); }}
+            onPointerOut={(e) => { e.stopPropagation(); handlePointerOut(); }}
+            onClick={(e) => { e.stopPropagation(); handleClick(e as any); }}
+            onContextMenu={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              handleRightClick(e as any);
+            }}
+            onPointerDown={(e) => { e.stopPropagation(); handleInteraction(e as any); }}
+            onMouseDown={(e) => { e.stopPropagation(); handleInteraction(e as any); }}
+            {...bind()}
           >
-            <div className="flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-blue-400">
-                <path d="M8 18L3 12L8 6M16 6L21 12L16 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span className="text-gray-300 text-sm font-medium truncate">
-                code
-              </span>
-            </div>
-            <div className="flex items-center">
-              {editMode ? (
-                <button
-                  className="text-white p-1 rounded hover:bg-gray-700"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleEditMode();
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              ) : (
-                <>
-                  <button
-                    className="text-white p-1 rounded hover:bg-gray-700 mr-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleEditMode();
-                    }}
-                    title="Edit Code"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M11 4H4V20H20V13M20 4L8 16M14 4H20V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
+            <div 
+              className="code-header flex justify-between items-center bg-[#252526] px-3 py-2 border-b border-gray-700 mb-2 rounded-lg"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInteraction(e as any);
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                handleInteraction(e as any);
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                handleInteraction(e as any);
+              }}
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
+              <div className="flex items-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-blue-400">
+                  <path d="M8 18L3 12L8 6M16 6L21 12L16 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span className="text-gray-300 text-sm font-medium truncate">
+                  code
+                </span>
+              </div>
+              <div className="flex items-center">
+                {editMode ? (
                   <button
                     className="text-white p-1 rounded hover:bg-gray-700"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onRemove();
+                      toggleEditMode();
                     }}
-                    title="Delete"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+                      <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </button>
-                </>
-              )}
-            </div>
-          </div>
-        <div 
-          className="code-container bg-[#1e1e1e] rounded-lg overflow-hidden shadow-xl border border-gray-700 transform-gpu relative"
-          onClick={handleInteraction}
-          onMouseDown={handleInteraction}
-          onPointerDown={handleInteraction}
-          data-no-pointer-lock="true"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
-          <LiveProvider
-            code={localCode}
-            noInline={noInline}
-            language={language}
-            theme={customTheme as any}
-            enableTypeScript
-          >
-            <div 
-              className="code-content"
-              onClick={handleInteraction}
-              onMouseDown={handleInteraction}
-              onPointerDown={handleInteraction}
-              data-no-pointer-lock="true"
-            >
-              {editMode ? (
-                <div 
-                  ref={editorRef}
-                  className="editor-container p-2"
-                  onClick={handleInteraction}
-                  onMouseDown={handleInteraction}
-                  onPointerDown={handleInteraction}
-                  data-no-pointer-lock="true"
-                >
-                  <SafeLiveEditor 
-                    onChange={handleCodeChange}
-                    style={{ 
-                      fontFamily: 'monospace', 
-                      fontSize: '12px',
-                      minHeight: '150px',
-                      borderRadius: '4px',
-                      padding: '8px'
-                    }}
-                  />
-                  <div className="flex justify-end mt-2" data-no-pointer-lock="true">
+                ) : (
+                  <>
                     <button
-                      className="bg-teal-600 hover:bg-teal-700 text-white text-xs py-1 px-2 rounded"
+                      className="text-white p-1 rounded hover:bg-gray-700 mr-1"
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleEditMode();
                       }}
-                      data-no-pointer-lock="true"
+                      title="Edit Code"
                     >
-                      Apply
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M11 4H4V20H20V13M20 4L8 16M14 4H20V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
                     </button>
-                  </div>
-                </div>
-              ) : (
+                    <button
+                      className="text-white p-1 rounded hover:bg-gray-700"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemove();
+                      }}
+                      title="Delete"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+                      </svg>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+            <div 
+              className="code-container bg-[#1e1e1e] rounded-lg overflow-hidden shadow-xl border border-gray-700 transform-gpu relative"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInteraction(e as any);
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                handleInteraction(e as any);
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                handleInteraction(e as any);
+              }}
+              data-no-pointer-lock="true"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
+              <LiveProvider
+                code={localCode}
+                noInline={noInline}
+                language={language}
+                theme={customTheme as any}
+                enableTypeScript
+              >
                 <div 
-                  className="preview-container p-4 bg-white"
-                  onClick={handleInteraction}
-                  onMouseDown={handleInteraction}
-                  onPointerDown={handleInteraction}
+                  className="code-content"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInteraction(e as any);
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    handleInteraction(e as any);
+                  }}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    handleInteraction(e as any);
+                  }}
                   data-no-pointer-lock="true"
                 >
-                  <SafeLivePreview />
-                  <LiveError 
-                    style={{ 
-                      backgroundColor: '#FEE2E2',
-                      color: '#B91C1C',
-                      padding: '8px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      marginTop: '8px',
-                      display: 'block',
-                      whiteSpace: 'pre-wrap'
-                    }}
-                  />
+                  {editMode ? (
+                    <div 
+                      ref={editorRef}
+                      className="editor-container p-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleInteraction(e as any);
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        handleInteraction(e as any);
+                      }}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        handleInteraction(e as any);
+                      }}
+                      data-no-pointer-lock="true"
+                    >
+                      <SafeLiveEditor 
+                        onChange={handleCodeChange}
+                        style={{ 
+                          fontFamily: 'monospace', 
+                          fontSize: '12px',
+                          minHeight: '150px',
+                          borderRadius: '4px',
+                          padding: '8px'
+                        }}
+                      />
+                      <div className="flex justify-end mt-2" data-no-pointer-lock="true">
+                        <button
+                          className="bg-teal-600 hover:bg-teal-700 text-white text-xs py-1 px-2 rounded"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleEditMode();
+                          }}
+                          data-no-pointer-lock="true"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div 
+                      className="preview-container"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleInteraction(e as any);
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        handleInteraction(e as any);
+                      }}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        handleInteraction(e as any);
+                      }}
+                      data-no-pointer-lock="true"
+                    >
+                      <SafeLivePreview />
+                      <LiveError 
+                        style={{ 
+                          backgroundColor: '#FEE2E2',
+                          color: '#B91C1C',
+                          padding: '8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          marginTop: '8px',
+                          display: 'block',
+                          whiteSpace: 'pre-wrap'
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
+              </LiveProvider>
+              <ControlPanel />
             </div>
-          </LiveProvider>
-          <ControlPanel />
-        </div>
-      </Html>
-    </group>
+          </div>
+        </Html>
+      </group>
+    </>
   );
 };
 
