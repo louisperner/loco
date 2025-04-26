@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Html, TransformControls } from '@react-three/drei';
 import { Object3D, Vector3 } from 'three';
 import { LiveProvider, LiveEditor, LiveError, LivePreview } from 'react-live';
+// @ts-ignore
 import { useDrag } from '@use-gesture/react';
 import { CodeInSceneProps, TransformMode } from './types';
 import { ThreeEvent, useThree, useFrame } from '@react-three/fiber';
@@ -233,7 +234,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
   };
 
   // Drag gesture
-  const bind = useDrag(({ offset: [x, y] }) => {
+  const bind = useDrag(({ offset: [x, y] }: { offset: [number, number] }) => {
     if (groupRef.current) {
       const position = new Vector3(x / 100, -y / 100, 0);
       position.applyQuaternion(groupRef.current.quaternion);

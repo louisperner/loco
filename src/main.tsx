@@ -5,8 +5,8 @@ import SplashScreen from './components/Game/SplashScreen';
 import { useImageStore } from './store/useImageStore';
 import PWAInstallPrompts from './components/PWAInstallPrompts';
 import DrawingOverlay from './components/ui/DrawingOverlay';
-import MacOsSpotlight from './components/ui/MacOsSpotlight';
-//
+import MergedSpotlight from './components/ui/MergedSpotlight';
+// @ts-ignore
 import { Analytics } from '@vercel/analytics/react';
 
 const App: React.FC = () => {
@@ -54,7 +54,7 @@ const App: React.FC = () => {
       {isLoading && <SplashScreen />}
       <Player />
       <DrawingOverlay />
-      <MacOsSpotlight onSearch={handleSpotlightSearch} />
+      <MergedSpotlight onSearch={handleSpotlightSearch} />
       {typeof window !== 'undefined' && 
         !window.navigator.userAgent.toLowerCase().includes('electron') && 
         /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(window.navigator.userAgent.toLowerCase()) && 

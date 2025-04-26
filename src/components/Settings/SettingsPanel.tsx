@@ -10,12 +10,13 @@ import {
   SlidePanelFooter,
   SlidePanelClose,
 } from '@/components/ui/slide-panel';
-import { FaCog, FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaGlobeAmericas, FaDesktop } from 'react-icons/fa';
+import { FaCog, FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaGlobeAmericas, FaDesktop, FaRobot } from 'react-icons/fa';
 import { ColorsTab } from './tabs/ColorsTab';
 import { GroundTab } from './tabs/GroundTab';
 import { CrosshairTab } from './tabs/CrosshairTab';
 import { EnvironmentTab } from './tabs/EnvironmentTab';
 import InterfaceSettings from './InterfaceSettings';
+import { OpenRouterTab } from './tabs/OpenRouterTab';
 import { SettingsPanelProps, SettingsTab, SettingValue } from './types';
 import { loadSettings, saveSettings } from './utils';
 import { RgbaColor } from 'react-colorful';
@@ -371,6 +372,12 @@ export function SettingsPanel({
       label: 'Interface',
       icon: <FaDesktop size='14' />,
       content: <InterfaceSettings showCoordinates={showCoordinates} onCoordinatesToggle={handleCoordinatesToggle} />,
+    },
+    {
+      id: 'openrouter',
+      label: 'OpenRouter',
+      icon: <FaRobot size='14' />,
+      content: <OpenRouterTab />,
     },
   ];
 
