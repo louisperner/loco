@@ -71,7 +71,9 @@ const MergedSpotlight: React.FC<MergedSpotlightProps> = ({ onSearch }) => {
   
   // Store access
   const addImage = useImageStore((state) => state.addImage);
+  const updateImage = useImageStore((state) => state.updateImage);
   const addVideo = useVideoStore((state) => state.addVideo);
+  const updateVideo = useVideoStore((state) => state.updateVideo);
   const addModel = useModelStore((state) => state.addModel);
   const addCodeBlock = useCodeStore((state) => state.addCodeBlock);
   const setShowDrawingOverlay = useGameStore((state) => state.setShowDrawingOverlay);
@@ -855,7 +857,7 @@ render(<Counter />);`;
         }
 
         // Add image to the store
-        addImage({
+        const imageId = addImage({
           id: `image-${Date.now()}`,
           src: objectUrl,
           fileName: file.name,
@@ -867,13 +869,30 @@ render(<Counter />);`;
           isInScene: true,
         });
 
+        // Save the file to disk if in Electron environment
+        if (window.electron?.saveImageFile) {
+          window.electron
+            .saveImageFile(file, file.name)
+            .then((savedPath: string) => {
+              // Update image with the new file path
+              updateImage(imageId, { src: savedPath });
+              
+              // Clean up the blob URL after saving
+              URL.revokeObjectURL(objectUrl);
+            })
+            .catch((error: Error) => {
+              console.error('Error saving image file:', error);
+              alert(`Error saving image file: ${error.message}`);
+            });
+        }
+
         // Close spotlight if it's open
         setIsOpen(false);
       };
 
       img.onerror = () => {
         // Add image without dimensions if loading fails
-        addImage({
+        const imageId = addImage({
           id: `image-${Date.now()}`,
           src: objectUrl,
           fileName: file.name,
@@ -882,6 +901,23 @@ render(<Counter />);`;
           scale: 1,
           isInScene: true,
         });
+
+        // Save the file to disk if in Electron environment
+        if (window.electron?.saveImageFile) {
+          window.electron
+            .saveImageFile(file, file.name)
+            .then((savedPath: string) => {
+              // Update image with the new file path
+              updateImage(imageId, { src: savedPath });
+              
+              // Clean up the blob URL after saving
+              URL.revokeObjectURL(objectUrl);
+            })
+            .catch((error: Error) => {
+              console.error('Error saving image file:', error);
+              alert(`Error saving image file: ${error.message}`);
+            });
+        }
         
         // Close spotlight if it's open
         setIsOpen(false);
@@ -980,7 +1016,7 @@ render(<Counter />);`;
         }
 
         // Add video to the store
-        addVideo({
+        const videoId = addVideo({
           src: objectUrl,
           fileName: file.name,
           thumbnailUrl, // This might be empty string if thumbnail generation failed
@@ -992,6 +1028,23 @@ render(<Counter />);`;
           loop: true,
           isInScene: true,
         });
+        
+        // Save the file to disk if in Electron environment
+        if (window.electron?.saveVideoFile) {
+          window.electron
+            .saveVideoFile(file, file.name)
+            .then((savedPath: string) => {
+              // Update video with the new file path
+              updateVideo(videoId, { src: savedPath });
+              
+              // Clean up the blob URL after saving
+              URL.revokeObjectURL(objectUrl);
+            })
+            .catch((error: Error) => {
+              console.error('Error saving video file:', error);
+              alert(`Error saving video file: ${error.message}`);
+            });
+        }
         
         // If format is not supported but didn't trigger demuxer error, show a warning
         if (!isSupportedFormat) {
@@ -1016,7 +1069,7 @@ render(<Counter />);`;
         
         // For other errors, try to add the video anyway
         try {
-          addVideo({
+          const videoId = addVideo({
             src: objectUrl,
             fileName: file.name,
             position: [0, 1, 0],
@@ -1027,6 +1080,23 @@ render(<Counter />);`;
             loop: true,
             isInScene: true,
           });
+          
+          // Save the file to disk if in Electron environment
+          if (window.electron?.saveVideoFile) {
+            window.electron
+              .saveVideoFile(file, file.name)
+              .then((savedPath: string) => {
+                // Update video with the new file path
+                updateVideo(videoId, { src: savedPath });
+                
+                // Clean up the blob URL after saving
+                URL.revokeObjectURL(objectUrl);
+              })
+              .catch((error: Error) => {
+                console.error('Error saving video file:', error);
+                alert(`Error saving video file: ${error.message}`);
+              });
+          }
           
           // Close spotlight if it's open
           setIsOpen(false);
