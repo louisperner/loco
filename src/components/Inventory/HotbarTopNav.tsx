@@ -14,6 +14,7 @@ const HotbarTopNav: React.FC = () => {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const modelInputRef = useRef<HTMLInputElement>(null);
   const addImage = useImageStore((state) => state.addImage);
+  const updateImage = useImageStore((state) => state.updateImage);
   const addVideo = useVideoStore((state) => state.addVideo);
   const addModel = useModelStore((state) => state.addModel);
   const addCodeBlock = useCodeStore((state) => state.addCodeBlock);
@@ -53,7 +54,7 @@ const HotbarTopNav: React.FC = () => {
         }
 
         // Add image to the store
-        addImage({
+        const imageId = addImage({
           id: `image-${Date.now()}`,
           src: objectUrl,
           fileName: file.name,
@@ -64,11 +65,28 @@ const HotbarTopNav: React.FC = () => {
           scale,
           isInScene: true,
         });
+
+        // Save the file to disk if in Electron environment
+        if (window.electron?.saveImageFile) {
+          window.electron
+            .saveImageFile(file, file.name)
+            .then((savedPath: string) => {
+              // Update image with the new file path
+              updateImage(imageId, { src: savedPath });
+              
+              // Clean up the blob URL after saving
+              URL.revokeObjectURL(objectUrl);
+            })
+            .catch((error: Error) => {
+              console.error('Error saving image file:', error);
+              alert(`Error saving image file: ${error.message}`);
+            });
+        }
       };
 
       img.onerror = () => {
         // Add image without dimensions if loading fails
-        addImage({
+        const imageId = addImage({
           id: `image-${Date.now()}`,
           src: objectUrl,
           fileName: file.name,
@@ -77,6 +95,23 @@ const HotbarTopNav: React.FC = () => {
           scale: 1,
           isInScene: true,
         });
+
+        // Save the file to disk if in Electron environment
+        if (window.electron?.saveImageFile) {
+          window.electron
+            .saveImageFile(file, file.name)
+            .then((savedPath: string) => {
+              // Update image with the new file path
+              updateImage(imageId, { src: savedPath });
+              
+              // Clean up the blob URL after saving
+              URL.revokeObjectURL(objectUrl);
+            })
+            .catch((error: Error) => {
+              console.error('Error saving image file:', error);
+              alert(`Error saving image file: ${error.message}`);
+            });
+        }
       };
 
       img.src = objectUrl;
