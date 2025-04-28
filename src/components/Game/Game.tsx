@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Sky, Stars, Bvh } from '@react-three/drei';
 import * as THREE from 'three';
-import Spotlight from '../ui/Spotlight';
 import FPSControls from '../Scene/FPSControls';
 import ImageCloneManager from '../Models/ImageCloneManager';
 import VideoCloneManager from '../Models/VideoCloneManager';
@@ -17,24 +16,14 @@ import { useThemeStore } from '../../store/ThemeStore';
 import Inventory from '../Inventory/Inventory';
 import { Bloom, EffectComposer } from '@react-three/postprocessing';
 import WebFrames from '../Models/WebFrames';
-// Import separated components
 import { Crosshair, Floor, PreviewFrame, FrameRateLimiter, CameraExposer } from '../Scene';
 import CoordinateDisplay from '../ui/CoordinateDisplay';
-
-// Import utilities
 import { rgbaToString } from '../../utils/colorUtils';
-
-// Import hooks
 import { useFileHandling } from '../../hooks/useFileHandling';
-
-// Import game store
 import { useGameStore, HotbarContext, EnvironmentSettings } from '../../store/useGameStore';
-
-// Import TouchControls
 import TouchControls from '../Scene/TouchControls';
 import GamepadController from './GamepadController';
 
-// Types for inventory
 interface InventoryItem {
   id: string;
   type: 'image' | 'model' | 'video';
@@ -69,7 +58,7 @@ const Player: React.FC = () => {
   const [isMoving, setIsMoving] = useState(false); // State to control frameloop
 
   // Calculate position in front of camera
-  let position = new THREE.Vector3();
+  const position = new THREE.Vector3();
   let rotation: [number, number, number] = [0, 0, 0];
 
   // Define InventoryRefHandle interface with reloadInventory method
@@ -757,11 +746,6 @@ const Player: React.FC = () => {
           />
         )}
 
-        {/* Spotlight */}
-        {uiVisible && (
-          <Spotlight onAddFrame={addFrame} onVisibilityChange={handleSpotlightVisibility} showInput={true} />
-        )}
-
         {/* Inventory component - always rendered, visibility controlled by isOpen prop */}
         {uiVisible && (
           <Inventory
@@ -872,7 +856,7 @@ const Player: React.FC = () => {
                 return;
               }
               // Calculate position in front of camera
-              let position = new THREE.Vector3();
+              const position = new THREE.Vector3();
               let rotation: [number, number, number] = [0, 0, 0];
 
               if (cameraRef.current) {
