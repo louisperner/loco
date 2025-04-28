@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import useGamepadController from '../hooks/useGamepadController';
+import useGamepadController from '../../hooks/useGamepadController';
 
 export interface GamepadControllerProps {
   className?: string;

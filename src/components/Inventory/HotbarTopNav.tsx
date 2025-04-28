@@ -317,9 +317,14 @@ const HotbarTopNav: React.FC = () => {
     }
   };
 
-  const handlePrimitiveSelect = (type: 'cube' | 'sphere' | 'plane') => {
+  const handlePrimitiveSelect = (type: 'cube' | 'sphere' | 'plane', specificPosition?: [number, number, number]) => {
     // Get camera position if available
-    if (window.mainCamera) {
+    let position: [number, number, number] = [0, 1, 0];
+    let rotation: [number, number, number] = [0, 0, 0];
+
+    if (specificPosition) {
+      position = specificPosition;
+    } else if (window.mainCamera) {
       const camera = window.mainCamera;
       const direction = new THREE.Vector3(0, 0, -1);
       direction.applyQuaternion(camera.quaternion);

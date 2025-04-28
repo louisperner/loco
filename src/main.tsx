@@ -3,9 +3,9 @@ import ReactDOM from 'react-dom/client';
 import Player from './components/Game/Game';
 import SplashScreen from './components/Game/SplashScreen';
 import { useImageStore } from './store/useImageStore';
-import PWAInstallPrompts from './components/PWAInstallPrompts';
+import PWAInstallPrompts from './components/Game/PWAInstallPrompts';
 import DrawingOverlay from './components/ui/DrawingOverlay';
-import MergedSpotlight from './components/ui/MergedSpotlight';
+import MergedSpotlight from './components/Spotlight/MergedSpotlight';
 // @ts-ignore
 import { Analytics } from '@vercel/analytics/react';
 
