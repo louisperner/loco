@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useOpenRouterStore } from '@/store/useOpenRouterStore';
-import { Bot, Key, Info, Zap } from 'lucide-react';
-import { OPENROUTER_MODELS, OPENROUTER_STREAMING_PROVIDERS, isStreamingSupported } from '@/lib/openrouter-constants';
+import { Bot, Info, Zap } from 'lucide-react';
+import { OPENROUTER_MODELS, isStreamingSupported } from '@/lib/openrouter-constants';
 
 const OpenRouterSettings: React.FC = () => {
   const {
@@ -31,19 +31,14 @@ const OpenRouterSettings: React.FC = () => {
       }, 2000);
       return () => clearTimeout(timeout);
     }
+    return undefined;
   }, [apiKeyCopied]);
 
   // Check if streaming is supported for the selected model
   useEffect(() => {
     setStreamingSupported(isStreamingSupported(defaultModel));
+    return undefined;
   }, [defaultModel]);
-
-  const copyApiKey = () => {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey);
-      setApiKeyCopied(true);
-    }
-  };
 
   return (
     <div className="p-4 space-y-6">
@@ -128,7 +123,7 @@ const OpenRouterSettings: React.FC = () => {
               />
               <div 
                 className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${
-                  useStreaming && streamingSupported ? 'transform translate-x-full translate-x-[80%]' : ''
+                  useStreaming && streamingSupported ? 'transform translate-x-[80%]' : ''
                 }`}
               />
             </div>

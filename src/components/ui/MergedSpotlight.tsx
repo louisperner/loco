@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bot, Brain, Layers, FileText, Settings, Gamepad2, Image, Code, Box, Square, PenTool, Video, CircleIcon, History, Loader2, ChevronDown, Check, Send, ArrowRight, Trash2 } from 'lucide-react';
+import { Search, Bot, Brain, Layers, Settings, Image, Code, Box, Square, PenTool, Video, CircleIcon, History, Loader2, ChevronDown, Check, Send, Trash2 } from 'lucide-react';
 import { useImageStore } from '../../store/useImageStore';
 import { useGameStore } from '@/store/useGameStore';
 import { useModelStore } from '@/store/useModelStore';
@@ -49,7 +49,6 @@ const MergedSpotlight: React.FC<MergedSpotlightProps> = ({ onSearch }) => {
   // OpenRouter specific state
   const [isOpenRouterMode, setIsOpenRouterMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [isAutoSelect, setIsAutoSelect] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -89,12 +88,9 @@ const MergedSpotlight: React.FC<MergedSpotlightProps> = ({ onSearch }) => {
     setDefaultModel
   } = useOpenRouterStore();
   
-  // Check if streaming is supported for selected model
-  const [streamingSupported, setStreamingSupported] = useState(true);
-  
   // Check if streaming is supported for the selected model
   useEffect(() => {
-    setStreamingSupported(isStreamingSupported(defaultModel));
+    // Implementation handled directly by usage in component
   }, [defaultModel]);
   
   // List of available commands for regular spotlight mode
@@ -185,7 +181,6 @@ const MergedSpotlight: React.FC<MergedSpotlightProps> = ({ onSearch }) => {
       action: () => {
         setIsOpenRouterMode(true);
         setSearchQuery('');
-        setAiResponse(null);
       }
     }
   ];
@@ -195,8 +190,6 @@ const MergedSpotlight: React.FC<MergedSpotlightProps> = ({ onSearch }) => {
     if (isOpen) {
       setIsOpen(false);
       setSearchQuery('');
-      setAiResponse(null);
-      setIsOpenRouterMode(false);
       
       // Clean up any streaming simulation
       if (streamInterval) {
@@ -422,7 +415,6 @@ const MergedSpotlight: React.FC<MergedSpotlightProps> = ({ onSearch }) => {
     
     // Regular chat message
     setIsLoading(true);
-    setAiResponse(null);
     setShownResponse('');
     setFullResponse('');
     setIsStreaming(false);
@@ -473,6 +465,21 @@ Only use commands when explicitly asked by the user.`
       );
       
       const responseContent = result.choices[0]?.message?.content || "No response received";
+      const responseModel = result.model;
+      
+      // Process response for commands before displaying
+      const commandFunction = parseAIResponseForCommands(responseContent);
+      if (commandFunction) {
+        handleCommand(commandFunction);
+      }
+      
+      // Add message to chat
+      setChatMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: responseContent,
+        timestamp: Date.now(),
+        model: responseModel
+      }]);
       
       // Add to history
       addToHistory(searchQuery, responseContent, result.model);
@@ -531,7 +538,10 @@ Only use commands when explicitly asked by the user.`
             setIsStreaming(false);
             
             // Parse for commands after response is complete
-            parseAIResponseForCommands(responseContent);
+            const commandFunction = parseAIResponseForCommands(responseContent);
+            if (commandFunction) {
+              handleCommand(commandFunction);
+            }
             
             // No need to set aiResponse since we're using chatMessages now
             setSearchQuery('');
@@ -542,11 +552,15 @@ Only use commands when explicitly asked by the user.`
       } else {
         // For models that support streaming or when in thinking mode, just show the response immediately
         // Process response for commands before displaying
-        const processedResponse = parseAIResponseForCommands(responseContent);
+        const commandFunction = parseAIResponseForCommands(responseContent);
+        if (commandFunction) {
+          handleCommand(commandFunction);
+        }
         
+        // Add message to chat with string content only
         setChatMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: processedResponse, 
+          content: responseContent, // This is a string
           timestamp: Date.now(),
           model: result.model
         }]);
@@ -570,64 +584,41 @@ Only use commands when explicitly asked by the user.`
   
   // Parse AI response for command execution
   const parseAIResponseForCommands = (response: string) => {
-    // Look for command patterns like [command:cube], [action:add_image], etc.
-    const commandRegex = /\[(command|action|execute):(\w+)(?:\s(.+?))?\]/gi;
-    let match;
-    let foundCommands = false;
-    
-    while ((match = commandRegex.exec(response)) !== null) {
-      foundCommands = true;
-      const [fullMatch, _, commandName, args] = match;
-      
-      console.log(`Detected command from AI: ${commandName} with args: ${args || 'none'}`);
-      
-      // Find matching command
-      const matchedCommand = appCommands.find(cmd => 
-        cmd.id.toLowerCase() === commandName.toLowerCase() || 
-        cmd.title.toLowerCase().includes(commandName.toLowerCase())
-      );
-      
-      if (matchedCommand) {
-        // Execute the command
-        setTimeout(() => {
-          matchedCommand.action();
-          
-          // Add system message about executed command
-          setChatMessages(prev => [...prev, { 
-            role: 'system', 
-            content: `AI executed command: ${matchedCommand.title}`,
-            timestamp: Date.now()
-          }]);
-        }, 1000); // Slight delay for better UX
-      } else {
-        // No matching command found
-        setChatMessages(prev => [...prev, { 
-          role: 'system', 
-          content: `AI tried to execute unknown command: ${commandName}`,
-          timestamp: Date.now()
-        }]);
+    // Check for commands like "Add a cube" or "Create a sphere"
+    const objectMatches = response.match(/add\s+(a\s+)?(cube|sphere|plane)/gi);
+    if (objectMatches) {
+      const type = objectMatches[0].toLowerCase();
+      if (type.includes('cube')) {
+        return () => handlePrimitiveSelect('cube');
+      } else if (type.includes('sphere')) {
+        return () => handlePrimitiveSelect('sphere');
+      } else if (type.includes('plane')) {
+        return () => handlePrimitiveSelect('plane');
       }
     }
     
-    // If commands were found, return a cleaned response without the command syntax
-    if (foundCommands) {
-      return response.replace(commandRegex, '');
+    // Check for "Draw" command
+    if (response.match(/start\s+drawing|drawing\s+mode|enable\s+drawing/gi)) {
+      return () => handleDraw();
     }
     
-    return response;
+    // Check for "Code" command
+    if (response.match(/add\s+(a\s+)?code(\s+block)?|create\s+(a\s+)?code(\s+block)?/gi)) {
+      return () => handleCodeAdd();
+    }
+    
+    return null;
   };
   
   // Clear chat history
   const clearChat = () => {
     setChatMessages([]);
-    setAiResponse(null);
     setShownResponse('');
     setFullResponse('');
     setIsStreaming(false);
     
     if (streamInterval) {
       clearInterval(streamInterval);
-      setStreamInterval(null);
     }
   };
   
@@ -1173,9 +1164,7 @@ render(<Counter />);`;
   
   // Close model selector when clicking outside
   useEffect(() => {
-    if (!isOpen) return;
-    
-    const handleOutsideClick = (e: MouseEvent) => {
+    const handleOutsideClick = () => {
       if (showModelSelector) {
         setShowModelSelector(false);
       }
@@ -1183,7 +1172,7 @@ render(<Counter />);`;
     
     document.addEventListener('click', handleOutsideClick);
     return () => document.removeEventListener('click', handleOutsideClick);
-  }, [showModelSelector, isOpen]);
+  }, [showModelSelector]);
   
   // Handle model change
   const handleModelChange = (modelId: string) => {
@@ -1195,7 +1184,6 @@ render(<Counter />);`;
       
       // If we have a full response stored, show it immediately
       if (fullResponse) {
-        setAiResponse(fullResponse);
         setFullResponse('');
       }
     }
@@ -1212,6 +1200,20 @@ render(<Counter />);`;
       }
     };
   }, [streamInterval]);
+
+  const handleCommand = (commandFunction: (() => void) | null) => {
+    if (commandFunction) {
+      // Execute the command function
+      commandFunction();
+      
+      // Add system message about executed command
+      setChatMessages(prev => [...prev, { 
+        role: 'system', 
+        content: 'Command executed from AI suggestion',
+        timestamp: Date.now()
+      }]);
+    }
+  };
 
   return (
     <>

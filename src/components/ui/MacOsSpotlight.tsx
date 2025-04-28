@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Layers, FileText, Settings, Gamepad2, Image, Code, Box, Square, PenTool, Video, CircleIcon } from 'lucide-react';
+import { Search, Layers, Settings, Image, Code, Box, Square, PenTool, Video, CircleIcon } from 'lucide-react';
 import { useImageStore } from '../../store/useImageStore';
 import { useGameStore } from '@/store/useGameStore';
 import { useModelStore } from '@/store/useModelStore';

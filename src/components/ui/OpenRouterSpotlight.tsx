@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Bot, Settings, Brain, History, Loader2, ChevronDown, Check } from 'lucide-react';
+import { Bot, Brain, History, Loader2, ChevronDown, Check } from 'lucide-react';
 import { useOpenRouterStore } from '../../store/useOpenRouterStore';
 import { openRouterApi } from '../../lib/openrouter';
 import { OPENROUTER_MODELS, isStreamingSupported } from '../../lib/openrouter-constants';
@@ -16,15 +16,14 @@ interface OpenRouterSpotlightProps {
   onSearch?: (query: string) => void;
 }
 
-const OpenRouterSpotlight: React.FC<OpenRouterSpotlightProps> = ({ onSearch }) => {
+const OpenRouterSpotlight: React.FC<OpenRouterSpotlightProps> = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results] = useState<SearchResult[]>([]);
   const [selectedResultIndex, setSelectedResultIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [recentQueries, setRecentQueries] = useState<string[]>([]);
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [isAutoSelect, setIsAutoSelect] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -58,7 +57,7 @@ const OpenRouterSpotlight: React.FC<OpenRouterSpotlightProps> = ({ onSearch }) =
 
   // Close model selector when clicking outside
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
+    const handleOutsideClick = () => {
       if (showModelSelector) {
         setShowModelSelector(false);
       }
@@ -226,7 +225,6 @@ const OpenRouterSpotlight: React.FC<OpenRouterSpotlightProps> = ({ onSearch }) =
       if (!recentQueries.includes(query)) {
         const updatedQueries = [query, ...recentQueries].slice(0, 5);
         localStorage.setItem('recentQueries', JSON.stringify(updatedQueries));
-        setRecentQueries(updatedQueries);
       }
 
       // Cancel any previous requests
