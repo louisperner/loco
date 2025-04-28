@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Html, TransformControls } from '@react-three/drei';
 import { Object3D, Vector3 } from 'three';
 import { LiveProvider, LiveEditor, LiveError, LivePreview } from 'react-live';
@@ -11,22 +11,7 @@ import { FaArrowsAlt } from 'react-icons/fa';
 import { BsArrowsMove } from 'react-icons/bs';
 import { TbRotate360 } from 'react-icons/tb';
 import * as THREE from 'three';
-
-// Custom PrismTheme type that matches our theme structure
-type CustomPrismTheme = {
-  plain: {
-    color: string;
-    backgroundColor: string;
-  };
-  styles: {
-    types: string[];
-    style: {
-      color?: string;
-      fontStyle?: string;
-      opacity?: number;
-    };
-  }[];
-};
+import { PrismTheme } from 'prism-react-renderer';
 
 // Create a custom wrapper for LivePreview to stop propagation
 const SafeLivePreview: React.FC = (props) => {
@@ -66,6 +51,15 @@ const SafeLiveEditor: React.FC<{onChange?: (code: string) => void, style?: React
   );
 };
 
+// Define type for TransformControls ref
+type TransformControlsRefType = {
+  showX: boolean;
+  showY: boolean;
+  showZ: boolean;
+  addEventListener: (event: string, callback: (event: { value: boolean }) => void) => void;
+  removeEventListener: (event: string, callback: (event: { value: boolean }) => void) => void;
+};
+
 const CodeInScene: React.FC<CodeInSceneProps> = ({
   codeData,
   onRemove,
@@ -84,13 +78,13 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
 
   // Ref to the group
   const groupRef = useRef<Object3D>(null);
-  const transformControlsRef = useRef<any>(null);
+  const transformControlsRef = useRef<TransformControlsRefType>(null);
   
   // State for control elements
-  const [hovered, setHovered] = useState<boolean>(false);
+  const [_hovered, setHovered] = useState<boolean>(false);
   const [showControls, setShowControls] = useState<boolean>(false);
   const [transformMode, setTransformMode] = useState<TransformMode>('translate');
-  const [scale, setScale] = useState<number>(initialScale);
+  const [scale] = useState<number>(initialScale);
   const [editMode, setEditMode] = useState<boolean>(false);
   const [localCode, setLocalCode] = useState<string>(code);
   const [lookAtUser, setLookAtUser] = useState<boolean>(initialLookAtUser);
@@ -187,7 +181,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
   };
 
   // Function to update all changes
-  const handleUpdate = (changes: Partial<typeof codeData>): void => {
+  const handleUpdate = useCallback((changes: Partial<typeof codeData>): void => {
     if (groupRef.current) {
       // Convert Vector3 and Euler to arrays if needed
       const currentPosition: [number, number, number] = changes.position || [
@@ -210,7 +204,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
         lookAtUser,
       });
     }
-  };
+  }, [codeData, onUpdate, scale, lookAtUser]);
 
   // Look at user handler
   const handleLookAtUser = (value: boolean): void => {
@@ -258,7 +252,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
   });
 
   // Custom theme for react-live
-  const customTheme: CustomPrismTheme = {
+  const customTheme: PrismTheme = {
     plain: {
       color: '#e6e6e6',
       backgroundColor: '#1e1e1e',
@@ -323,7 +317,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
   };
 
   // Handle all events to prevent them from bubbling up to the canvas
-  const handleInteraction = (e: React.SyntheticEvent) => {
+  const handleInteraction = (e: React.SyntheticEvent<HTMLElement>) => {
     e.stopPropagation();
   };
 
@@ -370,7 +364,8 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
         controls.removeEventListener('dragging-changed', handleDraggingChanged);
       };
     }
-  }, [showControls, transformMode]);
+    return undefined;
+  }, [showControls, transformMode, handleUpdate]);
 
   // Handle keyboard events when editor is active
   useEffect(() => {
@@ -400,7 +395,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
       }}
     >
       <button 
-        onClick={(e) => {
+        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
           e.stopPropagation();
           handleLookAtUser(!lookAtUser);
         }}
@@ -411,7 +406,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
       </button>
       
       <button 
-        onClick={(e) => {
+        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
           e.stopPropagation();
           setShowControls(!showControls);
         }}
@@ -423,7 +418,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
       
       {showControls && (
         <button 
-          onClick={(e) => {
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
             setTransformMode(
               transformMode === 'translate' ? 'rotate' :
@@ -445,6 +440,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
     <>
       {showControls && groupRef.current && (
         <TransformControls
+          // @ts-ignore - TransformControls ref type is complex and not easily typed
           ref={transformControlsRef}
           object={groupRef.current}
           mode={transformMode}
@@ -482,31 +478,31 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
         >
           <div
             style={{ pointerEvents: 'auto' }}
-            onPointerOver={(e) => { e.stopPropagation(); handlePointerOver(); }}
-            onPointerOut={(e) => { e.stopPropagation(); handlePointerOut(); }}
-            onClick={(e) => { e.stopPropagation(); handleClick(e as any); }}
-            onContextMenu={(e) => {
+            onPointerOver={(e: React.PointerEvent<HTMLDivElement>) => { e.stopPropagation(); handlePointerOver(); }}
+            onPointerOut={(e: React.PointerEvent<HTMLDivElement>) => { e.stopPropagation(); handlePointerOut(); }}
+            onClick={(e: React.MouseEvent<HTMLDivElement>) => { e.stopPropagation(); handleClick(e); }}
+            onContextMenu={(e: React.MouseEvent<HTMLDivElement>) => {
               e.stopPropagation();
               e.preventDefault();
-              handleRightClick(e as any);
+              handleRightClick(e);
             }}
-            onPointerDown={(e) => { e.stopPropagation(); handleInteraction(e as any); }}
-            onMouseDown={(e) => { e.stopPropagation(); handleInteraction(e as any); }}
+            onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => { e.stopPropagation(); handleInteraction(e); }}
+            onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => { e.stopPropagation(); handleInteraction(e); }}
             {...bind()}
           >
             <div 
               className="code-header flex justify-between items-center bg-[#252526] px-3 py-2 border-b border-gray-700 mb-2 rounded-lg"
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                 e.stopPropagation();
-                handleInteraction(e as any);
+                handleInteraction(e);
               }}
-              onMouseDown={(e) => {
+              onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
                 e.stopPropagation();
-                handleInteraction(e as any);
+                handleInteraction(e);
               }}
-              onPointerDown={(e) => {
+              onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => {
                 e.stopPropagation();
-                handleInteraction(e as any);
+                handleInteraction(e);
               }}
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
@@ -523,7 +519,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
                 {editMode ? (
                   <button
                     className="text-white p-1 rounded hover:bg-gray-700"
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                       e.stopPropagation();
                       toggleEditMode();
                     }}
@@ -536,7 +532,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
                   <>
                     <button
                       className="text-white p-1 rounded hover:bg-gray-700 mr-1"
-                      onClick={(e) => {
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
                         toggleEditMode();
                       }}
@@ -548,7 +544,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
                     </button>
                     <button
                       className="text-white p-1 rounded hover:bg-gray-700"
-                      onClick={(e) => {
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
                         onRemove();
                       }}
@@ -564,17 +560,17 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
             </div>
             <div 
               className="code-container bg-[#1e1e1e] rounded-lg overflow-hidden shadow-xl border border-gray-700 transform-gpu relative"
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                 e.stopPropagation();
-                handleInteraction(e as any);
+                handleInteraction(e);
               }}
-              onMouseDown={(e) => {
+              onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
                 e.stopPropagation();
-                handleInteraction(e as any);
+                handleInteraction(e);
               }}
-              onPointerDown={(e) => {
+              onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => {
                 e.stopPropagation();
-                handleInteraction(e as any);
+                handleInteraction(e);
               }}
               data-no-pointer-lock="true"
               onMouseEnter={() => setIsHovered(true)}
@@ -584,22 +580,22 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
                 code={localCode}
                 noInline={noInline}
                 language={language}
-                theme={customTheme as any}
+                theme={customTheme}
                 enableTypeScript
               >
                 <div 
                   className="code-content"
-                  onClick={(e) => {
+                  onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                     e.stopPropagation();
-                    handleInteraction(e as any);
+                    handleInteraction(e);
                   }}
-                  onMouseDown={(e) => {
+                  onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
                     e.stopPropagation();
-                    handleInteraction(e as any);
+                    handleInteraction(e);
                   }}
-                  onPointerDown={(e) => {
+                  onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => {
                     e.stopPropagation();
-                    handleInteraction(e as any);
+                    handleInteraction(e);
                   }}
                   data-no-pointer-lock="true"
                 >
@@ -607,17 +603,17 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
                     <div 
                       ref={editorRef}
                       className="editor-container p-2"
-                      onClick={(e) => {
+                      onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                         e.stopPropagation();
-                        handleInteraction(e as any);
+                        handleInteraction(e);
                       }}
-                      onMouseDown={(e) => {
+                      onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
                         e.stopPropagation();
-                        handleInteraction(e as any);
+                        handleInteraction(e);
                       }}
-                      onPointerDown={(e) => {
+                      onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => {
                         e.stopPropagation();
-                        handleInteraction(e as any);
+                        handleInteraction(e);
                       }}
                       data-no-pointer-lock="true"
                     >
@@ -634,7 +630,7 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
                       <div className="flex justify-end mt-2" data-no-pointer-lock="true">
                         <button
                           className="bg-teal-600 hover:bg-teal-700 text-white text-xs py-1 px-2 rounded"
-                          onClick={(e) => {
+                          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                             e.stopPropagation();
                             toggleEditMode();
                           }}
@@ -647,17 +643,17 @@ const CodeInScene: React.FC<CodeInSceneProps> = ({
                   ) : (
                     <div 
                       className="preview-container"
-                      onClick={(e) => {
+                      onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                         e.stopPropagation();
-                        handleInteraction(e as any);
+                        handleInteraction(e);
                       }}
-                      onMouseDown={(e) => {
+                      onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
                         e.stopPropagation();
-                        handleInteraction(e as any);
+                        handleInteraction(e);
                       }}
-                      onPointerDown={(e) => {
+                      onPointerDown={(e: React.PointerEvent<HTMLDivElement>) => {
                         e.stopPropagation();
-                        handleInteraction(e as any);
+                        handleInteraction(e);
                       }}
                       data-no-pointer-lock="true"
                     >

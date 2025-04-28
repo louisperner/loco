@@ -134,7 +134,7 @@ const OpenRouterSettings: React.FC = () => {
             </div>
           )}
           <div className="text-xs text-white/60">
-            Real-time response generation. Responses appear word by word as they're generated.
+            Real-time response generation. Responses appear word by word as they&apos;re generated.
           </div>
         </div>
 

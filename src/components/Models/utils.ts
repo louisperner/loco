@@ -232,14 +232,14 @@ export const generateVideoThumbnail = async (videoUrl: string): Promise<string> 
     
     // For blob URLs or potentially unsupported formats, we need to check formats more carefully
     if (lowerCaseUrl.startsWith('blob:') || potentiallyUnsupportedFormat) {
-      console.log('Video format may not be supported natively, using fallback method');
+      // Format may not be supported natively, using fallback method
     }
 
     // Set a timeout for the thumbnail generation - shorter for potentially problematic formats
     const timeoutId = setTimeout(() => {
       // If we timeout, clean up and provide a fallback thumbnail
       cleanupVideo();
-      console.log('Video thumbnail generation timed out');
+      // Video thumbnail generation timed out
       resolve(generateFallbackThumbnail());
     }, potentiallyUnsupportedFormat ? 2000 : 5000); // Shorter timeout for potentially unsupported formats
 

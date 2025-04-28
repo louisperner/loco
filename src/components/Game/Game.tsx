@@ -119,8 +119,6 @@ const Player: React.FC = () => {
     handleToggleHelp,
     handleCancel,
     handlePositionConfirm,
-    handleSpotlightVisibility,
-    addFrame,
     setIsResetAnimating,
     setColorChanged,
     setSelectedFrame,

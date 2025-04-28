@@ -125,8 +125,8 @@ export interface CodeInSceneProps {
     lookAtUser?: boolean;
   };
   onRemove: () => void;
-  onUpdate: (data: any) => void;
-  onSelect?: (data: any) => void;
+  onUpdate: (data: CodeBlockDataType) => void;
+  onSelect?: (data: CodeBlockDataType & { type: string }) => void;
 }
 
 // Video types
