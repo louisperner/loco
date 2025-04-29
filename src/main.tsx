@@ -11,7 +11,6 @@ import { Analytics } from '@vercel/analytics/react';
 
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [showSettings, setShowSettings] = useState<boolean>(false);
 
   useEffect(() => {
     const initializeApp = async (): Promise<void> => {
@@ -19,7 +18,6 @@ const App: React.FC = () => {
         await new Promise((resolve) => setTimeout(resolve, 2000));
         setIsLoading(false);
       } catch (error) {
-        console.error('Error initializing app:', error);
         setIsLoading(false);
       }
     };
@@ -27,34 +25,12 @@ const App: React.FC = () => {
     initializeApp();
   }, []);
 
-  const handleSpotlightSearch = (query: string) => {
-    console.log('Search query:', query);
-    
-    // Example of how we might handle different searches
-    const lowerQuery = query.toLowerCase();
-    
-    if (lowerQuery.includes('settings')) {
-      // Open settings dialog
-      setShowSettings(true);
-    } else if (lowerQuery.includes('image') || lowerQuery.includes('welcome')) {
-      // Could load a specific image
-      const imageStore = useImageStore.getState();
-      // Example action - focus on welcome image
-    } else if (lowerQuery.includes('game') || lowerQuery.includes('scene')) {
-      // Game scene related action
-      console.log('Navigate to game scene');
-    } else if (lowerQuery.includes('inventory')) {
-      // Inventory related action
-      console.log('Open inventory');
-    }
-  };
-
   return (
     <div className='fixed inset-0 w-screen h-screen overflow-hidden select-none' draggable={false}>
       {isLoading && <SplashScreen />}
       <Player />
       <DrawingOverlay />
-      <MergedSpotlight onSearch={handleSpotlightSearch} />
+      <MergedSpotlight />
       {typeof window !== 'undefined' && 
         !window.navigator.userAgent.toLowerCase().includes('electron') && 
         /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(window.navigator.userAgent.toLowerCase()) && 
@@ -77,7 +53,6 @@ const initializeWelcomeImage = () => {
       try {
         existingImages = JSON.parse(savedImages);
       } catch (err) {
-        console.error('Error parsing saved images:', err);
         // Invalid JSON, treat as empty
       }
     }
@@ -106,8 +81,7 @@ const initializeWelcomeImage = () => {
         });
       };
 
-      img.onerror = (error) => {
-        console.error('Error loading welcome image:', error);
+      img.onerror = () => {
         // Fallback without dimensions
         const welcomeImagePath = '/welcome.png';
         const imageStore = useImageStore.getState();
@@ -125,7 +99,7 @@ const initializeWelcomeImage = () => {
       img.src = '/welcome.png';
     }
   } catch (error) {
-    console.error('Error initializing welcome image:', error);
+    // Error handling
   }
 };
 

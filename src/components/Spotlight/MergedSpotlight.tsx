@@ -25,7 +25,7 @@ const MergedSpotlight: React.FC<MergedSpotlightProps> = ({ onSearch }) => {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedResultIndex, setSelectedResultIndex] = useState(0);
   const [isOpenRouterMode, setIsOpenRouterMode] = useState(false);
-  const [showCommandSuggestions, setShowCommandSuggestions] = useState(false);
+  const [_unused, setShowCommandSuggestions] = useState(false);
   
   // Refs
   const spotlightRef = useRef<HTMLDivElement>(null);
@@ -244,7 +244,7 @@ const MergedSpotlight: React.FC<MergedSpotlightProps> = ({ onSearch }) => {
         handleCodeAdd(addCodeBlock);
         break;
       default:
-        console.log(`Command not handled: ${commandType}`);
+        // Command not implemented yet
     }
   };
   

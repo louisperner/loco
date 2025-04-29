@@ -73,120 +73,6 @@ const OpenRouterSpotlight: React.FC<OpenRouterSpotlightProps> = () => {
     setShowModelSelector(false);
   };
   
-  // Toggle spotlight visibility
-  const toggleSpotlight = () => {
-    if (isOpen) {
-      handleCloseSpotlight();
-    } else {
-      setIsOpen(true);
-    }
-  };
-  
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // If only slash key is pressed (without modifiers)
-      if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey && !isOpen) {
-        // Check if the target is an input, textarea, or any editor-related element
-        const target = e.target as HTMLElement;
-        const isEditorActive = 
-          target.tagName === 'INPUT' || 
-          target.tagName === 'TEXTAREA' || 
-          target.closest('.editor-container') !== null ||
-          target.closest('.safe-live-editor') !== null ||
-          target.closest('[data-no-pointer-lock]') !== null ||
-          target.closest('.react-live') !== null ||
-          target.classList.contains('CodeMirror') ||
-          /editor|code-editor|monaco-editor/.test(target.className || '');
-          
-        // Don't open spotlight if we're in a text editor
-        if (isEditorActive) {
-          return;
-        }
-        
-        e.preventDefault();
-        e.stopPropagation();
-        setIsOpen(true);
-      }
-      
-      // Close on Escape
-      if (e.key === 'Escape' && isOpen) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleCloseSpotlight();
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [isOpen]);
-  
-  // Handle mouse middle button
-  useEffect(() => {
-    const handleMouseDown = (e: MouseEvent) => {
-      // Alt+Click to open
-      if (e.altKey && e.button === 0) {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleSpotlight();
-      }
-    };
-    
-    window.addEventListener('mousedown', handleMouseDown, true);
-    return () => window.removeEventListener('mousedown', handleMouseDown, true);
-  }, [isOpen]);
-  
-  // Handle arrow key navigation through results
-  useEffect(() => {
-    if (!isOpen) return;
-    
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        if (e.key === 'ArrowDown') {
-          setSelectedResultIndex(prev => 
-            prev < results.length - 1 ? prev + 1 : prev
-          );
-        } else if (e.key === 'ArrowUp') {
-          setSelectedResultIndex(prev => 
-            prev > 0 ? prev - 1 : prev
-          );
-        } else if (e.key === 'Enter' && searchQuery && !isLoading) {
-          if (results.length > 0) {
-            const selectedResult = results[selectedResultIndex];
-            selectedResult.action();
-          } else {
-            // If no results but we have a query, run OpenRouter query
-            handleOpenRouterQuery(searchQuery);
-          }
-        }
-      }
-    };
-    
-    // Use capture to intercept events before they reach other handlers
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [isOpen, results, selectedResultIndex, searchQuery, isLoading]);
-  
-  // Focus the input when spotlight opens
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isOpen]);
-  
-  // Scroll selected result into view
-  useEffect(() => {
-    if (resultsRef.current && results.length > 0) {
-      const selectedElement = resultsRef.current.querySelector(`[data-index="${selectedResultIndex}"]`);
-      if (selectedElement) {
-        selectedElement.scrollIntoView({ block: 'nearest' });
-      }
-    }
-  }, [selectedResultIndex, results]);
-  
   // Handle closing the spotlight with proper cleanup
   const handleCloseSpotlight = useCallback(() => {
     // Cancel any ongoing stream
@@ -201,21 +87,8 @@ const OpenRouterSpotlight: React.FC<OpenRouterSpotlightProps> = () => {
     setIsLoading(false);
   }, [isStreaming]);
   
-  const handleKeydownInSpotlight = (e: React.KeyboardEvent) => {
-    e.stopPropagation();
-  };
-  
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (isStreaming) {
-        openRouterApi.cancelStream();
-      }
-    };
-  }, [isStreaming]);
-  
   // Handle OpenRouter API query
-  const handleOpenRouterQuery = async (query: string) => {
+  const handleOpenRouterQuery = useCallback(async (query: string) => {
     try {
       setIsLoading(true);
       const recentQueries = [...(localStorage.getItem('recentQueries') 
@@ -286,7 +159,134 @@ const OpenRouterSpotlight: React.FC<OpenRouterSpotlightProps> = () => {
     } finally {
       setIsLoading(false);
     }
+  }, [apiKey, defaultModel, isStreaming, siteUrl, siteName, addToHistory, useStreaming]);
+  
+  // Toggle spotlight visibility
+  const toggleSpotlight = useCallback(() => {
+    if (isOpen) {
+      handleCloseSpotlight();
+    } else {
+      setIsOpen(true);
+    }
+  }, [isOpen, handleCloseSpotlight]);
+  
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // F key opens spotlight if not already open
+      if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey && !isOpen) {
+        // Check if the target is an input, textarea, or any editor-related element
+        const target = e.target as HTMLElement;
+        const isEditorActive = 
+          target.tagName === 'INPUT' || 
+          target.tagName === 'TEXTAREA' || 
+          target.closest('.editor-container') !== null ||
+          target.closest('.safe-live-editor') !== null ||
+          target.closest('[data-no-pointer-lock]') !== null ||
+          target.closest('.react-live') !== null ||
+          target.classList.contains('CodeMirror') ||
+          /editor|code-editor|monaco-editor/.test(target.className || '');
+          
+        // Don't open spotlight if we're in a text editor
+        if (isEditorActive) {
+          return;
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSpotlight();
+      }
+      
+      // Close on Escape
+      if (e.key === 'Escape' && isOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleCloseSpotlight();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, toggleSpotlight, handleCloseSpotlight]);
+  
+  // Handle mouse middle button
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      // Alt+Click to open
+      if (e.altKey && e.button === 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSpotlight();
+      }
+    };
+    
+    window.addEventListener('mousedown', handleMouseDown, true);
+    return () => window.removeEventListener('mousedown', handleMouseDown, true);
+  }, [isOpen, toggleSpotlight]);
+  
+  // Handle arrow key navigation through results
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (e.key === 'ArrowDown') {
+          setSelectedResultIndex(prev => 
+            prev < results.length - 1 ? prev + 1 : prev
+          );
+        } else if (e.key === 'ArrowUp') {
+          setSelectedResultIndex(prev => 
+            prev > 0 ? prev - 1 : prev
+          );
+        } else if (e.key === 'Enter' && searchQuery && !isLoading) {
+          if (results.length > 0) {
+            const selectedResult = results[selectedResultIndex];
+            selectedResult.action();
+          } else {
+            // If no results but we have a query, run OpenRouter query
+            handleOpenRouterQuery(searchQuery);
+          }
+        }
+      }
+    };
+    
+    // Use capture to intercept events before they reach other handlers
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, results, selectedResultIndex, searchQuery, isLoading, handleOpenRouterQuery]);
+  
+  // Focus the input when spotlight opens
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
+  
+  // Scroll selected result into view
+  useEffect(() => {
+    if (resultsRef.current && results.length > 0) {
+      const selectedElement = resultsRef.current.querySelector(`[data-index="${selectedResultIndex}"]`);
+      if (selectedElement) {
+        selectedElement.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [selectedResultIndex, results]);
+  
+  const handleKeydownInSpotlight = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
   };
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (isStreaming) {
+        openRouterApi.cancelStream();
+      }
+    };
+  }, [isStreaming]);
   
   // Cancel the stream if the spotlight is closed while streaming
   useEffect(() => {

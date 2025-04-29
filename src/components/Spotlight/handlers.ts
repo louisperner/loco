@@ -1,21 +1,28 @@
 import * as THREE from 'three';
-import { useGameStore } from '@/store/useGameStore';
-import { useImageStore } from '@/store/useImageStore';
-import { useVideoStore } from '@/store/videoStore';
-import { useModelStore } from '@/store/useModelStore';
-import { useCodeStore } from '@/store/useCodeStore';
 import { generateVideoThumbnail } from '@/components/Models/utils';
 import { getCameraPositionAndRotation } from './utils';
+import { ModelData } from '@/store/useModelStore';
+import { CodeBlockDataType, VideoDataType } from '@/components/Models/types';
+import { ImageData } from '@/store/useImageStore';
 
-// Define specific types for store functions
-type AddModelFn = (model: any) => string;
+// Custom interfaces that match what's actually being used in the application
+interface VideoInput extends Omit<VideoDataType, 'id'> {
+  id?: string;
+}
+
+interface CodeBlockInput extends Omit<CodeBlockDataType, 'id'> {
+  id?: string;
+}
+
+// Define specific types for store functions without requiring id field
+type AddModelFn = (model: ModelData) => string;
 type ConfirmedPositionType = [number, number, number] | null;
 type SetShowDrawingOverlayFn = (show: boolean) => void;
-type AddCodeBlockFn = (codeBlock: any) => string;
-type AddImageFn = (image: any) => string;
-type UpdateImageFn = (id: string, updates: any) => void;
-type AddVideoFn = (video: any) => string;
-type UpdateVideoFn = (id: string, updates: any) => void;
+type AddCodeBlockFn = (codeBlock: CodeBlockInput) => string;
+type AddImageFn = (image: ImageData) => string;
+type UpdateImageFn = (id: string, updates: Partial<ImageData>) => void;
+type AddVideoFn = (video: VideoInput) => string;
+type UpdateVideoFn = (id: string, updates: Partial<VideoDataType>) => void;
 
 // Handle primitive selections (cube, sphere, plane)
 export const handlePrimitiveSelect = (

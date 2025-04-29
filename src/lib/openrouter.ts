@@ -1,4 +1,4 @@
-import axios, { CancelTokenSource } from 'axios';
+import axios from 'axios';
 
 // OpenRouter API client
 export interface OpenRouterResponse {
@@ -26,7 +26,7 @@ export interface StreamCallbacks {
   onStart?: () => void;
   onToken?: (token: string) => void;
   onComplete?: (fullResponse: string) => void;
-  onError?: (error: any) => void;
+  onError?: (error: Error | unknown) => void;
 }
 
 // Track active stream for cancellation
@@ -39,35 +39,30 @@ export const openRouterApi = {
     siteInfo?: { url?: string, title?: string },
     signal?: AbortSignal
   ): Promise<OpenRouterResponse> {
-    try {
-      const headers: Record<string, string> = {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      };
-      
-      // Add optional headers for rankings
-      if (siteInfo?.url) {
-        headers['HTTP-Referer'] = siteInfo.url;
-      }
-      
-      if (siteInfo?.title) {
-        headers['X-Title'] = siteInfo.title;
-      }
-      
-      const response = await axios.post(
-        'https://openrouter.ai/api/v1/chat/completions',
-        request,
-        { 
-          headers,
-          signal 
-        }
-      );
-      
-      return response.data;
-    } catch (error) {
-      console.error('OpenRouter API error:', error);
-      throw error;
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    };
+    
+    // Add optional headers for rankings
+    if (siteInfo?.url) {
+      headers['HTTP-Referer'] = siteInfo.url;
     }
+    
+    if (siteInfo?.title) {
+      headers['X-Title'] = siteInfo.title;
+    }
+    
+    const response = await axios.post(
+      'https://openrouter.ai/api/v1/chat/completions',
+      request,
+      { 
+        headers,
+        signal 
+      }
+    );
+    
+    return response.data;
   },
 
   async streamChat(
@@ -125,11 +120,9 @@ export const openRouterApi = {
           const chunkStr = chunk.toString();
           buffer += chunkStr;
           
-          while (true) {
+          let lineEnd = buffer.indexOf('\n');
+          while (lineEnd !== -1) {
             // Find the next complete SSE line
-            const lineEnd = buffer.indexOf('\n');
-            if (lineEnd === -1) break;
-            
             const line = buffer.slice(0, lineEnd).trim();
             buffer = buffer.slice(lineEnd + 1);
             
@@ -160,6 +153,8 @@ export const openRouterApi = {
                 // OpenRouter sends ": OPENROUTER PROCESSING" as comments
               }
             }
+            
+            lineEnd = buffer.indexOf('\n');
           }
         });
         
@@ -170,7 +165,7 @@ export const openRouterApi = {
           activeStreamController = null;
         });
         
-        response.data.on('error', (err: any) => {
+        response.data.on('error', (err: Error | unknown) => {
           if (callbacks.onError) {
             callbacks.onError(err);
           }
@@ -184,7 +179,6 @@ export const openRouterApi = {
         activeStreamController = null;
       }
     } catch (error) {
-      console.error('OpenRouter streaming API error:', error);
       if (callbacks.onError) {
         callbacks.onError(error);
       }
@@ -197,7 +191,6 @@ export const openRouterApi = {
     if (activeStreamController) {
       activeStreamController.abort();
       activeStreamController = null;
-      console.log('Stream cancelled');
     }
   }
 }; 

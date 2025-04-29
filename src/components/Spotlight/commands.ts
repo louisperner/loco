@@ -1,9 +1,9 @@
 import React from 'react';
-import { Search, Bot, Brain, Layers, Settings, Image, Code, Box, Square, PenTool, Video, CircleIcon } from 'lucide-react';
+import { Bot, Layers, Settings, Image, Code, Box, Square, PenTool, Video, CircleIcon } from 'lucide-react';
 import { SearchResult } from './types';
 
 // Create JSX elements programmatically instead of using JSX syntax
-const createIcon = (Icon: any) => React.createElement(Icon, { className: "w-5 h-5" });
+const createIcon = (Icon: React.ElementType) => React.createElement(Icon, { className: "w-5 h-5" });
 
 // List of available commands for regular spotlight mode
 export const getAppCommands = (
@@ -92,7 +92,7 @@ export const getAppCommands = (
       title: 'Open Settings', 
       category: 'App', 
       icon: createIcon(Settings),
-      action: () => console.log('Open settings')
+      action: () => { /* Settings functionality will be implemented later */ }
     },
     {
       id: 'ai',

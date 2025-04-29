@@ -1,5 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
 
+const GAMEPAD_DEBUG = false;
+// eslint-disable-next-line
+const logGamepad = (message: string, ...args: any[]): void => {
+  if (GAMEPAD_DEBUG) {
+    // eslint-disable-next-line no-console
+    console.log(`[Gamepad] ${message}`, ...args);
+  }
+};
+
 export interface GamepadState {
   connected: boolean;
   buttonStates: Map<number, boolean>;
@@ -103,7 +112,7 @@ export function useGamepadController() {
     
     // Handle gamepad connection
     const handleGamepadConnected = (event: GamepadEvent) => {
-      console.log('Gamepad connected:', event.gamepad.id);
+      logGamepad('Gamepad connected:', event.gamepad.id);
       activeGamepad = event.gamepad;
       setGamepadState(prev => ({
         ...prev,
@@ -113,7 +122,7 @@ export function useGamepadController() {
 
     // Handle gamepad disconnection
     const handleGamepadDisconnected = (event: GamepadEvent) => {
-      console.log('Gamepad disconnected:', event.gamepad.id);
+      logGamepad('Gamepad disconnected:', event.gamepad.id);
       if (activeGamepad && event.gamepad.index === activeGamepad.index) {
         activeGamepad = null;
         setGamepadState({
@@ -189,14 +198,14 @@ export function useGamepadController() {
       // Hotbar selection with LEFT_SHOULDER (LB) or D-PAD_LEFT
       if ((buttonStates.get(GamepadButton.LEFT_SHOULDER) && !lastButtonStates.get(GamepadButton.LEFT_SHOULDER)) ||
           (buttonStates.get(GamepadButton.D_PAD_LEFT) && !lastButtonStates.get(GamepadButton.D_PAD_LEFT))) {
-        console.log('Previous hotbar triggered - LB or D-Pad Left');
+        logGamepad('Previous hotbar triggered - LB or D-Pad Left');
         
         // Calculate previous slot with wrap-around
         const currentSlot = hotbarSlotRef.current;
         const prevSlot = currentSlot <= 1 ? 9 : currentSlot - 1;
         hotbarSlotRef.current = prevSlot;
         
-        console.log(`Switching to hotbar slot ${prevSlot}`);
+        logGamepad(`Switching to hotbar slot ${prevSlot}`);
         
         // Use the number key corresponding to the slot
         const keyCode = `Digit${prevSlot}`;
@@ -207,14 +216,14 @@ export function useGamepadController() {
       // Hotbar selection with RIGHT_SHOULDER (RB) or D-PAD_RIGHT
       if ((buttonStates.get(GamepadButton.RIGHT_SHOULDER) && !lastButtonStates.get(GamepadButton.RIGHT_SHOULDER)) ||
           (buttonStates.get(GamepadButton.D_PAD_RIGHT) && !lastButtonStates.get(GamepadButton.D_PAD_RIGHT))) {
-        console.log('Next hotbar triggered - RB or D-Pad Right');
+        logGamepad('Next hotbar triggered - RB or D-Pad Right');
         
         // Calculate next slot with wrap-around
         const currentSlot = hotbarSlotRef.current;
         const nextSlot = currentSlot >= 9 ? 1 : currentSlot + 1;
         hotbarSlotRef.current = nextSlot;
         
-        console.log(`Switching to hotbar slot ${nextSlot}`);
+        logGamepad(`Switching to hotbar slot ${nextSlot}`);
         
         // Use the number key corresponding to the slot
         const keyCode = `Digit${nextSlot}`;
@@ -268,7 +277,7 @@ export function useGamepadController() {
       
       // Log stick movement if significant
       if (Math.abs(rightX) > 0.3 || Math.abs(rightY) > 0.3) {
-        console.log('Right stick:', rightX.toFixed(2), rightY.toFixed(2));
+        logGamepad('Right stick:', rightX.toFixed(2), rightY.toFixed(2));
       }
       
       // Always dispatch the joystick event for camera control, even with zero values

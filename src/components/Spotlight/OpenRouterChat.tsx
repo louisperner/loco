@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Bot, Brain, Layers, History, Loader2, ChevronDown, Check, Send, Trash2 } from 'lucide-react';
+import { Brain, History, Loader2, ChevronDown, Check, Send, Trash2 } from 'lucide-react';
 import { useOpenRouterStore } from '@/store/useOpenRouterStore';
 import { openRouterApi } from '@/lib/openrouter';
 import { OPENROUTER_MODELS, isStreamingSupported } from '@/lib/openrouter-constants';
@@ -22,11 +22,8 @@ interface OpenRouterChatProps {
 const OpenRouterChat: React.FC<OpenRouterChatProps> = ({
   searchQuery,
   setSearchQuery,
-  setIsOpen,
   results,
-  setResults,
   selectedResultIndex,
-  setSelectedResultIndex,
   setShowCommandSuggestions,
   commandHandler,
   appCommands

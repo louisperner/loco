@@ -28,8 +28,13 @@ export const parseAIResponseForCommands = (response: string) => {
   return null;
 };
 
+// Define a type for window with mainCamera
+interface WindowWithCamera extends Window {
+  mainCamera?: THREE.Camera;
+}
+
 // Get camera position and rotation
-export const getCameraPositionAndRotation = (window: any): { 
+export const getCameraPositionAndRotation = (window: WindowWithCamera): { 
   position: [number, number, number]; 
   rotation: [number, number, number];
 } => {
