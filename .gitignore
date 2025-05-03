@@ -21,6 +21,8 @@ node_modules/
 out/
 SHASUMS256.txt
 **/package-lock.json
+**/yarn.lock
+.cursor
 compile_commands.json
 .envrc
 

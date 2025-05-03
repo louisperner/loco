@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import coverImage from '../../assets/imgs/cover_loco.png';
 
 type SplashScreenProps = {
   // Add any props here if needed in the future
@@ -22,10 +23,9 @@ const SplashScreen: React.FC<SplashScreenProps> = () => {
         fadeOut ? 'opacity-0' : 'opacity-100'
       }`}
     >
-      <img 
-        src="/cover_loco2.png" 
-        alt="Loco Loading" 
-        className="fixed z-[9999] object-contain max-w-[80%] max-h-[80%] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 md:max-w-[30%] md:max-h-[30%] md:object-contain md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 shadow-lg" 
+      <div 
+        className="fixed z-[9999] object-contain max-w-[80%] max-h-[80%] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 md:max-w-[30%] md:max-h-[30%] md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 shadow-lg"
+        style={{ backgroundImage: `url(${coverImage})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', width: '100%', height: '100%' }}
       />
     </div>
     

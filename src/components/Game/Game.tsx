@@ -351,6 +351,26 @@ const Player: React.FC = () => {
     isMoving // Add isMoving to dependency array if it's used in calculations triggered by other dependencies
   ]);
 
+  // Add an effect to handle window focus/blur events
+  useEffect(() => {
+    const handleFocus = () => {
+      // Force a re-render and restart the animation loop when window regains focus
+      setIsMoving(true);
+      // Reset back to demand mode if needed after a short delay
+      setTimeout(() => {
+        if (movementKeys.current.size === 0) {
+          setIsMoving(false);
+        }
+      }, 300);
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
   const onRemoveObject = useCallback((dataOrId?: { type: string; id: string } | string): void => {
     // If no parameter is provided, exit early
     if (!dataOrId) return;

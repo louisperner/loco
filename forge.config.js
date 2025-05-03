@@ -7,6 +7,7 @@ module.exports = {
     asar: true,
     appBundleId: 'com.electron.loco',
     name: 'loco',
+    osxSign: {} // object must exist even if empty
   },
   rebuildConfig: {},
   makers: [

@@ -104,6 +104,6 @@ const initializeWelcomeImage = () => {
 };
 
 // Initialize welcome image on app start
-initializeWelcomeImage();
+// initializeWelcomeImage();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<App />);
