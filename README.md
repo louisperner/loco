@@ -42,7 +42,7 @@ Loco is a cutting-edge 3D environment that combines powerful technologies to cre
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/loco.git
+git clone https://github.com/louisperner/loco
 
 # Navigate to the project directory
 cd loco
