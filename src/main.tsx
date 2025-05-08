@@ -6,6 +6,7 @@ import { useImageStore } from './store/useImageStore';
 import PWAInstallPrompts from './components/Game/PWAInstallPrompts';
 import DrawingOverlay from './components/ui/DrawingOverlay';
 import MergedSpotlight from './components/Spotlight/MergedSpotlight';
+import DownloadBanner from './components/ui/DownloadBanner';
 // @ts-ignore
 import { Analytics } from '@vercel/analytics/react';
 
@@ -31,6 +32,7 @@ const App: React.FC = () => {
       <Player />
       <DrawingOverlay />
       <MergedSpotlight />
+      <DownloadBanner />
       {typeof window !== 'undefined' && 
         !window.navigator.userAgent.toLowerCase().includes('electron') && 
         /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(window.navigator.userAgent.toLowerCase()) && 

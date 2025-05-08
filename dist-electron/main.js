@@ -1,1 +1,263 @@
-"use strict";const d=require("electron"),p=require("path"),c=require("fs"),R=require("os"),S=require("crypto"),a=[];for(let r=0;r<256;++r)a.push((r+256).toString(16).slice(1));function E(r,o=0){return(a[r[o+0]]+a[r[o+1]]+a[r[o+2]]+a[r[o+3]]+"-"+a[r[o+4]]+a[r[o+5]]+"-"+a[r[o+6]]+a[r[o+7]]+"-"+a[r[o+8]]+a[r[o+9]]+"-"+a[r[o+10]]+a[r[o+11]]+a[r[o+12]]+a[r[o+13]]+a[r[o+14]]+a[r[o+15]]).toLowerCase()}const g=new Uint8Array(256);let m=g.length;function I(){return m>g.length-16&&(S.randomFillSync(g),m=0),g.slice(m,m+=16)}const v={randomUUID:S.randomUUID};function h(r,o,i){var n;if(v.randomUUID&&!r)return v.randomUUID();r=r||{};const e=r.random??((n=r.rng)==null?void 0:n.call(r))??I();if(e.length<16)throw new Error("Random bytes length must be >= 16");return e[6]=e[6]&15|64,e[8]=e[8]&63|128,E(e)}const f=p.join(R.homedir(),".loco"),w=p.join(f,"models"),b=p.join(f,"images"),u=p.join(f,"videos");function F(){try{c.existsSync(f)||c.mkdirSync(f),c.existsSync(w)||c.mkdirSync(w),c.existsSync(b)||c.mkdirSync(b),c.existsSync(u)||c.mkdirSync(u)}catch(r){console.error("Error creating app directories:",r)}}d.app.whenReady().then(()=>{F(),d.protocol.registerFileProtocol("app-file",(i,e)=>{const n=i.url.substring(10);try{const t=decodeURI(n);if(!c.existsSync(t))return console.error("File not found:",t),e({error:-2});const s=p.extname(t).toLowerCase();let l="application/octet-stream";return s===".jpg"||s===".jpeg"?l="image/jpeg":s===".png"?l="image/png":s===".gif"?l="image/gif":s===".webp"?l="image/webp":s===".svg"&&(l="image/svg+xml"),e({path:t,mimeType:l})}catch(t){return console.error("Protocol handler error:",t),e({error:-2})}});const r=new d.BrowserWindow({show:!0,transparent:!0,frame:!1,center:!0,hasShadow:!1,movable:!1,alwaysOnTop:!1,focusable:!0,icon:p.join(process.cwd(),"loco-icon.icns"),webPreferences:{sandbox:!0,webviewTag:!0,nodeIntegration:!1,contextIsolation:!0,preload:p.join(__dirname,"preload.js"),webSecurity:!0}});r.webContents.session.webRequest.onHeadersReceived((i,e)=>{i.url.startsWith("blob:")?e({responseHeaders:{...i.responseHeaders,"Access-Control-Allow-Origin":["*"],"Access-Control-Allow-Methods":["GET, POST, OPTIONS"],"Access-Control-Allow-Headers":["Content-Type, Authorization"],"Content-Security-Policy":["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file: data:; img-src 'self' data: blob: https://* http://* app-file:;"]}}):e({responseHeaders:{...i.responseHeaders,"Content-Security-Policy":["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file: data:; img-src 'self' data: blob: https://* http://* app-file:;"]}})}),r.webContents.session.webRequest.onBeforeRequest((i,e)=>{i.url.startsWith("app-file://"),e({})});const o=d.session.fromPartition("persist:webviewsession");o.protocol.registerFileProtocol("app-file",(i,e)=>{const n=i.url.substring(10);try{const t=decodeURI(n);if(!c.existsSync(t))return console.error("File not found:",t),e({error:-2});const s=p.extname(t).toLowerCase();let l="application/octet-stream";return s===".jpg"||s===".jpeg"?l="image/jpeg":s===".png"?l="image/png":s===".gif"?l="image/gif":s===".webp"?l="image/webp":s===".svg"&&(l="image/svg+xml"),e({path:t,mimeType:l})}catch(t){return console.error("Protocol handler error in webview session:",t),e({error:-2})}}),o.webRequest.onHeadersReceived((i,e)=>{e({responseHeaders:{...i.responseHeaders,"Content-Security-Policy":["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file: data:; img-src 'self' data: blob: https://* http://* app-file:;"]}})}),o.setPermissionRequestHandler((i,e,n)=>{i.getURL(),n(e==="media"||e==="mediaKeySystem"||e==="geolocation"||e==="notifications"||e==="fullscreen")}),r.maximize(),r.show(),r.setFocusable(!0),process.env.VITE_DEV_SERVER_URL?r.loadURL(process.env.VITE_DEV_SERVER_URL):r.loadFile("dist/index.html"),d.ipcMain.handle("save-model-file",async(i,e,n)=>{try{const t=`${h()}-${n}`,s=p.join(w,t);return c.writeFileSync(s,Buffer.from(e)),`app-file://${s}`}catch(t){throw console.error("Error saving model file:",t),t}}),d.ipcMain.handle("save-image-file",async(i,e,n)=>{try{const t=`${h()}-${n}`,s=p.join(b,t);return c.writeFileSync(s,Buffer.from(e)),`app-file://${s}`}catch(t){throw console.error("Error saving image file:",t),t}}),d.ipcMain.handle("save-video-file",async(i,e,n)=>{try{const t=`${h()}-${n}`,s=p.join(u,t);return c.writeFileSync(s,Buffer.from(e)),`app-file://${s}`}catch(t){throw console.error("Error saving video file:",t),t}}),d.ipcMain.handle("list-videos-from-disk",async i=>{try{return{success:!0,videos:c.readdirSync(u).filter(s=>{const l=p.extname(s).toLowerCase();return[".mp4",".webm",".mov",".avi",".mkv"].includes(l)}).map(s=>{const l=p.join(u,s),y=c.statSync(l),x=s.includes("-")?s.substring(s.indexOf("-")+1):s;return{id:h(),fileName:x,url:`app-file://${l}`,thumbnailUrl:"",filePath:l,fileSize:y.size,createdAt:y.birthtime.toISOString(),modifiedAt:y.mtime.toISOString(),type:"video"}})}}catch(e){return console.error("Error listing videos from disk:",e),{success:!1,videos:[],error:e.message}}}),d.ipcMain.handle("test-file-access",async(i,e)=>{try{const n=c.existsSync(e);if(n){const t=c.statSync(e);return{exists:n,size:t.size,isFile:t.isFile()}}return{exists:n}}catch(n){throw console.error(`Erro ao verificar arquivo ${e}:`,n),n}}),d.ipcMain.handle("read-file-as-buffer",async(i,e)=>{try{if(!c.existsSync(e))throw new Error(`Arquivo não encontrado: ${e}`);return c.readFileSync(e)}catch(n){throw console.error(`Erro ao ler arquivo ${e}:`,n),n}})});
+"use strict";
+const electron = require("electron");
+const path = require("path");
+const fs = require("fs");
+const os = require("os");
+const crypto = require("crypto");
+const byteToHex = [];
+for (let i = 0; i < 256; ++i) {
+  byteToHex.push((i + 256).toString(16).slice(1));
+}
+function unsafeStringify(arr, offset = 0) {
+  return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
+}
+const rnds8Pool = new Uint8Array(256);
+let poolPtr = rnds8Pool.length;
+function rng() {
+  if (poolPtr > rnds8Pool.length - 16) {
+    crypto.randomFillSync(rnds8Pool);
+    poolPtr = 0;
+  }
+  return rnds8Pool.slice(poolPtr, poolPtr += 16);
+}
+const native = { randomUUID: crypto.randomUUID };
+function v4(options, buf, offset) {
+  var _a;
+  if (native.randomUUID && true && !options) {
+    return native.randomUUID();
+  }
+  options = options || {};
+  const rnds = options.random ?? ((_a = options.rng) == null ? void 0 : _a.call(options)) ?? rng();
+  if (rnds.length < 16) {
+    throw new Error("Random bytes length must be >= 16");
+  }
+  rnds[6] = rnds[6] & 15 | 64;
+  rnds[8] = rnds[8] & 63 | 128;
+  return unsafeStringify(rnds);
+}
+const APP_DIR = path.join(os.homedir(), ".loco");
+const MODELS_DIR = path.join(APP_DIR, "models");
+const IMAGES_DIR = path.join(APP_DIR, "images");
+const VIDEOS_DIR = path.join(APP_DIR, "videos");
+function ensureDirectoriesExist() {
+  try {
+    if (!fs.existsSync(APP_DIR)) fs.mkdirSync(APP_DIR);
+    if (!fs.existsSync(MODELS_DIR)) fs.mkdirSync(MODELS_DIR);
+    if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR);
+    if (!fs.existsSync(VIDEOS_DIR)) fs.mkdirSync(VIDEOS_DIR);
+  } catch (error) {
+    console.error("Error creating app directories:", error);
+  }
+}
+electron.app.whenReady().then(() => {
+  ensureDirectoriesExist();
+  electron.protocol.registerFileProtocol("app-file", (request, callback) => {
+    const url = request.url.substring(10);
+    try {
+      const decodedUrl = decodeURI(url);
+      if (!fs.existsSync(decodedUrl)) {
+        console.error("File not found:", decodedUrl);
+        return callback({ error: -2 });
+      }
+      const ext = path.extname(decodedUrl).toLowerCase();
+      let mimeType = "application/octet-stream";
+      if (ext === ".jpg" || ext === ".jpeg") mimeType = "image/jpeg";
+      else if (ext === ".png") mimeType = "image/png";
+      else if (ext === ".gif") mimeType = "image/gif";
+      else if (ext === ".webp") mimeType = "image/webp";
+      else if (ext === ".svg") mimeType = "image/svg+xml";
+      return callback({
+        path: decodedUrl,
+        mimeType
+      });
+    } catch (error) {
+      console.error("Protocol handler error:", error);
+      return callback({ error: -2 });
+    }
+  });
+  const win = new electron.BrowserWindow({
+    show: true,
+    transparent: true,
+    frame: false,
+    // width: 1500,
+    // height: 1500,
+    center: true,
+    hasShadow: false,
+    movable: false,
+    alwaysOnTop: false,
+    focusable: true,
+    // simpleFullscreen: true
+    icon: path.join(process.cwd(), "loco-icon.icns"),
+    webPreferences: {
+      sandbox: true,
+      webviewTag: true,
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, "preload.js"),
+      webSecurity: true
+      // Permite carregar arquivos locais (use com cuidado em produção)
+    }
+  });
+  win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    if (details.url.startsWith("blob:")) {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Access-Control-Allow-Origin": ["*"],
+          "Access-Control-Allow-Methods": ["GET, POST, OPTIONS"],
+          "Access-Control-Allow-Headers": ["Content-Type, Authorization"],
+          "Content-Security-Policy": ["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file: data:; img-src 'self' data: blob: https://* http://* app-file:;"]
+        }
+      });
+    } else {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Content-Security-Policy": ["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file: data:; img-src 'self' data: blob: https://* http://* app-file:;"]
+        }
+      });
+    }
+  });
+  win.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+    if (details.url.startsWith("app-file://")) ;
+    callback({});
+  });
+  const persistentSession = electron.session.fromPartition("persist:webviewsession");
+  persistentSession.protocol.registerFileProtocol("app-file", (request, callback) => {
+    const url = request.url.substring(10);
+    try {
+      const decodedUrl = decodeURI(url);
+      if (!fs.existsSync(decodedUrl)) {
+        console.error("File not found:", decodedUrl);
+        return callback({ error: -2 });
+      }
+      const ext = path.extname(decodedUrl).toLowerCase();
+      let mimeType = "application/octet-stream";
+      if (ext === ".jpg" || ext === ".jpeg") mimeType = "image/jpeg";
+      else if (ext === ".png") mimeType = "image/png";
+      else if (ext === ".gif") mimeType = "image/gif";
+      else if (ext === ".webp") mimeType = "image/webp";
+      else if (ext === ".svg") mimeType = "image/svg+xml";
+      return callback({
+        path: decodedUrl,
+        mimeType
+      });
+    } catch (error) {
+      console.error("Protocol handler error in webview session:", error);
+      return callback({ error: -2 });
+    }
+  });
+  persistentSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        "Content-Security-Policy": ["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file: data:; img-src 'self' data: blob: https://* http://* app-file:;"]
+      }
+    });
+  });
+  persistentSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    webContents.getURL();
+    if (permission === "media" || permission === "mediaKeySystem" || permission === "geolocation" || permission === "notifications" || permission === "fullscreen") {
+      callback(true);
+    } else {
+      callback(false);
+    }
+  });
+  win.maximize();
+  win.show();
+  win.setFocusable(true);
+  if (process.env.VITE_DEV_SERVER_URL) {
+    win.loadURL(process.env.VITE_DEV_SERVER_URL);
+  } else {
+    win.loadFile("dist/index.html");
+  }
+  electron.ipcMain.handle("save-model-file", async (event, fileBuffer, fileName) => {
+    try {
+      const uniqueFileName = `${v4()}-${fileName}`;
+      const filePath = path.join(MODELS_DIR, uniqueFileName);
+      fs.writeFileSync(filePath, Buffer.from(fileBuffer));
+      return `app-file://${filePath}`;
+    } catch (error) {
+      console.error("Error saving model file:", error);
+      throw error;
+    }
+  });
+  electron.ipcMain.handle("save-image-file", async (event, fileBuffer, fileName) => {
+    try {
+      const uniqueFileName = `${v4()}-${fileName}`;
+      const filePath = path.join(IMAGES_DIR, uniqueFileName);
+      fs.writeFileSync(filePath, Buffer.from(fileBuffer));
+      return `app-file://${filePath}`;
+    } catch (error) {
+      console.error("Error saving image file:", error);
+      throw error;
+    }
+  });
+  electron.ipcMain.handle("save-video-file", async (event, fileBuffer, fileName) => {
+    try {
+      const uniqueFileName = `${v4()}-${fileName}`;
+      const filePath = path.join(VIDEOS_DIR, uniqueFileName);
+      fs.writeFileSync(filePath, Buffer.from(fileBuffer));
+      return `app-file://${filePath}`;
+    } catch (error) {
+      console.error("Error saving video file:", error);
+      throw error;
+    }
+  });
+  electron.ipcMain.handle("list-videos-from-disk", async (event) => {
+    try {
+      const files = fs.readdirSync(VIDEOS_DIR);
+      const videoFiles = files.filter((file) => {
+        const ext = path.extname(file).toLowerCase();
+        return [".mp4", ".webm", ".mov", ".avi", ".mkv"].includes(ext);
+      });
+      const videos = videoFiles.map((file) => {
+        const filePath = path.join(VIDEOS_DIR, file);
+        const stats = fs.statSync(filePath);
+        const fileName = file.includes("-") ? file.substring(file.indexOf("-") + 1) : file;
+        return {
+          id: v4(),
+          // Generate a new ID for each video
+          fileName,
+          url: `app-file://${filePath}`,
+          thumbnailUrl: "",
+          // No thumbnail for now
+          filePath,
+          fileSize: stats.size,
+          createdAt: stats.birthtime.toISOString(),
+          modifiedAt: stats.mtime.toISOString(),
+          type: "video"
+        };
+      });
+      return { success: true, videos };
+    } catch (error) {
+      console.error("Error listing videos from disk:", error);
+      return { success: false, videos: [], error: error.message };
+    }
+  });
+  electron.ipcMain.handle("test-file-access", async (event, filePath) => {
+    try {
+      const exists = fs.existsSync(filePath);
+      if (exists) {
+        const stats = fs.statSync(filePath);
+        return { exists, size: stats.size, isFile: stats.isFile() };
+      }
+      return { exists };
+    } catch (error) {
+      console.error(`Erro ao verificar arquivo ${filePath}:`, error);
+      throw error;
+    }
+  });
+  electron.ipcMain.handle("read-file-as-buffer", async (event, filePath) => {
+    try {
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`Arquivo não encontrado: ${filePath}`);
+      }
+      const buffer = fs.readFileSync(filePath);
+      return buffer;
+    } catch (error) {
+      console.error(`Erro ao ler arquivo ${filePath}:`, error);
+      throw error;
+    }
+  });
+});
