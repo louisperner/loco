@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import Login from './Login';
 import SignUp from './SignUp';
+import { X } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AuthWrapperProps {
   initialView?: 'login' | 'signup';
@@ -8,6 +10,7 @@ interface AuthWrapperProps {
 
 const AuthWrapper: React.FC<AuthWrapperProps> = ({ initialView = 'login' }) => {
   const [currentView, setCurrentView] = useState<'login' | 'signup'>(initialView);
+  const { toggleAuthModal } = useAuth();
 
   const toggleView = (): void => {
     setCurrentView(currentView === 'login' ? 'signup' : 'login');
@@ -15,7 +18,14 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ initialView = 'login' }) => {
 
   return (
     <div className="bg-[#222222] z-[9999] absolute w-full max-w-4xl h-auto rounded-lg shadow-xl top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex overflow-hidden">
-      <div className="w-full md:w-1/2 p-8">
+      <div className="w-full md:w-1/2 p-8 relative">
+        <button 
+          onClick={() => toggleAuthModal(false)}
+          className="absolute top-4 right-4 text-gray-400 hover:text-[#7d3296] transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      
         <div className="mb-8 flex justify-center">
           <img className="h-20 w-auto" src="/loco-logo.png" alt="Loco" />
         </div>

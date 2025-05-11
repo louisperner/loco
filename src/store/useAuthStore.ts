@@ -13,6 +13,7 @@ interface AuthState {
   currentUser: User | null;
   loading: boolean;
   error: string | null;
+  authModalOpen: boolean;
 
   // Actions
   signIn: (email: string, password: string) => Promise<void>;
@@ -21,17 +22,20 @@ interface AuthState {
   signOut: () => Promise<void>;
   clearError: () => void;
   initialize: () => () => void; // returns unsubscribe function
+  toggleAuthModal: (isOpen?: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   currentUser: null,
   loading: true,
   error: null,
+  authModalOpen: false,
 
   signIn: async (email: string, password: string) => {
     set({ loading: true, error: null });
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      set({ authModalOpen: false });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'An unknown error occurred' });
     } finally {
@@ -43,6 +47,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null });
     try {
       await createUserWithEmailAndPassword(auth, email, password);
+      set({ authModalOpen: false });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'An unknown error occurred' });
     } finally {
@@ -54,6 +59,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null });
     try {
       await signInWithPopup(auth, googleProvider);
+      set({ authModalOpen: false });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'An unknown error occurred' });
     } finally {
@@ -70,6 +76,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  toggleAuthModal: (isOpen) => set(state => ({ 
+    authModalOpen: isOpen !== undefined ? isOpen : !state.authModalOpen 
+  })),
 
   initialize: () => {
     // Subscribe to auth state changes

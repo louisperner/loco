@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   SlidePanel,
@@ -20,6 +20,9 @@ import { OpenRouterTab } from './tabs/OpenRouterTab';
 import { SettingsPanelProps, SettingsTab, SettingValue } from './types';
 import { loadSettings, saveSettings } from './utils';
 import { RgbaColor } from 'react-colorful';
+import { UserIcon } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import UserProfile from '../Game/UserProfile';
 
 // Define CrosshairSettings type based on the CrosshairTab props
 interface CrosshairSettings {
@@ -141,6 +144,16 @@ export function SettingsPanel({
   void children;
   void colorChanged;
 
+  // Get auth state and functions from context
+  const { currentUser, toggleAuthModal } = useAuth();
+  const [showUserProfile, setShowUserProfile] = useState<boolean>(false);
+
+
+  // Toggle user profile modal
+  const handleUserProfileToggle = useCallback((): void => {
+    setShowUserProfile(!showUserProfile);
+  }, [showUserProfile]);
+
   const [open, setOpen] = useState(isOpen || false);
   const colorPickerContainerRef = useRef<HTMLDivElement>(null);
 
@@ -169,6 +182,7 @@ export function SettingsPanel({
   const handleGravityToggle: (enabled: boolean) => void = onGravityToggle || (() => {});
   const handleTabChange: (tab: string) => void = onTabChange || (() => {});
   const handleCoordinatesToggle: (show: boolean) => void = onCoordinatesToggle || (() => {});
+
 
   // Load saved settings on component mount
   useEffect(() => {
@@ -386,13 +400,43 @@ export function SettingsPanel({
 
   return (
     <SlidePanel open={open} onOpenChange={handleOpenChange}>
+      {/* User profile button in the top-right corner */}
+
+      {/* User profile modal */}
+      {showUserProfile && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-[#222222] rounded-lg shadow-xl max-w-md w-full m-4">
+            <UserProfile onClose={() => setShowUserProfile(false)} />
+          </div>
+        </div>
+      )}
+      <div className='fixed top-[70px] right-6 z-50 bg-white hover:bg-white/40 text-white rounded-full backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 border border-white/10 select-none'>
+        {!currentUser && (
+          <button
+            onClick={() => toggleAuthModal(true)}
+            className='bg-[#222222] bg-opacity-80 p-2 rounded-full hover:bg-white/20 transition-colors flex items-center'
+            title='Login'
+          >
+            <UserIcon className='w-6 h-6 text-white' />
+          </button>
+        )}
+        {currentUser && (
+          <button
+            onClick={handleUserProfileToggle}
+            className='bg-[#222222] bg-opacity-80 p-2 rounded-full hover:bg-[#7d3296] transition-colors flex items-center'
+            title='User Profile'
+          >
+            <UserIcon className='w-6 h-6 text-white' />
+          </button>
+        )}
+      </div>
       <SlidePanelTrigger asChild>
         <Button
           variant='ghost'
           size='icon'
           className='fixed top-4 right-4 z-50 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 border border-white/10 select-none'
         >
-          <FaCog className='w-5 h-5' />
+          <FaCog className='w-6 h-6 text-white' />
         </Button>
       </SlidePanelTrigger>
       <SlidePanelContent title='Settings'>

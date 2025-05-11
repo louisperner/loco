@@ -59,8 +59,6 @@ const Player: React.FC = () => {
   >;
   const movementKeys = useRef(new Set<string>()); // Ref to track pressed movement keys
   const [isMoving, setIsMoving] = useState(false); // State to control frameloop
-  const [showUserProfile, setShowUserProfile] = useState<boolean>(false);
-  const { currentUser } = useAuth();
 
   // Calculate position in front of camera
   const position = new THREE.Vector3();
@@ -438,41 +436,8 @@ const Player: React.FC = () => {
     },
   });
 
-  // Toggle user profile modal
-  const handleUserProfileToggle = useCallback((): void => {
-    setShowUserProfile(!showUserProfile);
-  }, [showUserProfile]);
-
   return (
     <>
-      {/* User profile button in the top-right corner */}
-      <div className="absolute top-4 right-4 z-50">
-        <button
-          onClick={handleUserProfileToggle}
-          className="bg-[#222222] bg-opacity-80 p-2 rounded-full hover:bg-[#7d3296] transition-colors"
-          title="User Profile"
-        >
-          {currentUser?.photoURL ? (
-            <img
-              src={currentUser.photoURL}
-              alt="Profile"
-              className="w-8 h-8 rounded-full"
-            />
-          ) : (
-            <UserIcon className="w-6 h-6 text-white" />
-          )}
-        </button>
-      </div>
-
-      {/* User profile modal */}
-      {showUserProfile && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-[#222222] rounded-lg shadow-xl max-w-md w-full m-4">
-            <UserProfile onClose={() => setShowUserProfile(false)} />
-          </div>
-        </div>
-      )}
-
       <HotbarContext.Provider value={{ selectedHotbarItem, setSelectedHotbarItem }}>
         <div
           ref={canvasContainerRef}
@@ -676,7 +641,7 @@ const Player: React.FC = () => {
           {uiVisible && (
             <div
               ref={settingsPanelRef}
-              className={`settings-panel-container ${showSettings ? 'active' : ''} opacity-30 `}
+              className={`settings-panel-container ${showSettings ? 'active' : ''}`}
               onMouseEnter={() => setCanvasInteractive(false)}
               onMouseLeave={() => {
                 if (!showColorPicker) {

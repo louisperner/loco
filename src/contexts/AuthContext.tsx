@@ -7,11 +7,13 @@ interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
   error: string | null;
+  authModalOpen: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
+  toggleAuthModal: (isOpen?: boolean) => void;
 }
 
 // Create context with undefined default
@@ -37,11 +39,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     currentUser,
     loading,
     error,
+    authModalOpen,
     signIn,
     signUp,
     signInWithGoogle,
     signOut,
     clearError,
+    toggleAuthModal,
     initialize
   } = useAuthStore();
 
@@ -56,11 +60,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     currentUser,
     loading,
     error,
+    authModalOpen,
     signIn,
     signUp,
     signInWithGoogle,
     signOut,
-    clearError
+    clearError,
+    toggleAuthModal
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

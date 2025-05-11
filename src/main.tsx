@@ -13,7 +13,7 @@ import AuthWrapper from './components/Game/AuthWrapper';
 
 const AppContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { currentUser } = useAuth();
+  const { currentUser, authModalOpen } = useAuth();
 
   useEffect(() => {
     const initializeApp = async (): Promise<void> => {
@@ -31,7 +31,7 @@ const AppContent: React.FC = () => {
   return (
     <div className='fixed inset-0 w-screen h-screen overflow-hidden select-none' draggable={false}>
       {isLoading && <SplashScreen />}
-      {!currentUser && <AuthWrapper />}
+      {!currentUser && authModalOpen && <AuthWrapper />}
       <Player />
       <DrawingOverlay />
       <MergedSpotlight />
