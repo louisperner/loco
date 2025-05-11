@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const SignUp: React.FC = () => {
   const [name, setName] = useState<string>('');
@@ -8,7 +8,7 @@ const SignUp: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
   
-  const { signUp, error, clearError } = useAuth();
+  const { signUp, error, clearError } = useAuthStore();
 
   const handleSignUp = async (): Promise<void> => {
     clearError();

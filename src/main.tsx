@@ -8,12 +8,12 @@ import MergedSpotlight from './components/Spotlight/MergedSpotlight';
 import DownloadBanner from './components/ui/DownloadBanner';
 // @ts-ignore
 import { Analytics } from '@vercel/analytics/react';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from './store/useAuthStore';
 import AuthWrapper from './components/Game/AuthWrapper';
 
 const AppContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { currentUser, authModalOpen } = useAuth();
+  const { currentUser, authModalOpen } = useAuthStore();
 
   useEffect(() => {
     const initializeApp = async (): Promise<void> => {
