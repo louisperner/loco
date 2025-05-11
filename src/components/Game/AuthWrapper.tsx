@@ -14,32 +14,39 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ initialView = 'login' }) => {
   };
 
   return (
-    <div className='bg-[#222222] flex flex-row z-[9999] absolute w-[500px] h-[300px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'>
-      {currentView === 'login' ? (
-        <div className='flex flex-col justify-center items-center'>
-          <Login />
-          <div className="absolute bottom-5 left-0 right-0 text-center md:text-left md:left-10">
-            <button
-              onClick={toggleView}
-              className="text-white hover:text-[#7d3296] transition-colors"
-            >
-              Don&apos;t have an account? Sign up
-            </button>
-          </div>
+    <div className="bg-[#222222] z-[9999] absolute w-full max-w-4xl h-auto rounded-lg shadow-xl top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex overflow-hidden">
+      <div className="w-full md:w-1/2 p-8">
+        <div className="mb-8 flex justify-center">
+          <img className="h-20 w-auto" src="/loco-logo.png" alt="Loco" />
         </div>
-      ) : (
-        <div className='w-full h-full flex flex-col justify-center items-center'>
-          <SignUp />
-          <div className="absolute bottom-5 left-0 right-0 text-center md:text-left md:left-10">
-            <button
-              onClick={toggleView}
-              className="text-white hover:text-[#7d3296] transition-colors"
-            >
-              Already have an account? Sign in
-            </button>
-          </div>
-        </div>
-      )}
+        
+        {currentView === 'login' ? (
+          <>
+            <Login />
+            <div className="mt-8 text-center">
+              <button
+                onClick={toggleView}
+                className="text-gray-400 hover:text-[#7d3296] transition-colors text-sm"
+              >
+                Don&apos;t have an account? <span className="font-semibold">Sign up</span>
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <SignUp />
+            <div className="mt-8 text-center">
+              <button
+                onClick={toggleView}
+                className="text-gray-400 hover:text-[#7d3296] transition-colors text-sm"
+              >
+                Already have an account? <span className="font-semibold">Sign in</span>
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+      <div className="hidden md:block md:w-1/2 bg-[url('/loco-bg.jpg')] bg-cover bg-center"></div>
     </div>
   );
 };
