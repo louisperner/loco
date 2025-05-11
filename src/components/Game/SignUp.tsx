@@ -1,20 +1,29 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { FcGoogle } from 'react-icons/fc';
 
-const Login: React.FC = () => {
+const SignUp: React.FC = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const { signIn, signInWithGoogle, error, clearError } = useAuth();
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  
+  const { signUp, error, clearError } = useAuth();
 
-  const handleSignIn = async (): Promise<void> => {
+  const handleSignUp = async (): Promise<void> => {
     clearError();
-    await signIn(email, password);
-  };
-
-  const handleGoogleSignIn = async (): Promise<void> => {
-    clearError();
-    await signInWithGoogle();
+    
+    if (password !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+    
+    if (password.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      return;
+    }
+    
+    setPasswordError(null);
+    await signUp(email, password);
   };
 
   return (
@@ -56,51 +65,55 @@ const Login: React.FC = () => {
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                   name='password'
                   type='password'
-                  autoComplete='current-password'
+                  autoComplete='new-password'
                   required
                   className='block w-full rounded-md border-0 py-1.5 text-white shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 p-2'
                 />
               </div>
             </div>
 
-            {error && (
+            <div>
+              <div className='flex items-center justify-between'>
+                <label htmlFor='confirm-password' className='block text-sm font-medium leading-6 text-white'>
+                  Confirm Password
+                </label>
+              </div>
+              <div className='mt-2'>
+                <input
+                  id='confirm-password'
+                  value={confirmPassword}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                  name='confirm-password'
+                  type='password'
+                  autoComplete='new-password'
+                  required
+                  className='block w-full rounded-md border-0 py-1.5 text-white shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 p-2'
+                />
+              </div>
+            </div>
+
+            {(passwordError || error) && (
               <div className='text-red-500 text-sm'>
-                {error}
+                {passwordError || error}
               </div>
             )}
 
             <div>
               <button
-                onClick={handleSignIn}
+                onClick={handleSignUp}
                 type='submit'
                 className='flex w-full justify-center rounded-md bg-[#7d3296] px-3 py-1.5 text-md font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'
               >
-                Sign in
-              </button>
-            </div>
-
-            <div className='relative flex py-2'>
-              <div className='flex-grow border-t border-gray-600'></div>
-              <span className='flex-shrink mx-4 text-gray-400'>or</span>
-              <div className='flex-grow border-t border-gray-600'></div>
-            </div>
-
-            <div>
-              <button
-                onClick={handleGoogleSignIn}
-                type='button'
-                className='flex w-full justify-center items-center rounded-md bg-white px-3 py-1.5 text-md font-semibold leading-6 text-gray-900 shadow-sm hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600'
-              >
-                <FcGoogle className='mr-2 text-xl'/> Sign in with Google
+                Sign up
               </button>
             </div>
           </div>
 
           <div className='flex mt-5 justify-between'>
-            <p className='text-center text-sm text-gray-500'>Need an account?</p>
+            <p className='text-center text-sm text-gray-500'>Already have an account?</p>
             <div className='text-sm'>
               <a href='#' className='font-semibold text-[#7d3296] hover:text-indigo-500'>
-                Forgot password?
+                Sign in
               </a>
             </div>
           </div>
@@ -111,4 +124,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default SignUp; 

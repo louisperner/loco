@@ -123,6 +123,29 @@ Contributions are welcome! Feel free to open issues or submit pull requests to h
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## Firebase Authentication Setup
+
+To use the Firebase authentication features, you need to create a Firebase project and configure it:
+
+1. Create a Firebase project at [firebase.google.com](https://firebase.google.com)
+2. Register your app in the Firebase console
+3. Enable Authentication in the Firebase console:
+   - Go to Authentication > Sign-in method
+   - Enable Email/Password and Google authentication methods
+4. Create a `.env` file in the root directory with the following:
+
+```
+# Firebase Configuration
+VITE_FIREBASE_API_KEY=your-api-key
+VITE_FIREBASE_AUTH_DOMAIN=your-auth-domain
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-storage-bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
+VITE_FIREBASE_APP_ID=your-app-id
+```
+
+Replace the placeholder values with your Firebase project's configuration, which you can find in your Firebase project settings.
+
 ---
 
 <p align="center">
