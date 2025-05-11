@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const SignUp: React.FC = () => {
+  const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
@@ -23,11 +24,29 @@ const SignUp: React.FC = () => {
     }
     
     setPasswordError(null);
-    await signUp(email, password);
+    await signUp(email, password, name);
   };
 
   return (
     <div className="space-y-6">
+      <div>
+        <label htmlFor="name" className="block text-sm font-medium leading-6 text-white">
+          Name
+        </label>
+        <div className="mt-2">
+          <input
+            id="name"
+            value={name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+            name="name"
+            type="text"
+            autoComplete="name"
+            required
+            className="block w-full rounded-md border-0 bg-gray-800 py-1.5 text-white shadow-sm ring-1 ring-inset ring-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-[#7d3296] sm:text-sm sm:leading-6 p-2"
+          />
+        </div>
+      </div>
+
       <div>
         <label htmlFor="email" className="block text-sm font-medium leading-6 text-white">
           Email address
