@@ -8,8 +8,9 @@ import {
   signInWithPopup,
 } from 'firebase/auth';
 import { auth, googleProvider, createUserDocument, db } from '../utils/firebase';
-import { doc } from 'firebase/firestore';
-import { getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
+import { syncSettings } from '../utils/settings-sync';
+import { SETTINGS_STORAGE_KEY } from '@/components/Settings/utils';
 
 interface AuthState {
   currentUser: User | null;
@@ -51,28 +52,24 @@ const createUserDocumentWithRetry = async (userId: string, userData: Record<stri
 
 export const useAuthStore = create<AuthState>((set) => ({
   currentUser: null,
-  loading: true,
+  loading: false,
   error: null,
   authModalOpen: false,
 
   signIn: async (email: string, password: string) => {
     set({ loading: true, error: null });
     try {
-      // Login com Firebase Auth
       console.log('Tentando fazer login com email:', email);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log('Login bem-sucedido:', userCredential.user.uid);
 
-      try {
-        await createUserDocumentWithRetry(userCredential.user.uid, {
-          email: userCredential.user.email,
-          name: userCredential.user.displayName || email.split('@')[0],
-          lastLogin: new Date().toISOString(),
-        });
-      } catch (docError) {
-        // Just log document creation errors but still proceed with login
-        console.error('Error creating user document but proceeding with login:', docError);
-      }
+      // Update the last login time in Firestore
+      await createUserDocument(userCredential.user.uid, {
+        lastLogin: new Date().toISOString(),
+      });
+
+      // Sync settings using cloud-first approach
+      await syncSettings(userCredential.user.uid);
 
       set({ authModalOpen: false });
     } catch (err) {
@@ -98,6 +95,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         lastLogin: new Date().toISOString(),
       });
 
+      // Sync settings using cloud-first approach
+      await syncSettings(userCredential.user.uid);
+
       set({ authModalOpen: false });
     } catch (err) {
       console.error('Erro no cadastro:', err);
@@ -121,6 +121,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         lastLogin: new Date().toISOString(),
       });
 
+      // Sync settings using cloud-first approach
+      await syncSettings(result.user.uid);
+
       set({ authModalOpen: false });
     } catch (err) {
       console.error('Erro no login com Google:', err);
@@ -143,37 +146,19 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   clearError: () => set({ error: null }),
 
-  toggleAuthModal: (isOpen) =>
-    set((state) => ({
-      authModalOpen: isOpen !== undefined ? isOpen : !state.authModalOpen,
-    })),
-
   initialize: () => {
-    console.log('Inicializando listener de autenticação');
-    // Subscribe to auth state changes
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('Estado de autenticação alterado:', user?.uid || 'sem usuário');
-
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      set({ currentUser: user });
+      
+      // Sync settings when auth state changes (user logs in)
       if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (!userDoc.exists()) {
-          // Don't wait for document creation to update auth state
-          createUserDocumentWithRetry(user.uid, {
-            email: user.email,
-            name: user.displayName || (user.email ? user.email.split('@')[0] : 'Usuário'),
-            photoURL: user.photoURL || '',
-            lastLogin: new Date().toISOString(),
-          }).catch((err) => {
-            console.error('Error updating user document on auth state change:', err);
-            // We still continue with auth state update regardless of document creation
-          });
-        }
+        syncSettings(user.uid).catch(err => 
+          console.error('Error syncing settings on auth state change:', err)
+        );
       }
-
-      set({ currentUser: user, loading: false });
     });
-
-    // Return the unsubscribe function
     return unsubscribe;
   },
+
+  toggleAuthModal: (isOpen) => set(state => ({ authModalOpen: isOpen !== undefined ? isOpen : !state.authModalOpen })),
 }));

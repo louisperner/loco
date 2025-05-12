@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { LogOut } from 'lucide-react';
+import { LogOut, Upload, Download, Check, AlertCircle, Info } from 'lucide-react';
+import { syncSettingsToFirestore, loadSettingsFromFirestore, syncSettings } from '@/utils/settings-sync';
 
 interface UserProfileProps {
   onClose?: () => void;
@@ -8,11 +9,102 @@ interface UserProfileProps {
 
 const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
   const { currentUser, signOut } = useAuthStore();
+  const [syncStatus, setSyncStatus] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'info' | null;
+  }>({ message: '', type: null });
 
   const handleSignOut = async (): Promise<void> => {
     await signOut();
     if (onClose) {
       onClose();
+    }
+  };
+
+  // New function to sync settings (cloud-first approach)
+  const handleSyncSettings = async (): Promise<void> => {
+    if (!currentUser) return;
+    
+    setSyncStatus({ message: 'Syncing settings...', type: 'info' });
+    
+    try {
+      const success = await syncSettings(currentUser.uid);
+      
+      if (success) {
+        setSyncStatus({ message: 'Settings synced successfully', type: 'success' });
+        // Clear message after 3 seconds
+        setTimeout(() => {
+          setSyncStatus({ message: '', type: null });
+        }, 3000);
+      } else {
+        setSyncStatus({ message: 'No settings found', type: 'info' });
+        setTimeout(() => {
+          setSyncStatus({ message: '', type: null });
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error syncing settings:', error);
+      setSyncStatus({ message: 'Error syncing settings', type: 'error' });
+      setTimeout(() => {
+        setSyncStatus({ message: '', type: null });
+      }, 3000);
+    }
+  };
+
+  const handleSyncToFirestore = async (): Promise<void> => {
+    if (!currentUser) return;
+    
+    setSyncStatus({ message: 'Saving settings...', type: 'info' });
+    
+    try {
+      const success = await syncSettingsToFirestore(currentUser.uid);
+      
+      if (success) {
+        setSyncStatus({ message: 'Settings saved to cloud', type: 'success' });
+        // Clear message after 3 seconds
+        setTimeout(() => {
+          setSyncStatus({ message: '', type: null });
+        }, 3000);
+      } else {
+        setSyncStatus({ message: 'No settings to save', type: 'info' });
+        setTimeout(() => {
+          setSyncStatus({ message: '', type: null });
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error syncing settings:', error);
+      setSyncStatus({ message: 'Error saving settings', type: 'error' });
+      setTimeout(() => {
+        setSyncStatus({ message: '', type: null });
+      }, 3000);
+    }
+  };
+
+  const handleLoadFromFirestore = async (): Promise<void> => {
+    if (!currentUser) return;
+    
+    setSyncStatus({ message: 'Loading settings...', type: 'info' });
+    
+    try {
+      const success = await loadSettingsFromFirestore(currentUser.uid);
+      
+      if (success) {
+        setSyncStatus({ 
+          message: 'Settings loaded from cloud. Page will reload to apply changes.', 
+          type: 'success' 
+        });
+      } else {
+        setSyncStatus({ message: 'No settings found in cloud', type: 'info' });
+        setTimeout(() => {
+          setSyncStatus({ message: '', type: null });
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+      setSyncStatus({ message: 'Error loading settings', type: 'error' });
+      setTimeout(() => {
+        setSyncStatus({ message: '', type: null });
+      }, 3000);
     }
   };
 
@@ -49,6 +141,51 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
         <div>
           <p className="font-medium text-lg">{displayName}</p>
           <p className="text-gray-400 text-sm">{currentUser.email}</p>
+        </div>
+      </div>
+
+      {/* Settings Sync Section */}
+      <div className="mb-4 border-t border-gray-700 pt-4">
+        <h3 className="text-md font-medium mb-3">Settings Sync</h3>
+        
+        {syncStatus.message && (
+          <div className={`mb-3 p-2 rounded text-sm flex items-center ${
+            syncStatus.type === 'success' ? 'bg-green-900/30 text-green-400' : 
+            syncStatus.type === 'error' ? 'bg-red-900/30 text-red-400' : 
+            'bg-blue-900/30 text-blue-400'
+          }`}>
+            {syncStatus.type === 'success' && <Check className="w-4 h-4 mr-2" />}
+            {syncStatus.type === 'error' && <AlertCircle className="w-4 h-4 mr-2" />}
+            {syncStatus.type === 'info' && <Info className="w-4 h-4 mr-2" />}
+            {syncStatus.message}
+          </div>
+        )}
+        
+        <div className="flex gap-2 mb-2">
+          <button
+            onClick={handleSyncSettings}
+            className="w-full flex items-center justify-center bg-[#7d3296] hover:bg-[#9149a8] text-white py-2 px-3 rounded transition-colors"
+          >
+            <Info className="w-4 h-4 mr-2" />
+            Sync Settings
+          </button>
+        </div>
+        
+        <div className="flex gap-2">
+          <button
+            onClick={handleSyncToFirestore}
+            className="flex-1 flex items-center justify-center bg-[#444] hover:bg-[#555] text-white py-2 px-3 rounded transition-colors"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Save to Cloud
+          </button>
+          <button
+            onClick={handleLoadFromFirestore}
+            className="flex-1 flex items-center justify-center bg-[#444] hover:bg-[#555] text-white py-2 px-3 rounded transition-colors"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Load from Cloud
+          </button>
         </div>
       </div>
 

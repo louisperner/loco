@@ -20,9 +20,12 @@ import { OpenRouterTab } from './tabs/OpenRouterTab';
 import { SettingsPanelProps, SettingsTab, SettingValue } from './types';
 import { loadSettings, saveSettings } from './utils';
 import { RgbaColor } from 'react-colorful';
-import { UserIcon } from 'lucide-react';
+import { UserIcon, Save, Cloud, CheckCircle, Download } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import UserProfile from '../Game/UserProfile';
+import { syncSettingsToFirestore } from '@/utils/settings-sync';
+import { loadSettingsFromFirestore } from '@/utils/settings-sync';
+import { syncSettings } from '@/utils/settings-sync';
 
 interface CrosshairSettings {
   visible: boolean;
@@ -146,12 +149,87 @@ export function SettingsPanel({
   // Get auth state and functions from context
   const { currentUser, toggleAuthModal } = useAuthStore();
   const [showUserProfile, setShowUserProfile] = useState<boolean>(false);
-
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
   // Toggle user profile modal
   const handleUserProfileToggle = useCallback((): void => {
     setShowUserProfile(!showUserProfile);
   }, [showUserProfile]);
+
+  // Handle sync settings to cloud
+  const handleSyncSettings = useCallback(async (): Promise<void> => {
+    if (!currentUser) {
+      toggleAuthModal(true);
+      return;
+    }
+
+    try {
+      setSyncStatus('Syncing...');
+      const success = await syncSettings(currentUser.uid);
+      
+      if (success) {
+        setSyncStatus('Synced!');
+        setTimeout(() => setSyncStatus(null), 3000);
+      } else {
+        setSyncStatus('No settings to sync');
+        setTimeout(() => setSyncStatus(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error syncing settings:', error);
+      setSyncStatus('Sync failed');
+      setTimeout(() => setSyncStatus(null), 3000);
+    }
+  }, [currentUser, toggleAuthModal]);
+
+  // Add this callback after handleSyncSettings to specifically save to cloud
+  const handleSaveToCloud = useCallback(async (): Promise<void> => {
+    if (!currentUser) {
+      toggleAuthModal(true);
+      return;
+    }
+
+    try {
+      setSyncStatus('Saving to cloud...');
+      const success = await syncSettingsToFirestore(currentUser.uid);
+      
+      if (success) {
+        setSyncStatus('Saved to cloud!');
+        setTimeout(() => setSyncStatus(null), 3000);
+      } else {
+        setSyncStatus('No settings to save');
+        setTimeout(() => setSyncStatus(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error saving settings to cloud:', error);
+      setSyncStatus('Save failed');
+      setTimeout(() => setSyncStatus(null), 3000);
+    }
+  }, [currentUser, toggleAuthModal]);
+
+  // Add this callback to specifically load from cloud
+  const handleLoadFromCloud = useCallback(async (): Promise<void> => {
+    if (!currentUser) {
+      toggleAuthModal(true);
+      return;
+    }
+
+    try {
+      setSyncStatus('Loading from cloud...');
+      const success = await loadSettingsFromFirestore(currentUser.uid);
+      
+      if (success) {
+        setSyncStatus('Settings loaded!');
+        // No need for timeout as page will reload
+      } else {
+        setSyncStatus('No settings found in cloud');
+        setTimeout(() => setSyncStatus(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error loading settings from cloud:', error);
+      setSyncStatus('Load failed');
+      setTimeout(() => setSyncStatus(null), 3000);
+    }
+  }, [currentUser, toggleAuthModal]);
 
   const [open, setOpen] = useState(isOpen || false);
   const colorPickerContainerRef = useRef<HTMLDivElement>(null);
@@ -463,8 +541,50 @@ export function SettingsPanel({
           </SlidePanelBody>
 
           <SlidePanelFooter>
-            <div className='text-xs text-white/40 text-center'>
-              <span className='font-light tracking-wide'>Your virtual space • Design by Loco</span>
+            <div className="flex justify-between items-center w-full">
+              <span className="text-xs text-gray-400">
+                {syncStatus && (
+                  <span className="flex items-center">
+                    {syncStatus === 'Synced!' || syncStatus === 'Settings loaded!' || syncStatus === 'Saved to cloud!' ? 
+                      <CheckCircle className="w-4 h-4 mr-1 text-green-400" /> : null}
+                    {syncStatus}
+                  </span>
+                )}
+              </span>
+              {currentUser && (
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs text-white bg-[#7d3296] hover:bg-[#9149a8] rounded flex items-center"
+                    onClick={handleSyncSettings}
+                    title="Sync with cloud (cloud-first approach)"
+                  >
+                    <Cloud className="w-3 h-3 mr-1" />
+                    Sync
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs text-white bg-[#444] hover:bg-[#555] rounded flex items-center"
+                    onClick={handleSaveToCloud}
+                    title="Save current settings to cloud"
+                  >
+                    <Save className="w-3 h-3 mr-1" />
+                    Save
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs text-white bg-[#444] hover:bg-[#555] rounded flex items-center"
+                    onClick={handleLoadFromCloud}
+                    title="Load settings from cloud"
+                  >
+                    <Download className="w-3 h-3 mr-1" />
+                    Load
+                  </Button>
+                </div>
+              )}
             </div>
           </SlidePanelFooter>
         </div>
