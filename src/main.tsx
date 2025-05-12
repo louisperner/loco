@@ -11,6 +11,18 @@ import { Analytics } from '@vercel/analytics/react';
 import { useAuthStore } from './store/useAuthStore';
 import AuthWrapper from './components/Game/AuthWrapper';
 
+const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const initialize = useAuthStore(state => state.initialize);
+  
+  useEffect(() => {
+    const unsubscribe = initialize();
+    
+    return () => unsubscribe();
+  }, [initialize]);
+  
+  return <>{children}</>;
+};
+
 const AppContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { currentUser, authModalOpen } = useAuthStore();

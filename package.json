@@ -56,7 +56,7 @@
     "autoprefixer": "^10.4.21",
     "axios": "^1.7.3",
     "cheerio": "^1.0.0-rc.12",
-    "firebase": "^11.4.0",
+    "firebase": "^11.7.1",
     "monaco-editor": "0.52.2",
     "nipplejs": "^0.10.2",
     "postcss": "^8.5.3",

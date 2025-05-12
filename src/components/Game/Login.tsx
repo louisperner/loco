@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/useAuthStore';
 import { FcGoogle } from 'react-icons/fc';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const { signIn, signInWithGoogle, error, clearError } = useAuth();
+  const { signIn, signInWithGoogle, error, clearError } = useAuthStore();
 
   const handleSignIn = async (): Promise<void> => {
     clearError();

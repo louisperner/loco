@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Login from './Login';
 import SignUp from './SignUp';
 import { X } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface AuthWrapperProps {
   initialView?: 'login' | 'signup';
@@ -10,7 +10,7 @@ interface AuthWrapperProps {
 
 const AuthWrapper: React.FC<AuthWrapperProps> = ({ initialView = 'login' }) => {
   const [currentView, setCurrentView] = useState<'login' | 'signup'>(initialView);
-  const { toggleAuthModal } = useAuth();
+  const { toggleAuthModal } = useAuthStore();
 
   const toggleView = (): void => {
     setCurrentView(currentView === 'login' ? 'signup' : 'login');

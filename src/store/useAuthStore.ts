@@ -1,13 +1,15 @@
 import { create } from 'zustand';
-import { 
-  User, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
+import {
+  User,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
-  signInWithPopup
+  signInWithPopup,
 } from 'firebase/auth';
-import { auth, googleProvider, createUserDocument } from '../utils/firebase';
+import { auth, googleProvider, createUserDocument, db } from '../utils/firebase';
+import { doc } from 'firebase/firestore';
+import { getDoc } from 'firebase/firestore';
 
 interface AuthState {
   currentUser: User | null;
@@ -25,6 +27,28 @@ interface AuthState {
   toggleAuthModal: (isOpen?: boolean) => void;
 }
 
+// Helper function to handle user document creation with retries
+const createUserDocumentWithRetry = async (userId: string, userData: Record<string, any>, maxRetries = 3) => {
+  let retries = 0;
+
+  while (retries < maxRetries) {
+    try {
+      return await createUserDocument(userId, userData);
+    } catch (error) {
+      retries++;
+      console.warn(`Error creating user document, retry ${retries}/${maxRetries}:`, error);
+
+      if (retries === maxRetries) {
+        console.error('Max retries reached for user document creation');
+        throw error;
+      }
+
+      // Exponential backoff
+      await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+    }
+  }
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
   currentUser: null,
   loading: true,
@@ -38,14 +62,18 @@ export const useAuthStore = create<AuthState>((set) => ({
       console.log('Tentando fazer login com email:', email);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log('Login bem-sucedido:', userCredential.user.uid);
-      
-      // Criar ou atualizar documento do usuário
-      await createUserDocument(userCredential.user.uid, {
-        email: userCredential.user.email,
-        name: userCredential.user.displayName || email.split('@')[0],
-        lastLogin: new Date().toISOString()
-      });
-      
+
+      try {
+        await createUserDocumentWithRetry(userCredential.user.uid, {
+          email: userCredential.user.email,
+          name: userCredential.user.displayName || email.split('@')[0],
+          lastLogin: new Date().toISOString(),
+        });
+      } catch (docError) {
+        // Just log document creation errors but still proceed with login
+        console.error('Error creating user document but proceeding with login:', docError);
+      }
+
       set({ authModalOpen: false });
     } catch (err) {
       console.error('Erro no login:', err);
@@ -62,14 +90,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       console.log('Tentando criar conta com email:', email);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       console.log('Conta criada com sucesso:', userCredential.user.uid);
-      
+
       // Create a document in Firestore with user's ID and data
       await createUserDocument(userCredential.user.uid, {
         email: userCredential.user.email,
         name: name,
-        lastLogin: new Date().toISOString()
+        lastLogin: new Date().toISOString(),
       });
-      
+
       set({ authModalOpen: false });
     } catch (err) {
       console.error('Erro no cadastro:', err);
@@ -85,15 +113,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       console.log('Tentando fazer login com Google');
       const result = await signInWithPopup(auth, googleProvider);
       console.log('Login com Google bem-sucedido:', result.user.uid);
-      
-      // Criar ou atualizar documento do usuário
+
       await createUserDocument(result.user.uid, {
         email: result.user.email,
         name: result.user.displayName || '',
         photoURL: result.user.photoURL || '',
-        lastLogin: new Date().toISOString()
+        lastLogin: new Date().toISOString(),
       });
-      
+
       set({ authModalOpen: false });
     } catch (err) {
       console.error('Erro no login com Google:', err);
@@ -116,30 +143,37 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   clearError: () => set({ error: null }),
 
-  toggleAuthModal: (isOpen) => set(state => ({ 
-    authModalOpen: isOpen !== undefined ? isOpen : !state.authModalOpen 
-  })),
+  toggleAuthModal: (isOpen) =>
+    set((state) => ({
+      authModalOpen: isOpen !== undefined ? isOpen : !state.authModalOpen,
+    })),
 
   initialize: () => {
     console.log('Inicializando listener de autenticação');
     // Subscribe to auth state changes
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log('Estado de autenticação alterado:', user?.uid || 'sem usuário');
-      
-      // Atualizar lastLogin para o usuário atual se estiver logado
+
       if (user) {
-        createUserDocument(user.uid, {
-          email: user.email,
-          name: user.displayName || (user.email ? user.email.split('@')[0] : 'Usuário'),
-          photoURL: user.photoURL || '',
-          lastLogin: new Date().toISOString()
-        });
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (!userDoc.exists()) {
+          // Don't wait for document creation to update auth state
+          createUserDocumentWithRetry(user.uid, {
+            email: user.email,
+            name: user.displayName || (user.email ? user.email.split('@')[0] : 'Usuário'),
+            photoURL: user.photoURL || '',
+            lastLogin: new Date().toISOString(),
+          }).catch((err) => {
+            console.error('Error updating user document on auth state change:', err);
+            // We still continue with auth state update regardless of document creation
+          });
+        }
       }
-      
+
       set({ currentUser: user, loading: false });
     });
 
     // Return the unsubscribe function
     return unsubscribe;
-  }
-})); 
+  },
+}));

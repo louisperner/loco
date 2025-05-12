@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/useAuthStore';
 import { LogOut } from 'lucide-react';
 
 interface UserProfileProps {
@@ -7,7 +7,7 @@ interface UserProfileProps {
 }
 
 const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
-  const { currentUser, signOut } = useAuth();
+  const { currentUser, signOut } = useAuthStore();
 
   const handleSignOut = async (): Promise<void> => {
     await signOut();
@@ -20,7 +20,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
     return null;
   }
 
-  // Extract username from email or use UID if not available
   const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'User';
   const userInitial = displayName.charAt(0).toUpperCase();
 

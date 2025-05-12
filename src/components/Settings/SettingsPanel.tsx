@@ -21,10 +21,9 @@ import { SettingsPanelProps, SettingsTab, SettingValue } from './types';
 import { loadSettings, saveSettings } from './utils';
 import { RgbaColor } from 'react-colorful';
 import { UserIcon } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/useAuthStore';
 import UserProfile from '../Game/UserProfile';
 
-// Define CrosshairSettings type based on the CrosshairTab props
 interface CrosshairSettings {
   visible: boolean;
   size: number;
@@ -145,7 +144,7 @@ export function SettingsPanel({
   void colorChanged;
 
   // Get auth state and functions from context
-  const { currentUser, toggleAuthModal } = useAuth();
+  const { currentUser, toggleAuthModal } = useAuthStore();
   const [showUserProfile, setShowUserProfile] = useState<boolean>(false);
 
 
