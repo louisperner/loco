@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { LogOut, Upload, Download, Check, AlertCircle, Info } from 'lucide-react';
-import { syncSettingsToFirestore, loadSettingsFromFirestore, syncSettings } from '@/utils/settings-sync';
+import { syncSettingsToFirestore, loadSettingsFromFirestore, syncSettings, syncAllLocalStorage } from '@/utils/local-storage-sync';
+import { SyncContext } from '@/main';
 
 interface UserProfileProps {
   onClose?: () => void;
@@ -21,14 +22,46 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
     }
   };
 
+  // New function to sync all localStorage items (cloud-first approach)
+  const handleSyncAllStorage = async (): Promise<void> => {
+    if (!currentUser) return;
+    
+    setSyncStatus({ message: 'Syncing all data...', type: 'info' });
+    const { setSyncing } = useContext(SyncContext);
+
+    try {
+      const success = await syncAllLocalStorage(currentUser.uid, setSyncing);
+      
+      if (success) {
+        setSyncStatus({ message: 'All data synced successfully', type: 'success' });
+        // Clear message after 3 seconds
+        setTimeout(() => {
+          setSyncStatus({ message: '', type: null });
+        }, 3000);
+      } else {
+        setSyncStatus({ message: 'No data found to sync', type: 'info' });
+        setTimeout(() => {
+          setSyncStatus({ message: '', type: null });
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error syncing all data:', error);
+      setSyncStatus({ message: 'Error syncing data', type: 'error' });
+      setTimeout(() => {
+        setSyncStatus({ message: '', type: null });
+      }, 3000);
+    }
+  };
+
   // New function to sync settings (cloud-first approach)
   const handleSyncSettings = async (): Promise<void> => {
     if (!currentUser) return;
     
     setSyncStatus({ message: 'Syncing settings...', type: 'info' });
+    const { setSyncing } = useContext(SyncContext);
     
     try {
-      const success = await syncSettings(currentUser.uid);
+      const success = await syncSettings(currentUser.uid, setSyncing);
       
       if (success) {
         setSyncStatus({ message: 'Settings synced successfully', type: 'success' });
@@ -55,9 +88,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
     if (!currentUser) return;
     
     setSyncStatus({ message: 'Saving settings...', type: 'info' });
+    const { setSyncing } = useContext(SyncContext);
     
     try {
-      const success = await syncSettingsToFirestore(currentUser.uid);
+      const success = await syncSettingsToFirestore(currentUser.uid, setSyncing);
       
       if (success) {
         setSyncStatus({ message: 'Settings saved to cloud', type: 'success' });
@@ -84,9 +118,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
     if (!currentUser) return;
     
     setSyncStatus({ message: 'Loading settings...', type: 'info' });
+    const { setSyncing } = useContext(SyncContext);
     
     try {
-      const success = await loadSettingsFromFirestore(currentUser.uid);
+      const success = await loadSettingsFromFirestore(currentUser.uid, setSyncing);
       
       if (success) {
         setSyncStatus({ 
@@ -146,7 +181,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
 
       {/* Settings Sync Section */}
       <div className="mb-4 border-t border-gray-700 pt-4">
-        <h3 className="text-md font-medium mb-3">Settings Sync</h3>
+        <h3 className="text-md font-medium mb-3">Data Sync</h3>
         
         {syncStatus.message && (
           <div className={`mb-3 p-2 rounded text-sm flex items-center ${
@@ -163,30 +198,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
         
         <div className="flex gap-2 mb-2">
           <button
-            onClick={handleSyncSettings}
+            onClick={handleSyncAllStorage}
             className="w-full flex items-center justify-center bg-[#7d3296] hover:bg-[#9149a8] text-white py-2 px-3 rounded transition-colors"
           >
             <Info className="w-4 h-4 mr-2" />
-            Sync Settings
+            Sync All Data
           </button>
         </div>
         
-        <div className="flex gap-2">
-          <button
-            onClick={handleSyncToFirestore}
-            className="flex-1 flex items-center justify-center bg-[#444] hover:bg-[#555] text-white py-2 px-3 rounded transition-colors"
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            Save to Cloud
-          </button>
-          <button
-            onClick={handleLoadFromFirestore}
-            className="flex-1 flex items-center justify-center bg-[#444] hover:bg-[#555] text-white py-2 px-3 rounded transition-colors"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Load from Cloud
-          </button>
-        </div>
       </div>
 
       <div className="border-t border-gray-700 pt-4">

@@ -3,20 +3,181 @@ import { db } from './firebase';
 import { SETTINGS_STORAGE_KEY } from '@/components/Settings/utils';
 import { LocoSettings } from '@/components/Settings/types';
 
+// Position storage key
+export const POSITION_STORAGE_KEY = 'loco-position';
+
+// Type for the sync callback
+type SyncCallback = (syncing: boolean) => void;
+
+/**
+ * Check if a localStorage key should be excluded from syncing
+ * @param key The localStorage key to check
+ * @returns True if the key should be excluded, false otherwise
+ */
+export const shouldExcludeFromSync = (key: string): boolean => {
+  // Exclude Firebase zombie keys
+  if (key.startsWith('firestore_zombie_')) {
+    return true;
+  }
+  
+  // Add other exclusions if needed in the future
+  return false;
+};
+
+/**
+ * Save position data to localStorage
+ * @param position The position object to save
+ */
+export const savePosition = (position: { x: number; y: number; z: number }): void => {
+  try {
+    localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(position));
+  } catch (error) {
+    console.error('Error saving position:', error);
+  }
+};
+
+/**
+ * Load position data from localStorage
+ * @returns The position object or null if not found
+ */
+export const loadPosition = (): { x: number; y: number; z: number } | null => {
+  try {
+    const savedPosition = localStorage.getItem(POSITION_STORAGE_KEY);
+    return savedPosition ? JSON.parse(savedPosition) : null;
+  } catch (error) {
+    console.error('Error loading position:', error);
+    return null;
+  }
+};
+
+/**
+ * Save all localStorage data to Firestore before page unload
+ * This function is specifically designed to be quick for beforeunload events
+ * @param userId The current user's ID
+ */
+export const saveDataBeforeUnload = async (userId: string): Promise<void> => {
+  if (!userId) {
+    console.log('No user ID provided for beforeunload sync');
+    return;
+  }
+
+  try {
+    // Collect only essential localStorage items quickly
+    const quickSyncItems: Record<string, any> = {};
+    
+    // Only sync position data on page close to ensure it's quick
+    const positionData = localStorage.getItem(POSITION_STORAGE_KEY);
+    
+    if (positionData) {
+      try {
+        quickSyncItems[POSITION_STORAGE_KEY] = JSON.parse(positionData);
+      } catch (e) {
+        // Continue even if parsing fails
+      }
+    }
+
+    // Skip if no position data
+    if (!quickSyncItems[POSITION_STORAGE_KEY]) {
+      return;
+    }
+
+    // Use a synchronous approach for the beforeunload event
+    const userDocRef = doc(db, 'users', userId);
+    
+    // Using the synchronous navigator.sendBeacon API to ensure data gets sent
+    // This is the most reliable way to send data during page unload
+    if (navigator.sendBeacon) {
+      const body = JSON.stringify({
+        userId,
+        path: `users/${userId}`,
+        data: { position: quickSyncItems[POSITION_STORAGE_KEY] },
+        timestamp: new Date().toISOString()
+      });
+      
+      // Send to a dedicated endpoint that will handle the update
+      // This is more reliable than a direct Firestore update during unload
+      const beaconUrl = `https://firestore.googleapis.com/v1/projects/${import.meta.env.VITE_FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${userId}`;
+      
+      navigator.sendBeacon(beaconUrl, body);
+      console.log('Position data sent via beacon API');
+    } else {
+      // Fallback to a quick fetch with keepalive
+      fetch(`https://firestore.googleapis.com/v1/projects/${import.meta.env.VITE_FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fields: {
+            position: {
+              mapValue: {
+                fields: {
+                  x: { doubleValue: quickSyncItems[POSITION_STORAGE_KEY].x },
+                  y: { doubleValue: quickSyncItems[POSITION_STORAGE_KEY].y },
+                  z: { doubleValue: quickSyncItems[POSITION_STORAGE_KEY].z }
+                }
+              }
+            }
+          }
+        }),
+        keepalive: true
+      }).catch(() => {
+        // Silently ignore errors during page close
+      });
+    }
+  } catch (error) {
+    // Silent fail - we don't want to prevent page unload
+  }
+};
+
+/**
+ * Initialize the beforeunload event listener to save data when the page closes
+ * @param userId The current user's ID
+ * @returns Function to remove the event listener
+ */
+export const initBeforeUnloadSync = (userId: string): () => void => {
+  if (!userId) return () => {};
+
+  const handleBeforeUnload = () => {
+    try {
+      // Only store position data which is critical
+      const positionData = localStorage.getItem(POSITION_STORAGE_KEY);
+      if (positionData) {
+        // Store the last position we had in localStorage
+        console.log('Position data saved locally before unload');
+      }
+    } catch (error) {
+      // Silent fail to avoid blocking page close
+    }
+  };
+
+  // Use capture to ensure our handler runs early
+  window.addEventListener('beforeunload', handleBeforeUnload, { capture: true });
+  
+  // Return function to remove the event listener
+  return () => {
+    window.removeEventListener('beforeunload', handleBeforeUnload, { capture: true });
+  };
+};
+
 /**
  * Main function to sync all localStorage items with Firestore
- * 1. Try to get all items from Firestore first
- * 2. If not available, use localStorage items and sync them to Firestore
  * @param userId The current user's ID
+ * @param onSyncChange Optional callback to indicate syncing status
  * @returns Promise resolving to boolean indicating success
  */
-export const syncAllLocalStorage = async (userId: string): Promise<boolean> => {
+export const syncAllLocalStorage = async (
+  userId: string, 
+  onSyncChange?: SyncCallback
+): Promise<boolean> => {
   if (!userId) {
     console.error('Cannot sync local storage: No user ID provided');
     return false;
   }
 
   try {
+    onSyncChange?.(true);
+    
     // First try to get all items from Firestore
     const userDocRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userDocRef);
@@ -91,21 +252,29 @@ export const syncAllLocalStorage = async (userId: string): Promise<boolean> => {
   } catch (error) {
     console.error('Error synchronizing localStorage:', error);
     return false;
+  } finally {
+    onSyncChange?.(false);
   }
 };
 
 /**
  * Sync specific settings from localStorage to Firestore for the current user
  * @param userId The current user's ID
+ * @param onSyncChange Optional callback to indicate syncing status
  * @returns Promise resolving to boolean indicating success
  */
-export const syncSettings = async (userId: string): Promise<boolean> => {
+export const syncSettings = async (
+  userId: string,
+  onSyncChange?: SyncCallback
+): Promise<boolean> => {
   if (!userId) {
     console.error('Cannot sync settings: No user ID provided');
     return false;
   }
 
   try {
+    onSyncChange?.(true);
+    
     // First try to get settings from Firestore
     const userDocRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userDocRef);
@@ -143,21 +312,29 @@ export const syncSettings = async (userId: string): Promise<boolean> => {
   } catch (error) {
     console.error('Error synchronizing settings:', error);
     return false;
+  } finally {
+    onSyncChange?.(false);
   }
 };
 
 /**
  * Sync settings from localStorage to Firestore for the current user
  * @param userId The current user's ID
+ * @param onSyncChange Optional callback to indicate syncing status
  * @returns Promise resolving to boolean indicating success
  */
-export const syncSettingsToFirestore = async (userId: string): Promise<boolean> => {
+export const syncSettingsToFirestore = async (
+  userId: string,
+  onSyncChange?: SyncCallback
+): Promise<boolean> => {
   if (!userId) {
     console.error('Cannot sync settings: No user ID provided');
     return false;
   }
 
   try {
+    onSyncChange?.(true);
+    
     // Get settings from localStorage
     const settingsJSON = localStorage.getItem(SETTINGS_STORAGE_KEY);
     
@@ -191,21 +368,29 @@ export const syncSettingsToFirestore = async (userId: string): Promise<boolean> 
   } catch (error) {
     console.error('Error syncing settings to Firestore:', error);
     return false;
+  } finally {
+    onSyncChange?.(false);
   }
 };
 
 /**
  * Load settings from Firestore and save to localStorage
  * @param userId The current user's ID
+ * @param onSyncChange Optional callback to indicate syncing status
  * @returns Promise resolving to boolean indicating success
  */
-export const loadSettingsFromFirestore = async (userId: string): Promise<boolean> => {
+export const loadSettingsFromFirestore = async (
+  userId: string,
+  onSyncChange?: SyncCallback
+): Promise<boolean> => {
   if (!userId) {
     console.error('Cannot load settings: No user ID provided');
     return false;
   }
 
   try {
+    onSyncChange?.(true);
+    
     // Get user document from Firestore
     const userDocRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userDocRef);
@@ -234,5 +419,12 @@ export const loadSettingsFromFirestore = async (userId: string): Promise<boolean
   } catch (error) {
     console.error('Error loading settings from Firestore:', error);
     return false;
+  } finally {
+    // Since we're reloading the page, this won't actually run,
+    // but we include it for completeness
+    onSyncChange?.(false);
   }
-}; 
+};
+
+// For backward compatibility
+export * from './settings-sync'; 

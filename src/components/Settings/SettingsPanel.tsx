@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   SlidePanel,
@@ -20,12 +20,11 @@ import { OpenRouterTab } from './tabs/OpenRouterTab';
 import { SettingsPanelProps, SettingsTab, SettingValue } from './types';
 import { loadSettings, saveSettings } from './utils';
 import { RgbaColor } from 'react-colorful';
-import { UserIcon, Save, Cloud, CheckCircle, Download } from 'lucide-react';
+import { UserIcon, Save, Cloud, CheckCircle, Download, Database } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import UserProfile from '../Game/UserProfile';
-import { syncSettingsToFirestore } from '@/utils/settings-sync';
-import { loadSettingsFromFirestore } from '@/utils/settings-sync';
-import { syncSettings } from '@/utils/settings-sync';
+import { syncSettingsToFirestore, loadSettingsFromFirestore, syncSettings, syncAllLocalStorage } from '@/utils/local-storage-sync';
+import { SyncContext } from '@/main';
 
 interface CrosshairSettings {
   visible: boolean;
@@ -150,11 +149,37 @@ export function SettingsPanel({
   const { currentUser, toggleAuthModal } = useAuthStore();
   const [showUserProfile, setShowUserProfile] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const { setSyncing } = useContext(SyncContext);
 
   // Toggle user profile modal
   const handleUserProfileToggle = useCallback((): void => {
     setShowUserProfile(!showUserProfile);
   }, [showUserProfile]);
+
+  // Handle sync all localStorage to cloud
+  const handleSyncAllStorage = useCallback(async (): Promise<void> => {
+    if (!currentUser) {
+      toggleAuthModal(true);
+      return;
+    }
+
+    try {
+      setSyncStatus('Syncing all data...');
+      const success = await syncAllLocalStorage(currentUser.uid, setSyncing);
+      
+      if (success) {
+        setSyncStatus('All data synced!');
+        setTimeout(() => setSyncStatus(null), 3000);
+      } else {
+        setSyncStatus('No data to sync');
+        setTimeout(() => setSyncStatus(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error syncing all data:', error);
+      setSyncStatus('Sync failed');
+      setTimeout(() => setSyncStatus(null), 3000);
+    }
+  }, [currentUser, toggleAuthModal, setSyncing]);
 
   // Handle sync settings to cloud
   const handleSyncSettings = useCallback(async (): Promise<void> => {
@@ -164,11 +189,11 @@ export function SettingsPanel({
     }
 
     try {
-      setSyncStatus('Syncing...');
-      const success = await syncSettings(currentUser.uid);
+      setSyncStatus('Syncing settings...');
+      const success = await syncSettings(currentUser.uid, setSyncing);
       
       if (success) {
-        setSyncStatus('Synced!');
+        setSyncStatus('Settings synced!');
         setTimeout(() => setSyncStatus(null), 3000);
       } else {
         setSyncStatus('No settings to sync');
@@ -179,7 +204,7 @@ export function SettingsPanel({
       setSyncStatus('Sync failed');
       setTimeout(() => setSyncStatus(null), 3000);
     }
-  }, [currentUser, toggleAuthModal]);
+  }, [currentUser, toggleAuthModal, setSyncing]);
 
   // Add this callback after handleSyncSettings to specifically save to cloud
   const handleSaveToCloud = useCallback(async (): Promise<void> => {
@@ -190,7 +215,7 @@ export function SettingsPanel({
 
     try {
       setSyncStatus('Saving to cloud...');
-      const success = await syncSettingsToFirestore(currentUser.uid);
+      const success = await syncSettingsToFirestore(currentUser.uid, setSyncing);
       
       if (success) {
         setSyncStatus('Saved to cloud!');
@@ -204,7 +229,7 @@ export function SettingsPanel({
       setSyncStatus('Save failed');
       setTimeout(() => setSyncStatus(null), 3000);
     }
-  }, [currentUser, toggleAuthModal]);
+  }, [currentUser, toggleAuthModal, setSyncing]);
 
   // Add this callback to specifically load from cloud
   const handleLoadFromCloud = useCallback(async (): Promise<void> => {
@@ -215,7 +240,7 @@ export function SettingsPanel({
 
     try {
       setSyncStatus('Loading from cloud...');
-      const success = await loadSettingsFromFirestore(currentUser.uid);
+      const success = await loadSettingsFromFirestore(currentUser.uid, setSyncing);
       
       if (success) {
         setSyncStatus('Settings loaded!');
@@ -229,7 +254,7 @@ export function SettingsPanel({
       setSyncStatus('Load failed');
       setTimeout(() => setSyncStatus(null), 3000);
     }
-  }, [currentUser, toggleAuthModal]);
+  }, [currentUser, toggleAuthModal, setSyncing]);
 
   const [open, setOpen] = useState(isOpen || false);
   const colorPickerContainerRef = useRef<HTMLDivElement>(null);
@@ -545,7 +570,7 @@ export function SettingsPanel({
               <span className="text-xs text-gray-400">
                 {syncStatus && (
                   <span className="flex items-center">
-                    {syncStatus === 'Synced!' || syncStatus === 'Settings loaded!' || syncStatus === 'Saved to cloud!' ? 
+                    {syncStatus === 'Synced!' || syncStatus === 'Settings synced!' || syncStatus === 'Settings loaded!' || syncStatus === 'Saved to cloud!' || syncStatus === 'All data synced!' ? 
                       <CheckCircle className="w-4 h-4 mr-1 text-green-400" /> : null}
                     {syncStatus}
                   </span>
@@ -557,11 +582,21 @@ export function SettingsPanel({
                     variant="outline"
                     size="sm"
                     className="text-xs text-white bg-[#7d3296] hover:bg-[#9149a8] rounded flex items-center"
+                    onClick={handleSyncAllStorage}
+                    title="Sync all data with cloud (cloud-first approach)"
+                  >
+                    <Database className="w-3 h-3 mr-1" />
+                    All Data
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs text-white bg-[#7d3296] hover:bg-[#9149a8] rounded flex items-center"
                     onClick={handleSyncSettings}
-                    title="Sync with cloud (cloud-first approach)"
+                    title="Sync settings with cloud (cloud-first approach)"
                   >
                     <Cloud className="w-3 h-3 mr-1" />
-                    Sync
+                    Settings
                   </Button>
                   <Button
                     variant="outline"

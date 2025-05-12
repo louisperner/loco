@@ -10,6 +10,13 @@ import DownloadBanner from './components/ui/DownloadBanner';
 import { Analytics } from '@vercel/analytics/react';
 import { useAuthStore } from './store/useAuthStore';
 import AuthWrapper from './components/Game/AuthWrapper';
+import { Cloud } from 'lucide-react';
+
+// Global sync state context
+export const SyncContext = React.createContext({
+  isSyncing: false,
+  setSyncing: (value: boolean) => {}
+});
 
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const initialize = useAuthStore(state => state.initialize);
@@ -23,37 +30,95 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   return <>{children}</>;
 };
 
+const SyncingIndicator: React.FC<{ isSyncing: boolean }> = ({ isSyncing }) => {
+  if (!isSyncing) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 bg-[#7d3296] text-white px-3 py-2 rounded-full z-50 shadow-md flex items-center space-x-2 animate-pulse">
+      <Cloud className="w-4 h-4 animate-bounce" />
+      <span className="text-xs font-medium">Syncing data...</span>
+    </div>
+  );
+};
+
 const AppContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { currentUser, authModalOpen } = useAuthStore();
+  const [isSyncing, setSyncing] = useState<boolean>(false);
 
   useEffect(() => {
-    const initializeApp = async (): Promise<void> => {
+    const initializeApp = async (): Promise<(() => void) | void> => {
       try {
+        // If user is logged in, sync all data from cloud first
+        if (currentUser) {
+          try {
+            setSyncing(true);
+            const { syncAllLocalStorage, initBeforeUnloadSync } = await import('./utils/local-storage-sync');
+            await syncAllLocalStorage(currentUser.uid);
+            console.log('Successfully synced all data on app startup');
+            
+            // Initialize beforeunload event listener
+            const removeBeforeUnloadListener = initBeforeUnloadSync(currentUser.uid);
+            return removeBeforeUnloadListener;
+          } catch (syncError) {
+            console.error('Error syncing data on app startup:', syncError);
+          } finally {
+            setSyncing(false);
+          }
+        }
+        
+        // Continue with app initialization
         await new Promise((resolve) => setTimeout(resolve, 2000));
         setIsLoading(false);
       } catch (error) {
+        console.error('Error initializing app:', error);
         setIsLoading(false);
       }
     };
 
-    initializeApp();
-  }, []);
+    // Execute the async initialization
+    let unsubscribeSync: (() => void) | undefined;
+    
+    initializeApp().then(cleanup => {
+      if (cleanup && typeof cleanup === 'function') {
+        unsubscribeSync = cleanup;
+      }
+    });
+    
+    // Also set up a beforeunload event listener to save data regardless of login state
+    const handleBeforeUnload = () => {
+      // Position is already being saved by the FPSControls component and the initBeforeUnloadSync function
+      // We don't do anything here to ensure the app closes smoothly
+      return undefined;
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      if (unsubscribeSync) {
+        unsubscribeSync();
+      }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [currentUser]);
 
   return (
-    <div className='fixed inset-0 w-screen h-screen overflow-hidden select-none' draggable={false}>
-      {isLoading && <SplashScreen />}
-      {!currentUser && authModalOpen && <AuthWrapper />}
-      <Player />
-      <DrawingOverlay />
-      <MergedSpotlight />
-      <DownloadBanner />
-      {typeof window !== 'undefined' && 
-        !window.navigator.userAgent.toLowerCase().includes('electron') && 
-        /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(window.navigator.userAgent.toLowerCase()) && 
-        <PWAInstallPrompts />}
-      <Analytics />
-    </div>
+    <SyncContext.Provider value={{ isSyncing, setSyncing }}>
+      <div className='fixed inset-0 w-screen h-screen overflow-hidden select-none' draggable={false}>
+        {isLoading && <SplashScreen />}
+        {!currentUser && authModalOpen && <AuthWrapper />}
+        <Player />
+        <DrawingOverlay />
+        <MergedSpotlight />
+        <DownloadBanner />
+        {typeof window !== 'undefined' && 
+          !window.navigator.userAgent.toLowerCase().includes('electron') && 
+          /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(window.navigator.userAgent.toLowerCase()) && 
+          <PWAInstallPrompts />}
+        <Analytics />
+        <SyncingIndicator isSyncing={isSyncing} />
+      </div>
+    </SyncContext.Provider>
   );
 };
 

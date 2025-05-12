@@ -9,7 +9,7 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider, createUserDocument, db } from '../utils/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import { syncSettings } from '../utils/settings-sync';
+import { syncSettings, syncAllLocalStorage } from '../utils/local-storage-sync';
 import { SETTINGS_STORAGE_KEY } from '@/components/Settings/utils';
 
 interface AuthState {
@@ -68,8 +68,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         lastLogin: new Date().toISOString(),
       });
 
-      // Sync settings using cloud-first approach
-      await syncSettings(userCredential.user.uid);
+      // Sync all localStorage items using cloud-first approach
+      await syncAllLocalStorage(userCredential.user.uid);
 
       set({ authModalOpen: false });
     } catch (err) {
@@ -95,8 +95,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         lastLogin: new Date().toISOString(),
       });
 
-      // Sync settings using cloud-first approach
-      await syncSettings(userCredential.user.uid);
+      // Sync all localStorage items using cloud-first approach
+      await syncAllLocalStorage(userCredential.user.uid);
 
       set({ authModalOpen: false });
     } catch (err) {
@@ -121,8 +121,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         lastLogin: new Date().toISOString(),
       });
 
-      // Sync settings using cloud-first approach
-      await syncSettings(result.user.uid);
+      // Sync all localStorage items using cloud-first approach
+      await syncAllLocalStorage(result.user.uid);
 
       set({ authModalOpen: false });
     } catch (err) {
@@ -150,10 +150,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       set({ currentUser: user });
       
-      // Sync settings when auth state changes (user logs in)
+      // Sync all localStorage items when auth state changes (user logs in)
       if (user) {
-        syncSettings(user.uid).catch(err => 
-          console.error('Error syncing settings on auth state change:', err)
+        syncAllLocalStorage(user.uid).catch(err => 
+          console.error('Error syncing localStorage on auth state change:', err)
         );
       }
     });

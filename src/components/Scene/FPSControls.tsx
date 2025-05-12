@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls } from '@react-three/drei';
 import { Vector3, Euler, Quaternion } from 'three';
+import { savePosition, loadPosition, POSITION_STORAGE_KEY } from '@/utils/local-storage-sync';
 
 interface FPSControlsProps {
   speed?: number;
@@ -88,6 +89,10 @@ const FPSControls: React.FC<FPSControlsProps> = ({
   // Add near top of component
   const isMobile = useRef(false);
 
+  // Reference to track when to save position
+  const lastPositionSave = useRef<number>(Date.now());
+  const saveInterval = 5000; // Save position every 5 seconds
+
   // Update raycaster on each frame
   useFrame(() => {
     if (!enabled) return;
@@ -102,10 +107,17 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     raycaster.current.far = 1000; // Match the laser's length
   });
 
-  // Set initial position if provided
+  // Load saved position on mount
   useEffect(() => {
     if (!enabled) return;
 
+    const savedPosition = loadPosition();
+    
+    if (savedPosition) {
+      console.log('Loaded saved position:', savedPosition);
+      initialPosition = [savedPosition.x, savedPosition.y, savedPosition.z];
+    }
+    
     if (!hasSetInitialPosition.current) {
       camera.position.set(initialPosition[0], initialPosition[1], initialPosition[2]);
       hasSetInitialPosition.current = true;
@@ -117,6 +129,20 @@ const FPSControls: React.FC<FPSControlsProps> = ({
       currentRotationY.current = camera.rotation.y;
     }
   }, [camera, enabled, initialPosition]);
+
+  // Save position on unmount
+  useEffect(() => {
+    return () => {
+      if (camera) {
+        savePosition({
+          x: camera.position.x,
+          y: camera.position.y,
+          z: camera.position.z
+        });
+        console.log('Saved position on component unmount');
+      }
+    };
+  }, [camera]);
 
   // Update pointer lock state when enabled changes
   useEffect(() => {
@@ -426,6 +452,17 @@ const FPSControls: React.FC<FPSControlsProps> = ({
       if (moveUp.current) camera.position.y += actualSpeed;
       if (moveDown.current) camera.position.y -= actualSpeed;
     }
+
+    // Check if we need to save the position (every 5 seconds)
+    const now = Date.now();
+    if (now - lastPositionSave.current > saveInterval) {
+      savePosition({
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z
+      });
+      lastPositionSave.current = now;
+    }
   });
 
   useEffect(() => {
@@ -676,6 +713,37 @@ const FPSControls: React.FC<FPSControlsProps> = ({
       window.removeEventListener('joystick-event', handleJoystickEvent as EventListener);
     };
   }, [enabled, onTouchStateChange, touchState]);
+
+  // Add event handler for saving position on page close
+  useEffect(() => {
+    if (!enabled || !camera) return;
+    
+    // Create handler function that saves position without blocking
+    const handleBeforeUnload = () => {
+      // Quickly save position data synchronously
+      if (camera) {
+        try {
+          localStorage.setItem(
+            POSITION_STORAGE_KEY, 
+            JSON.stringify({
+              x: camera.position.x,
+              y: camera.position.y,
+              z: camera.position.z
+            })
+          );
+        } catch (e) {
+          // Silent fail - don't block page close
+        }
+      }
+    };
+    
+    // Add event listener with capture phase to ensure it runs early
+    window.addEventListener('beforeunload', handleBeforeUnload, { capture: true });
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload, { capture: true });
+    };
+  }, [camera, enabled]);
 
   return (
     <>
