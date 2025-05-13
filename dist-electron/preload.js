@@ -153,6 +153,19 @@ electron.contextBridge.exposeInMainWorld("electron", {
       console.error("Error listing videos from disk:", error);
       return { success: false, videos: [], error: error.message };
     }
+  },
+  // Screen capture functionality
+  getScreenSources: async () => {
+    try {
+      return await electron.ipcRenderer.invoke("get-screen-sources");
+    } catch (error) {
+      console.error("Error getting screen sources:", error);
+      throw error;
+    }
+  },
+  // Reload the application
+  reloadApp: () => {
+    electron.ipcRenderer.invoke("reload-app");
   }
 });
 function withPrototype(obj) {

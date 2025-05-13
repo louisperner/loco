@@ -1,4 +1,4 @@
-import { app, screen, BrowserWindow, ipcMain, dialog, protocol, session } from 'electron';
+import { app, screen, BrowserWindow, ipcMain, dialog, protocol, session, desktopCapturer } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -22,6 +22,20 @@ function ensureDirectoriesExist() {
     console.error('Error creating app directories:', error);
   }
 }
+
+// Add a logger helper at the top of the file (after imports)
+const logger = {
+  log: (...args: unknown[]) => {
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.log(...args);
+    }
+  },
+  error: (...args: unknown[]) => {
+    // eslint-disable-next-line no-console
+    console.error(...args);
+  }
+};
 
 app.whenReady().then(() => {
   // Garante que os diretórios existam
@@ -70,7 +84,7 @@ app.whenReady().then(() => {
     // height: 1500,
     center: true,
     hasShadow: false,
-    movable: false,
+    movable: true,
     alwaysOnTop: false,
     focusable: true,
     // simpleFullscreen: true
@@ -169,16 +183,52 @@ app.whenReady().then(() => {
   persistentSession.setPermissionRequestHandler((webContents, permission, callback) => {
     const url = webContents.getURL();
     
-    // Allow all permissions for now - you can make this more restrictive if needed
+    logger.log(`Permission request: ${permission} for ${url}`);
+    
+    // Always allow screen capture and input permissions
     if (permission === 'media' || 
         permission === 'mediaKeySystem' || 
         permission === 'geolocation' || 
         permission === 'notifications' ||
-        permission === 'fullscreen') {
+        permission === 'fullscreen' ||
+        permission === 'display-capture' ||
+        permission === 'pointerLock') {
+      logger.log(`Granting permission: ${permission}`);
       callback(true);
     } else {
+      logger.log(`Denying permission: ${permission}`);
       callback(false);
     }
+  });
+
+  // Also set permissions for the main window's session
+  win.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    const url = webContents.getURL();
+    
+    logger.log(`Main window permission request: ${permission} for ${url}`);
+    
+    // Always allow screen capture and input permissions
+    if (permission === 'media' || 
+        permission === 'mediaKeySystem' || 
+        permission === 'geolocation' || 
+        permission === 'notifications' ||
+        permission === 'fullscreen' ||
+        permission === 'display-capture' ||
+        permission === 'pointerLock') {
+      logger.log(`Granting permission: ${permission}`);
+      callback(true);
+    } else {
+      logger.log(`Denying permission: ${permission}`);
+      callback(false);
+    }
+  });
+
+  // Enable screen sharing on this window
+  win.webContents.session.setPermissionCheckHandler((webContents, permission) => {
+    if (permission === 'media' || permission === 'pointerLock') {
+      return true;
+    }
+    return false;
   });
 
   win.maximize();
@@ -242,7 +292,7 @@ app.whenReady().then(() => {
       // Return the file path with app-file protocol
       return `app-file://${filePath}`;
     } catch (error) {
-      console.error('Error saving model file:', error);
+      logger.error('Error saving model file:', error);
       throw error;
     }
   });
@@ -314,7 +364,7 @@ app.whenReady().then(() => {
       
       return { success: true, videos };
     } catch (error) {
-      console.error('Error listing videos from disk:', error);
+      logger.error('Error listing videos from disk:', error);
       return { success: false, videos: [], error: error.message };
     }
   });
@@ -341,8 +391,6 @@ app.whenReady().then(() => {
   // Manipulador para ler arquivo como buffer
   ipcMain.handle('read-file-as-buffer', async (event, filePath) => {
     try {
-      // // console.log(`Lendo arquivo como buffer: ${filePath}`);
-      
       // Verificar se o arquivo existe
       if (!fs.existsSync(filePath)) {
         throw new Error(`Arquivo não encontrado: ${filePath}`);
@@ -354,8 +402,41 @@ app.whenReady().then(() => {
       // Retornar o buffer
       return buffer;
     } catch (error) {
-      console.error(`Erro ao ler arquivo ${filePath}:`, error);
+      logger.error(`Erro ao ler arquivo ${filePath}:`, error);
       throw error;
     }
+  });
+
+  // Add handler for screen capture
+  ipcMain.handle('get-screen-sources', async () => {
+    try {
+      logger.log("Electron: Fetching screen sources");
+      const sources = await desktopCapturer.getSources({
+        types: ['screen', 'window'],
+        thumbnailSize: { width: 150, height: 150 }, // Small thumbnails for debugging
+        fetchWindowIcons: true
+      });
+      
+      logger.log(`Electron: Found ${sources.length} screen sources:`, sources.map(s => s.name));
+      
+      // Return only the necessary data to the renderer process
+      return sources.map(source => ({
+        id: source.id,
+        name: source.name,
+        display_id: source.display_id,
+        thumbnail: source.thumbnail.toDataURL(),
+        appIcon: source.appIcon ? source.appIcon.toDataURL() : null
+      }));
+    } catch (error) {
+      logger.error('Electron: Error getting screen sources:', error);
+      throw error;
+    }
+  });
+
+  // Add handler for app reload
+  ipcMain.handle('reload-app', () => {
+    logger.log('Reloading application...');
+    app.relaunch();
+    app.exit(0);
   });
 });

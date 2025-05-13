@@ -49,6 +49,16 @@ function ensureDirectoriesExist() {
     console.error("Error creating app directories:", error);
   }
 }
+const logger = {
+  log: (...args) => {
+    if (process.env.NODE_ENV === "development") {
+      console.log(...args);
+    }
+  },
+  error: (...args) => {
+    console.error(...args);
+  }
+};
 electron.app.whenReady().then(() => {
   ensureDirectoriesExist();
   electron.protocol.registerFileProtocol("app-file", (request, callback) => {
@@ -83,7 +93,7 @@ electron.app.whenReady().then(() => {
     // height: 1500,
     center: true,
     hasShadow: false,
-    movable: false,
+    movable: true,
     alwaysOnTop: false,
     focusable: true,
     // simpleFullscreen: true
@@ -156,12 +166,32 @@ electron.app.whenReady().then(() => {
     });
   });
   persistentSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    webContents.getURL();
-    if (permission === "media" || permission === "mediaKeySystem" || permission === "geolocation" || permission === "notifications" || permission === "fullscreen") {
+    const url = webContents.getURL();
+    logger.log(`Permission request: ${permission} for ${url}`);
+    if (permission === "media" || permission === "mediaKeySystem" || permission === "geolocation" || permission === "notifications" || permission === "fullscreen" || permission === "display-capture" || permission === "pointerLock") {
+      logger.log(`Granting permission: ${permission}`);
       callback(true);
     } else {
+      logger.log(`Denying permission: ${permission}`);
       callback(false);
     }
+  });
+  win.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    const url = webContents.getURL();
+    logger.log(`Main window permission request: ${permission} for ${url}`);
+    if (permission === "media" || permission === "mediaKeySystem" || permission === "geolocation" || permission === "notifications" || permission === "fullscreen" || permission === "display-capture" || permission === "pointerLock") {
+      logger.log(`Granting permission: ${permission}`);
+      callback(true);
+    } else {
+      logger.log(`Denying permission: ${permission}`);
+      callback(false);
+    }
+  });
+  win.webContents.session.setPermissionCheckHandler((webContents, permission) => {
+    if (permission === "media" || permission === "pointerLock") {
+      return true;
+    }
+    return false;
   });
   win.maximize();
   win.show();
@@ -178,7 +208,7 @@ electron.app.whenReady().then(() => {
       fs.writeFileSync(filePath, Buffer.from(fileBuffer));
       return `app-file://${filePath}`;
     } catch (error) {
-      console.error("Error saving model file:", error);
+      logger.error("Error saving model file:", error);
       throw error;
     }
   });
@@ -231,7 +261,7 @@ electron.app.whenReady().then(() => {
       });
       return { success: true, videos };
     } catch (error) {
-      console.error("Error listing videos from disk:", error);
+      logger.error("Error listing videos from disk:", error);
       return { success: false, videos: [], error: error.message };
     }
   });
@@ -256,8 +286,35 @@ electron.app.whenReady().then(() => {
       const buffer = fs.readFileSync(filePath);
       return buffer;
     } catch (error) {
-      console.error(`Erro ao ler arquivo ${filePath}:`, error);
+      logger.error(`Erro ao ler arquivo ${filePath}:`, error);
       throw error;
     }
+  });
+  electron.ipcMain.handle("get-screen-sources", async () => {
+    try {
+      logger.log("Electron: Fetching screen sources");
+      const sources = await electron.desktopCapturer.getSources({
+        types: ["screen", "window"],
+        thumbnailSize: { width: 150, height: 150 },
+        // Small thumbnails for debugging
+        fetchWindowIcons: true
+      });
+      logger.log(`Electron: Found ${sources.length} screen sources:`, sources.map((s) => s.name));
+      return sources.map((source) => ({
+        id: source.id,
+        name: source.name,
+        display_id: source.display_id,
+        thumbnail: source.thumbnail.toDataURL(),
+        appIcon: source.appIcon ? source.appIcon.toDataURL() : null
+      }));
+    } catch (error) {
+      logger.error("Electron: Error getting screen sources:", error);
+      throw error;
+    }
+  });
+  electron.ipcMain.handle("reload-app", () => {
+    logger.log("Reloading application...");
+    electron.app.relaunch();
+    electron.app.exit(0);
   });
 });

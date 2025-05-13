@@ -11,6 +11,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { useAuthStore } from './store/useAuthStore';
 import AuthWrapper from './components/Game/AuthWrapper';
 import { Cloud } from 'lucide-react';
+import { InterviewAssistant } from './components';
 
 // Global sync state context
 export const SyncContext = React.createContext({
@@ -117,6 +118,9 @@ const AppContent: React.FC = () => {
           <PWAInstallPrompts />}
         <Analytics />
         <SyncingIndicator isSyncing={isSyncing} />
+        
+        {/* Add the Interview Assistant component */}
+        <InterviewAssistant />
       </div>
     </SyncContext.Provider>
   );

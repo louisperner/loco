@@ -1,7 +1,7 @@
 import { InventoryItem } from '../utils/inventoryUtils';
 import { ImageDataType, ModelDataType, VideoDataType } from '../components/Models/types';
 import * as THREE from 'three';
-import { ElectronAPI } from './electron-api';
+import { ElectronAPI } from './electron';
 
 // =====================================================
 // GLOBAL TYPE DECLARATIONS - MODULE AUGMENTATION
@@ -30,7 +30,7 @@ declare global {
   // Define Window interface once
   interface Window {
     // Electron API
-    electron?: ElectronAPI;
+    electron: ElectronAPI;
     
     // Global caches
     _modelFileCache?: Record<string, File>;

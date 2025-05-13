@@ -13,13 +13,32 @@ export interface OpenRouterResponse {
   }[];
 }
 
+// Define types for content in messages
+export type TextContent = {
+  type: "text";
+  text: string;
+};
+
+export type ImageContent = {
+  type: "image_url";
+  image_url: {
+    url: string;
+    detail?: string; // Add optional detail property that can be 'high', 'low', or 'auto'
+  };
+};
+
+// Combined content can be either a string (legacy) or an array of content items for multimodal
+export type MessageContent = string | (TextContent | ImageContent)[];
+
 export interface OpenRouterRequest {
   model: string;
   messages: {
     role: string;
-    content: string;
+    content: MessageContent;
   }[];
   stream?: boolean;
+  response_format?: { type: string };
+  temperature?: number;
 }
 
 export interface StreamCallbacks {
