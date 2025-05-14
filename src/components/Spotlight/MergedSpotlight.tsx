@@ -25,7 +25,7 @@ const MergedSpotlight: React.FC<MergedSpotlightProps> = ({ onSearch }) => {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedResultIndex, setSelectedResultIndex] = useState(0);
   const [isOpenRouterMode, setIsOpenRouterMode] = useState(false);
-  const [_unused, setShowCommandSuggestions] = useState(false);
+  const [showCommandSuggestions, setShowCommandSuggestions] = useState(false);
   
   // Refs
   const spotlightRef = useRef<HTMLDivElement>(null);
@@ -278,72 +278,77 @@ const MergedSpotlight: React.FC<MergedSpotlightProps> = ({ onSearch }) => {
 
   return (
     <>
-      {/* File input elements - kept outside of conditional rendering */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleFileInputChange}
-        multiple={false}
-      />
-      <input
-        ref={videoInputRef}
-        type="file"
-        accept="video/*"
-        className="hidden"
-        onChange={handleVideoInputChange}
-        multiple={false}
-      />
-      <input
-        ref={modelInputRef}
-        type="file"
-        accept=".glb,.gltf,.fbx,.obj"
-        className="hidden"
-        onChange={handleModelInputChange}
-        multiple={false}
-      />
-
-      {/* Spotlight UI (conditionally rendered) */}
       {isOpen && (
-        <div 
+        <div
           ref={spotlightRef}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-sm" 
-          onClick={() => setIsOpen(false)}
+          className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsOpen(false);
+              setSearchQuery('');
+            }
+          }}
           onKeyDown={handleKeydownInSpotlight}
         >
           <div 
-            className="w-[600px] max-h-[80vh] bg-white/10 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden flex flex-col"
+            className="relative w-screen h-screen lg:max-h-[500px] lg:max-w-[750px] rounded-md shadow-2xl flex flex-col 
+            overflow-hidden text-white font-minecraft pointer-events-auto shadow-black/50 opacity-90"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* OpenRouter Chat Mode */}
-            {isOpenRouterMode ? (
-              <OpenRouterChat 
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                setIsOpen={setIsOpen}
-                results={results}
-                setResults={setResults}
-                selectedResultIndex={selectedResultIndex}
-                setSelectedResultIndex={setSelectedResultIndex}
-                setShowCommandSuggestions={setShowCommandSuggestions}
-                commandHandler={handleCommand}
-                appCommands={appCommands}
-              />
-            ) : (
-              /* Regular MacOS Spotlight Mode */
-              <RegularSpotlight 
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                results={results}
-                selectedResultIndex={selectedResultIndex}
-                onSearch={onSearch}
-                handleSearchSubmit={handleSearchSubmit}
-              />
-            )}
+            {/* Container with border and background */}
+            <div className="flex-1 flex flex-col rounded-md overflow-hidden bg-[#2C2C2C] border-2 border-[#151515]">
+              {isOpenRouterMode ? (
+                /* OpenRouter Mode */
+                <OpenRouterChat
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  setIsOpen={setIsOpen}
+                  results={results}
+                  setResults={setResults}
+                  selectedResultIndex={selectedResultIndex}
+                  setSelectedResultIndex={setSelectedResultIndex}
+                  setShowCommandSuggestions={setShowCommandSuggestions}
+                  commandHandler={handleCommand}
+                  appCommands={appCommands}
+                />
+              ) : (
+                /* Regular MacOS Spotlight Mode */
+                <RegularSpotlight
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  results={results}
+                  selectedResultIndex={selectedResultIndex}
+                  onSearch={onSearch}
+                  handleSearchSubmit={handleSearchSubmit}
+                />
+              )}
+            </div>
           </div>
         </div>
       )}
+
+      {/* Hidden file inputs for file uploads */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        accept="image/*"
+        onChange={handleFileInputChange}
+      />
+      <input
+        type="file"
+        ref={videoInputRef}
+        style={{ display: 'none' }}
+        accept="video/*"
+        onChange={handleVideoInputChange}
+      />
+      <input
+        type="file"
+        ref={modelInputRef}
+        style={{ display: 'none' }}
+        accept=".glb,.gltf,.fbx,.obj"
+        onChange={handleModelInputChange}
+      />
     </>
   );
 };

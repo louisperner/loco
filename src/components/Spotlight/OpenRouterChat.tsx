@@ -5,6 +5,7 @@ import { openRouterApi } from '@/lib/openrouter';
 import { OPENROUTER_MODELS, isStreamingSupported } from '@/lib/openrouter-constants';
 import { ChatMessage, OpenRouterMessage, SearchResult } from './types';
 import { parseAIResponseForCommands } from './utils';
+import { cn } from '@/lib/utils';
 
 interface OpenRouterChatProps {
   searchQuery: string;
@@ -22,8 +23,11 @@ interface OpenRouterChatProps {
 const OpenRouterChat: React.FC<OpenRouterChatProps> = ({
   searchQuery,
   setSearchQuery,
+  setIsOpen,
   results,
+  setResults,
   selectedResultIndex,
+  setSelectedResultIndex,
   setShowCommandSuggestions,
   commandHandler,
   appCommands
@@ -83,21 +87,19 @@ const OpenRouterChat: React.FC<OpenRouterChatProps> = ({
   }, [showModelSelector]);
   
   // Toggle auto-select mode
-  const toggleAutoSelect = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsAutoSelect(!isAutoSelect);
+  const toggleAutoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsAutoSelect(e.target.checked);
     // Auto-select can't be on at the same time as thinking
-    if (!isAutoSelect) {
+    if (e.target.checked) {
       setIsThinking(false);
     }
   };
   
   // Toggle thinking mode
-  const toggleThinking = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsThinking(!isThinking);
+  const toggleThinking = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsThinking(e.target.checked);
     // Thinking can't be on at the same time as auto-select
-    if (!isThinking) {
+    if (e.target.checked) {
       setIsAutoSelect(false);
     }
   };
@@ -367,222 +369,284 @@ const OpenRouterChat: React.FC<OpenRouterChatProps> = ({
   
   return (
     <>
-      {/* Chat Messages */}
-      <div 
-        ref={chatMessagesRef}
-        className="overflow-y-auto flex-1 max-h-[calc(80vh-100px)] p-4 space-y-4"
-      >
-        {chatMessages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full py-10 text-white/50">
-            <Brain className="w-12 h-12 mb-4 opacity-50" />
-            <p className="text-xs mt-2">Use / commands to control the app</p>
+      {/* Header with search bar */}
+      <div className='p-3 bg-[#2C2C2C] border-b-4 border-[#222222]'>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex-1 relative">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!isLoading && searchQuery.trim()) {
+                handleOpenRouterQuery();
+              }
+            }}>
+              <input
+                ref={inputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  // Check for commands as user types
+                  if (e.target.value.startsWith('/')) {
+                    const query = e.target.value.slice(1).toLowerCase().trim();
+                    if (query) {
+                      const matches = appCommands.filter(cmd => 
+                        cmd.id.toLowerCase().includes(query) || 
+                        cmd.title.toLowerCase().includes(query)
+                      );
+                      if (matches.length > 0) {
+                        setResults(matches);
+                        setShowCommandSuggestions(true);
+                        setSelectedResultIndex(0); // Reset selection
+                      } else {
+                        setShowCommandSuggestions(false);
+                      }
+                    } else {
+                      // Show all commands when just typing '/'
+                      setResults(appCommands);
+                      setShowCommandSuggestions(true);
+                      setSelectedResultIndex(0); // Reset selection
+                    }
+                  } else {
+                    setShowCommandSuggestions(false);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  
+                  // Navigate command suggestions with arrow keys
+                  if (results.length > 0 && ['ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) {
+                    e.preventDefault();
+                    
+                    if (e.key === 'ArrowDown') {
+                      setSelectedResultIndex((prev: number) => 
+                        prev < results.length - 1 ? prev + 1 : 0
+                      );
+                    } else if (e.key === 'ArrowUp') {
+                      setSelectedResultIndex((prev: number) => 
+                        prev > 0 ? prev - 1 : results.length - 1
+                      );
+                    } else if (e.key === 'Enter' && results.length > 0) {
+                      const selectedCommand = results[selectedResultIndex];
+                      if (selectedCommand) {
+                        // Add user message to chat
+                        setChatMessages(prev => [...prev, { 
+                          role: 'user', 
+                          content: searchQuery,
+                          timestamp: Date.now()
+                        }]);
+                        
+                        // Execute the command and add system message
+                        selectedCommand.action();
+                        setChatMessages(prev => [...prev, { 
+                          role: 'system', 
+                          content: `Executed command: ${selectedCommand.title}`,
+                          timestamp: Date.now()
+                        }]);
+                        
+                        setSearchQuery('');
+                        setShowCommandSuggestions(false);
+                      }
+                    }
+                  }
+                }}
+                disabled={isLoading || isStreaming}
+                placeholder={isLoading ? "Processing..." : "Type a message or '/command'..."}
+                className="w-full bg-[#222222] text-white/90 placeholder-white/40 border-2 border-[#151515] px-3 py-2 text-sm focus:outline-none focus:border-[#666666] rounded-md"
+              />
+            </form>
+          </div>
+          
+          {/* Model selector button */}
+          <div 
+            className="p-1 bg-[#222222] border-2 border-[#151515] rounded-md flex items-center cursor-pointer hover:border-[#666666] relative"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowModelSelector(!showModelSelector);
+            }}
+          >
+            <Brain className="h-5 w-5 text-white/70" />
+            <ChevronDown className="h-4 w-4 text-white/70 ml-1" />
             
-            {history.length > 0 && (
-              <div className="mt-6 w-full max-w-md">
-                <div className="space-y-1">
-                  {history.slice(0, 5).map((item, index) => (
-                    <div 
-                      key={index}
-                      className="px-4 py-2 cursor-pointer hover:bg-white/10 text-sm text-white/80"
-                      onClick={() => {
-                        setChatMessages([
-                          { role: 'user', content: item.query, timestamp: item.timestamp },
-                          { role: 'assistant', content: item.response, timestamp: item.timestamp, model: item.model }
-                        ]);
-                      }}
-                    >
-                      <div className="flex items-center">
-                        <History className="w-4 h-4 mr-2 opacity-50" />
-                        <span className="truncate">{item.query}</span>
-                      </div>
+            {/* Model dropdown */}
+            {showModelSelector && (
+              <div 
+                className="absolute top-full right-0 mt-1 w-[280px] bg-[#222222] border-2 border-[#151515] rounded-md shadow-xl z-50 max-h-[300px] overflow-y-auto
+                  [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
+                  [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {OPENROUTER_MODELS.map((model) => (
+                  <div
+                    key={model.id}
+                    className={cn(
+                      'flex items-center justify-between p-2 hover:bg-[#333333] cursor-pointer',
+                      defaultModel === model.id ? 'bg-[#3F3F3F]' : ''
+                    )}
+                    onClick={() => handleModelChange(model.id)}
+                  >
+                    <div className="flex items-center">
+                      <span className="text-sm text-white/90">{model.name}</span>
                     </div>
-                  ))}
-                </div>
+                    {defaultModel === model.id && (
+                      <Check className="h-4 w-4 text-[#42ca75]" />
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
-        ) : (
-          <>
-            {chatMessages.map((message, index) => (
-              <div 
-                key={index} 
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          
+          {/* Clear chat button */}
+          <button
+            className="p-1 bg-[#222222] border-2 border-[#151515] rounded-md flex items-center hover:border-[#666666]"
+            onClick={clearChat}
+            title="Clear chat history"
+          >
+            <Trash2 className="h-5 w-5 text-white/70" />
+          </button>
+          
+          {/* Chat history button */}
+          <button
+            className="p-1 bg-[#222222] border-2 border-[#151515] rounded-md flex items-center hover:border-[#666666]"
+            onClick={() => null} // Toggle history view (placeholder)
+            title="View history"
+          >
+            <History className="h-5 w-5 text-white/70" />
+          </button>
+        </div>
+        
+        {/* Command suggestions */}
+        {results.length > 0 && (
+          <div className='flex flex-wrap gap-1 -mb-3 relative z-10'>
+            {results.slice(0, 5).map((cmd, index) => (
+              <button
+                key={cmd.id}
+                onClick={() => {
+                  // Execute command
+                  cmd.action();
+                  // Add to chat history
+                  setChatMessages(prev => [...prev, {
+                    role: 'user',
+                    content: `/${cmd.id}`,
+                    timestamp: Date.now()
+                  }]);
+                  setChatMessages(prev => [...prev, {
+                    role: 'system',
+                    content: `Executed command: ${cmd.title}`,
+                    timestamp: Date.now()
+                  }]);
+                  // Clear search and suggestions
+                  setSearchQuery('');
+                  setShowCommandSuggestions(false);
+                }}
+                className={cn(
+                  'px-4 py-1.5 text-sm transition-colors duration-100 border-t-2 border-x-2 border-b-0 flex items-center gap-1 rounded-t-md',
+                  selectedResultIndex === index 
+                    ? 'bg-[#3F3F3F] text-white/90 border-[#555555]' 
+                    : 'bg-[#2A2A2A] text-white/60 border-[#151515] hover:bg-[#333333]'
+                )}
+                title={cmd.title}
               >
-                <div 
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    message.role === 'user' 
-                      ? 'bg-emerald-500/30 text-white' 
-                      : message.role === 'system'
-                        ? 'bg-yellow-500/20 text-white/90'
-                        : 'bg-white/20 text-white'
-                  }`}
-                >
-                  <div className="text-sm whitespace-pre-wrap">
-                    {message.content}
-                    {message.role === 'assistant' && index === chatMessages.length - 1 && isStreaming && (
-                      <span className="animate-pulse">▌</span>
-                    )}
-                  </div>
-                  
-                  {message.role === 'assistant' && message.model && (
-                    <div className="text-xs text-white/40 mt-1">
-                      {message.model.split('/')[1] || message.model}
-                    </div>
-                  )}
-                </div>
-              </div>
+                <span className="hidden sm:inline">{cmd.id}</span>
+              </button>
             ))}
-            
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="max-w-[80%] rounded-lg px-4 py-2 bg-white/20 text-white">
-                  <div className="flex items-center space-x-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Thinking...</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
+          </div>
         )}
       </div>
       
-      {/* Command suggestions */}
-      {results.length > 0 && (
-        <div className="max-h-60 overflow-y-auto border-t border-white/10">
-          <div className="p-2 text-xs text-white/60">Command suggestions</div>
-          {results.map((result, index) => (
-            <div
-              key={result.id}
-              className={`flex items-center px-4 py-2 cursor-pointer ${
-                selectedResultIndex === index ? 'bg-white/20' : 'hover:bg-white/10'
-              }`}
-              onClick={() => {
-                setSearchQuery(`/${result.id}`);
-                setShowCommandSuggestions(false);
-                handleOpenRouterQuery();
-              }}
+      {/* Chat messages */}
+      <div 
+        ref={chatMessagesRef} 
+        className="bg-[#2C2C2C] flex-1 flex flex-col p-2 overflow-y-auto
+          [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
+          [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]"
+      >
+        {/* Welcome message if no messages */}
+        {chatMessages.length === 0 && !isLoading && !isStreaming && (
+          <div className="flex flex-col items-center justify-center py-10 text-white/50 bg-[#222222] min-h-[200px] h-full rounded-md">
+            <Brain className="w-12 h-12 mb-4 opacity-50" />
+            <p>Ask me anything or use commands</p>
+            <p className="text-xs mt-2">Type <kbd className="bg-[#151515] rounded px-1 mx-1">/</kbd> to see available commands</p>
+            {!apiKey && (
+              <p className="text-xs mt-4 text-red-400">⚠️ OpenRouter API key not set. Please configure in settings.</p>
+            )}
+          </div>
+        )}
+        
+        {/* Chat message history */}
+        <div className="flex flex-col gap-3">
+          {chatMessages.map((message, index) => (
+            <div 
+              key={index} 
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 mr-3">
-                {result.icon}
-              </div>
-              <div>
-                <span className="text-white">{result.title}</span>
-                <div className="text-xs text-white/50">/{result.id}</div>
+              <div 
+                className={`rounded-md max-w-[80%] overflow-hidden border-2 ${
+                  message.role === 'user'
+                    ? 'bg-[#42ca75]/20 border-[#42ca75]/30 text-white'
+                    : message.role === 'system'
+                      ? 'bg-[#bb2222]/20 border-[#bb2222]/30 text-white'
+                      : 'bg-[#222222] border-[#151515] text-white/90'
+                }`}
+              >
+                <div className="p-3 text-sm">
+                  {message.content}
+                </div>
               </div>
             </div>
           ))}
-        </div>
-      )}
-      
-      {/* Chat Input */}
-      <div className="border-t border-white/10 p-3">
-        <div className="flex items-center relative">
-          <button
-            className="absolute left-3 text-white/50 hover:text-white"
-            onClick={clearChat}
-            title="Clear chat"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
           
-          <input
-            ref={inputRef}
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Message OpenRouter or type / for commands..."
-            className="w-full px-12 py-3 bg-white/5 rounded-lg text-white outline-none"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter' && !isLoading) {
-                e.preventDefault();
-                handleOpenRouterQuery();
-              }
-            }}
-            disabled={isLoading}
-          />
-          
-          <button
-            className="absolute right-3 text-white/50 hover:text-white disabled:opacity-50"
-            onClick={handleOpenRouterQuery}
-            disabled={isLoading || !searchQuery.trim()}
-          >
-            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-          </button>
+          {/* Current response stream */}
+          {(isLoading || shownResponse || isStreaming) && (
+            <div className="flex justify-start">
+              <div className="rounded-md max-w-[80%] overflow-hidden bg-[#222222] border-2 border-[#151515]">
+                <div className="p-3 text-sm text-white/90">
+                  {isLoading && !shownResponse && !isStreaming ? (
+                    <div className="flex items-center">
+                      <Loader2 className="h-5 w-5 text-white/50 animate-spin mr-2" />
+                      <span>Thinking...</span>
+                    </div>
+                  ) : (
+                    <>
+                      {shownResponse || ''}
+                      {isStreaming && <span className="inline-block w-2 h-4 bg-white/50 ml-1 animate-pulse"></span>}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       
-      {/* Model selector button */}
-      <div className="p-2 text-xs text-white/40 border-t border-white/10 flex justify-between items-center">
-        <div>
-          Press <kbd className="bg-white/20 rounded px-1">Esc</kbd> to close
-        </div>
-        <div className="flex items-center gap-2 relative">
-          <div className="relative">
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowModelSelector(!showModelSelector);
-              }}
-              className="flex items-center gap-1 px-2 py-1 rounded hover:bg-white/10 text-sm text-white/80"
-            >
-              <span className="truncate max-w-24">
-                {defaultModel.includes('/') 
-                  ? defaultModel.split('/')[1].replace(/-instruct$/, '')
-                  : defaultModel}
-              </span>
-              <ChevronDown className="w-3 h-3 text-white/60" />
-            </button>
-            
-            {showModelSelector && (
-              <div className="absolute bottom-full right-0 mb-1 bg-[#121212] border border-white/10 rounded-lg shadow-xl w-72 max-h-80 overflow-y-auto z-10">
-                <div className="py-2 border-b border-white/10">
-                  <div 
-                    className="flex items-center justify-between px-3 py-2 hover:bg-white/5 cursor-pointer"
-                    onClick={toggleAutoSelect}
-                  >
-                    <span className="text-sm text-white/80">Auto-select</span>
-                    <div className={`w-5 h-5 rounded-full ${isAutoSelect ? 'bg-yellow-400' : 'bg-white/10'}`}></div>
-                  </div>
-                  <div 
-                    className="flex items-center justify-between px-3 py-2 hover:bg-white/5 cursor-pointer"
-                    onClick={toggleThinking}
-                  >
-                    <span className="text-sm text-white/80">Thinking</span>
-                    <div className={`w-5 h-5 rounded-full ${isThinking ? 'bg-yellow-400' : 'bg-white/10'}`}></div>
-                  </div>
-                </div>
-                <div className="py-1">
-                  {OPENROUTER_MODELS.map(model => {
-                    // Add MAX tag for certain models
-                    const hasMaxTag = ['anthropic/claude-3-opus', 'meta-llama/llama-3-70b-instruct', 'google/gemini-1.5-pro'].includes(model.id);
-                    const displayName = model.name;
-                    
-                    return (
-                      <button
-                        key={model.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleModelChange(model.id);
-                        }}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-white/5 flex items-center justify-between ${model.id === defaultModel ? 'text-yellow-400' : 'text-white/80'}`}
-                      >
-                        <div className="flex items-center">
-                          <span>{displayName}</span>
-                          {hasMaxTag && (
-                            <span className="ml-2 text-xs px-1 rounded bg-white/10 text-white/70">MAX</span>
-                          )}
-                        </div>
-                        {model.id === defaultModel && (
-                          <Check className="w-4 h-4 text-yellow-400" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+      {/* Footer with keyboard shortcuts and modes */}
+      <div className="p-2 text-xs text-white/40 border-t-2 border-[#151515] bg-[#222222] flex justify-between items-center">
+        <div className="flex space-x-3">
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="auto-select"
+              checked={isAutoSelect}
+              onChange={toggleAutoSelect}
+              className="mr-1 h-3 w-3"
+            />
+            <label htmlFor="auto-select">Auto-select</label>
           </div>
+          
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="thinking"
+              checked={isThinking}
+              onChange={toggleThinking}
+              className="mr-1 h-3 w-3"
+            />
+            <label htmlFor="thinking">Thinking mode</label>
+          </div>
+        </div>
+        
+        <div>
+          Press <kbd className="bg-[#151515] rounded px-1">F</kbd> for commands
         </div>
       </div>
     </>
