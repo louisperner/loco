@@ -74,9 +74,36 @@ export const captureScreen = async (): Promise<string> => {
         return captureScreenWithBrowserAPI();
       }
 
-      // Find the "Entire screen" source or use the first available source
-      const entireScreen = sources.find(source => source.name === 'Entire screen');
-      const screenSource = entireScreen || sources[0];
+      // Find the "Entire screen" source first
+      // Try different possible names that could represent the entire screen
+      const entireScreen = sources.find(
+        source => source.name.toLowerCase() === 'entire screen' || 
+                  source.name.toLowerCase() === 'all screens' || 
+                  source.name.toLowerCase() === 'desktop' || 
+                  source.name.toLowerCase().includes('entire') ||
+                  source.name.toLowerCase().includes('screen') && source.name.toLowerCase().includes('all')
+      );
+      
+      // If no specific "entire screen" option, try to find the largest screen source
+      // This is often the source that captures all screens
+      let screenSource = entireScreen;
+      
+      if (!screenSource && sources.length > 0) {
+        logger.log("No 'entire screen' source found, trying to find the best alternative");
+        // Log all sources for debugging
+        sources.forEach((src, i) => {
+          logger.log(`Screen source ${i}:`, src.name, `(ID: ${src.id})`);
+        });
+        
+        // Try to find the first source that has "screen" in its name
+        screenSource = sources.find(src => src.name.toLowerCase().includes('screen'));
+        
+        // If still not found, use the first source
+        if (!screenSource) {
+          logger.log("Falling back to first available source");
+          screenSource = sources[0];
+        }
+      }
       
       if (!screenSource) {
         logger.error("Could not find any usable screen source");
@@ -190,10 +217,13 @@ async function captureScreenWithBrowserAPI(): Promise<string> {
   logger.log("Attempting to capture screen with browser API");
   try {
     // Request access to screen capture using browser API
+    // Explicitly request the monitor and preferCurrentTab:false to encourage capturing all screens
     const stream = await navigator.mediaDevices.getDisplayMedia({ 
       video: { 
         cursor: "always",
-        displaySurface: "monitor"
+        displaySurface: "monitor",
+        // @ts-ignore - This is a non-standard option but helps in some browsers
+        preferCurrentTab: false
       } as MediaTrackConstraints 
     });
     
@@ -311,10 +341,28 @@ export const captureScreenRegion = async (fullScreenDataUrl: string, region: Scr
       img.onload = () => {
         logger.log("Region source image loaded, dimensions:", img.width, "x", img.height);
         
+        // Check if the region coordinates go beyond image bounds
+        const imageRatio = img.width / window.innerWidth;
+        logger.log("Image to screen ratio:", imageRatio);
+        
+        // Adjust region dimensions if they're outside the image bounds
+        let adjustedRegion = { ...region };
+        
+        // Ensure the region is within the image bounds
+        if (adjustedRegion.x + adjustedRegion.width > img.width) {
+          logger.log("Adjusting region width from", adjustedRegion.width, "to", img.width - adjustedRegion.x);
+          adjustedRegion.width = Math.max(10, img.width - adjustedRegion.x);
+        }
+        
+        if (adjustedRegion.y + adjustedRegion.height > img.height) {
+          logger.log("Adjusting region height from", adjustedRegion.height, "to", img.height - adjustedRegion.y);
+          adjustedRegion.height = Math.max(10, img.height - adjustedRegion.y);
+        }
+        
         // Create a canvas to crop the image
         const canvas = document.createElement('canvas');
-        canvas.width = region.width;
-        canvas.height = region.height;
+        canvas.width = adjustedRegion.width;
+        canvas.height = adjustedRegion.height;
         
         const ctx = canvas.getContext('2d');
         if (!ctx) {
@@ -323,17 +371,28 @@ export const captureScreenRegion = async (fullScreenDataUrl: string, region: Scr
           return;
         }
         
-        // Draw only the selected region to the canvas
-        ctx.drawImage(
-          img, 
-          region.x, region.y, region.width, region.height, // Source rectangle
-          0, 0, region.width, region.height // Destination rectangle
-        );
-        
-        // Convert the canvas to a data URL
-        const regionDataUrl = canvas.toDataURL('image/png');
-        logger.log("Region capture successful, data URL length:", regionDataUrl.length);
-        resolve(regionDataUrl);
+        // Safety check to ensure we don't try to draw outside the source image
+        try {
+          // Draw only the selected region to the canvas
+          ctx.drawImage(
+            img, 
+            Math.min(adjustedRegion.x, img.width - 1),
+            Math.min(adjustedRegion.y, img.height - 1),
+            Math.min(adjustedRegion.width, img.width),
+            Math.min(adjustedRegion.height, img.height),
+            // Destination rectangle
+            0, 0, adjustedRegion.width, adjustedRegion.height
+          );
+          
+          // Convert the canvas to a data URL
+          const regionDataUrl = canvas.toDataURL('image/png');
+          logger.log("Region capture successful, data URL length:", regionDataUrl.length);
+          resolve(regionDataUrl);
+        } catch (drawError) {
+          logger.error("Error drawing image region:", drawError, "Falling back to full image");
+          // If region drawing fails, just return the full image
+          resolve(fullScreenDataUrl);
+        }
       };
       
       img.onerror = (error) => {

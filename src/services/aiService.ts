@@ -32,12 +32,14 @@ export const getAvailableModels = (): { id: string; name: string }[] => {
  * @param problemText The text of the problem to solve
  * @param language The programming language to use for the solution
  * @param modelId Optional model ID to use (defaults to the one in store)
+ * @param isCode Whether this is a coding problem or a general question
  * @returns Promise that resolves to a solution
  */
 export const generateSolution = async (
   problemText: string,
   language: string = 'javascript',
-  modelId?: string
+  modelId?: string,
+  isCode: boolean = true
 ): Promise<Solution> => {
   try {
     logger.log('Generating solution with OpenRouter API');
@@ -81,7 +83,8 @@ export const generateSolution = async (
     logger.log(`Using model: ${selectedModel} (Vision capable: ${isVisionCapableModel ? 'YES' : 'NO'})`);
     
     // Prepare system message content - the instructions to the model
-    const systemContent = `You are an expert programming coach. Generate an optimized solution in ${language} for the coding problem ${isVisionCapableModel && screenshots.length > 0 ? 'shown in the screenshot and' : ''} described in the text. 
+    const systemContent = isCode 
+      ? `You are an expert programming coach. Generate an optimized solution in ${language} for the coding problem ${isVisionCapableModel && screenshots.length > 0 ? 'shown in the screenshot and' : ''} described in the text. 
     
 Your response must include:
 1. Clean, well-documented code solution
@@ -95,6 +98,19 @@ Format your response as JSON with these fields:
   "explanation": "Brief explanation of your approach",
   "timeComplexity": "O(n)",
   "spaceComplexity": "O(n)"
+}`
+      : `You are a helpful expert assistant. Answer the question ${isVisionCapableModel && screenshots.length > 0 ? 'shown in the screenshot and' : ''} described in the text.
+    
+Your response must include:
+1. A clear, concise answer
+2. A brief explanation of your reasoning
+
+Format your response as JSON with these fields:
+{
+  "code": "Your answer goes here. This is not actual code but the main answer to the question.",
+  "explanation": "Detailed explanation of your answer",
+  "timeComplexity": "N/A",
+  "spaceComplexity": "N/A"
 }`;
     
     // Prepare user message content based on model capabilities
