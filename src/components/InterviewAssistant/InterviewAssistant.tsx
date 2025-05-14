@@ -53,10 +53,6 @@ const InterviewAssistant: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [isEditingProblem, setIsEditingProblem] = useState(false);
   const [editedProblemText, setEditedProblemText] = useState("");
-  const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
-  const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
-  const [selectionRect, setSelectionRect] = useState<ScreenRegion | null>(null);
-  const [fullScreenshot, setFullScreenshot] = useState<string | null>(null);
   const [isCode, setIsCode] = useState(true);
   
   const dragRef = useRef<{ startX: number; startY: number }>({ startX: 0, startY: 0 });
@@ -102,10 +98,16 @@ const InterviewAssistant: React.FC = () => {
   // Reset selection state when exiting region selection mode
   useEffect(() => {
     if (!isSelectingRegion) {
-      setSelectionStart(null);
-      setSelectionEnd(null);
-      setSelectionRect(null);
-      setFullScreenshot(null);
+      // Just in case we need to clean up anything from the region selection
+      const overlay = document.getElementById('region-selection-overlay');
+      if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+      
+      const sizeInfo = document.getElementById('selection-size-info');
+      if (sizeInfo && sizeInfo.parentNode) {
+        sizeInfo.parentNode.removeChild(sizeInfo);
+      }
     }
   }, [isSelectingRegion]);
   
@@ -231,8 +233,13 @@ const InterviewAssistant: React.FC = () => {
   const startRegionSelection = async () => {
     try {
       setSelectingRegion(true);
-      // Hide the assistant UI during selection
+      
+      // Always hide the assistant UI during selection
+      const wasVisible = isVisible;
       setVisible(false);
+      
+      // Add a small delay to ensure the UI is hidden
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Show a cursor overlay that indicates region selection is active
       const overlay = document.createElement('div');
@@ -435,13 +442,13 @@ const InterviewAssistant: React.FC = () => {
       }
       
       // Show the UI again and exit selection mode
-      setVisible(true);
       setSelectingRegion(false);
+      setVisible(wasVisible);
     } catch (error) {
       logger.error("Error during region selection:", error);
       // Show the UI again in case of error
-      setVisible(true);
       setSelectingRegion(false);
+      setVisible(true);
     }
   };
   
@@ -449,6 +456,13 @@ const InterviewAssistant: React.FC = () => {
   const captureScreenshot = async () => {
     try {
       setCapturing(true);
+      
+      // Always hide the application UI before capturing the screen
+      const wasVisible = isVisible;
+      setVisible(false);
+      
+      // Add a small delay to ensure the UI is hidden
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Use our screen capture utility
       logger.log("Trying to capture screen from InterviewAssistant");
@@ -460,6 +474,9 @@ const InterviewAssistant: React.FC = () => {
         logger.error("Screen capture failed - got fallback image");
         setProblemText("Screen capture failed. Please make sure you have granted screen recording permissions to the application. On macOS, go to System Preferences > Security & Privacy > Privacy > Screen Recording and ensure this application is checked.");
         setCapturing(false);
+        
+        // Restore UI visibility
+        setVisible(wasVisible);
         return;
       }
       
@@ -489,6 +506,10 @@ const InterviewAssistant: React.FC = () => {
       setTimeout(() => {
         logger.log("Setting capturing to false");
         setCapturing(false);
+        
+        // Restore UI visibility
+        setVisible(wasVisible);
+        
         // Force another check to make sure screenshots are properly loaded
         setTimeout(refreshFromStore, 100);
       }, 200);
@@ -496,6 +517,9 @@ const InterviewAssistant: React.FC = () => {
       logger.error("Error capturing screenshot:", error);
       setProblemText("Screen capture failed. Please make sure you have granted screen recording permissions to the application. On macOS, go to System Preferences > Security & Privacy > Privacy > Screen Recording and ensure this application is checked.");
       setCapturing(false);
+      
+      // Restore UI visibility if there was an error
+      setVisible(true);
     }
   };
   
@@ -671,15 +695,20 @@ const InterviewAssistant: React.FC = () => {
   
   // Function to cancel region selection
   const cancelRegionSelection = () => {
+    const wasVisible = isVisible;
     setSelectingRegion(false);
-    setVisible(true);
+    
+    // Small delay before restoring visibility
+    setTimeout(() => {
+      setVisible(wasVisible);
+    }, 100);
   };
   
   // If not visible, render nothing
   if (!isVisible) return null;
   
   // If in region selection mode, render the selection overlay
-  if (isSelectingRegion && fullScreenshot) {
+  if (isSelectingRegion) {
     return (
       <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center">
         <div className="absolute top-4 left-0 right-0 flex justify-center">
@@ -692,27 +721,8 @@ const InterviewAssistant: React.FC = () => {
         <div 
           className="relative w-full h-full cursor-crosshair"
           style={{ maxWidth: '90vw', maxHeight: '80vh' }}
-          onMouseDown={handleDragStart}
-          onMouseMove={handleDragMove}
-          onMouseUp={handleDragEnd}
         >
-          <img 
-            src={fullScreenshot} 
-            alt="Screen Capture" 
-            className="max-w-full max-h-full object-contain border border-gray-700 shadow-lg"
-            draggable={false}
-          />
-          {selectionRect && (
-            <div 
-              className="absolute border-2 border-blue-500 bg-blue-400 bg-opacity-20 pointer-events-none"
-              style={{
-                left: `${selectionRect.x}px`,
-                top: `${selectionRect.y}px`,
-                width: `${selectionRect.width}px`,
-                height: `${selectionRect.height}px`
-              }}
-            />
-          )}
+          {/* The actual overlay is now created in the startRegionSelection function */}
         </div>
         
         <button 
