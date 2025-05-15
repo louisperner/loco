@@ -4,7 +4,6 @@ import Player from './components/Game/Game';
 import SplashScreen from './components/Game/SplashScreen';
 import PWAInstallPrompts from './components/Game/PWAInstallPrompts';
 import DrawingOverlay from './components/ui/DrawingOverlay';
-import MergedSpotlight from './components/Spotlight/MergedSpotlight';
 import DownloadBanner from './components/ui/DownloadBanner';
 // @ts-ignore
 import { Analytics } from '@vercel/analytics/react';
@@ -12,6 +11,8 @@ import { useAuthStore } from './store/useAuthStore';
 import AuthWrapper from './components/Game/AuthWrapper';
 import { Cloud } from 'lucide-react';
 import { InterviewAssistant } from './components';
+import AIChat from './components/AIChat';
+import { useAIChatStore } from './store/useAIChatStore';
 
 // Global sync state context
 export const SyncContext = React.createContext({
@@ -46,6 +47,7 @@ const AppContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { currentUser, authModalOpen } = useAuthStore();
   const [isSyncing, setSyncing] = useState<boolean>(false);
+  const { isVisible, toggleVisibility } = useAIChatStore();
 
   useEffect(() => {
     const initializeApp = async (): Promise<(() => void) | void> => {
@@ -95,13 +97,42 @@ const AppContent: React.FC = () => {
     
     window.addEventListener('beforeunload', handleBeforeUnload);
     
+    // Setup key binding for AI Chat
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle AI Chat on "/" key
+      if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+        // Check if the target is an input, textarea, or any editor-related element
+        const target = e.target as HTMLElement;
+        const isEditorActive = 
+          target.tagName === 'INPUT' || 
+          target.tagName === 'TEXTAREA' || 
+          target.closest('.editor-container') !== null ||
+          target.closest('.safe-live-editor') !== null ||
+          target.closest('[data-no-pointer-lock]') !== null ||
+          target.closest('.react-live') !== null ||
+          target.classList.contains('CodeMirror') ||
+          /editor|code-editor|monaco-editor/.test(target.className || '');
+          
+        // Don't open AI Chat if we're in a text editor
+        if (isEditorActive) {
+          return;
+        }
+        
+        e.preventDefault();
+        toggleVisibility();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
     return () => {
       if (unsubscribeSync) {
         unsubscribeSync();
       }
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentUser]);
+  }, [currentUser, toggleVisibility]);
 
   return (
     <SyncContext.Provider value={{ isSyncing, setSyncing }}>
@@ -110,7 +141,6 @@ const AppContent: React.FC = () => {
         {!currentUser && authModalOpen && <AuthWrapper />}
         <Player />
         <DrawingOverlay />
-        <MergedSpotlight />
         <DownloadBanner />
         {typeof window !== 'undefined' && 
           !window.navigator.userAgent.toLowerCase().includes('electron') && 
@@ -118,6 +148,9 @@ const AppContent: React.FC = () => {
           <PWAInstallPrompts />}
         <Analytics />
         <SyncingIndicator isSyncing={isSyncing} />
+        
+        {/* AI Chat Component */}
+        <AIChat isVisible={isVisible} toggleVisibility={toggleVisibility} />
         
         {/* Add the Interview Assistant component */}
         <InterviewAssistant />
