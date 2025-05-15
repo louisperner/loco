@@ -177,8 +177,7 @@ electron.app.whenReady().then(() => {
     }
   });
   win.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
-    const url = webContents.getURL();
-    logger.log(`Main window permission request: ${permission} for ${url}`);
+    webContents.getURL();
     if (permission === "media" || permission === "mediaKeySystem" || permission === "geolocation" || permission === "notifications" || permission === "fullscreen" || permission === "display-capture" || permission === "pointerLock") {
       logger.log(`Granting permission: ${permission}`);
       callback(true);

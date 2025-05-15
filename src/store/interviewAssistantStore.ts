@@ -51,7 +51,7 @@ interface InterviewAssistantState {
 export const useInterviewAssistantStore = create<InterviewAssistantState>((set) => ({
   screenshots: [],
   solution: null,
-  isVisible: true,
+  isVisible: false,
   isCapturing: false,
   isGenerating: false,
   isSelectingRegion: false,

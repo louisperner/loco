@@ -100,7 +100,7 @@ const AppContent: React.FC = () => {
     // Setup key binding for AI Chat
     const handleKeyDown = (e: KeyboardEvent) => {
       // Toggle AI Chat on "/" key
-      if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+      if (e.key === 'f' && !e.ctrlKey && !e.metaKey) {
         // Check if the target is an input, textarea, or any editor-related element
         const target = e.target as HTMLElement;
         const isEditorActive = 

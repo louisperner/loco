@@ -205,7 +205,7 @@ app.whenReady().then(() => {
   win.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
     const url = webContents.getURL();
     
-    logger.log(`Main window permission request: ${permission} for ${url}`);
+    // logger.log(`Main window permission request: ${permission} for ${url}`);
     
     // Always allow screen capture and input permissions
     if (permission === 'media' || 

@@ -114,7 +114,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     const savedPosition = loadPosition();
     
     if (savedPosition) {
-      console.log('Loaded saved position:', savedPosition);
+      // console.log('Loaded saved position:', savedPosition);
       initialPosition = [savedPosition.x, savedPosition.y, savedPosition.z];
     }
     

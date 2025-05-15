@@ -115,7 +115,7 @@ const InterviewAssistant: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Use Command+B to toggle visibility
-      if (e.metaKey && e.key === "b") {
+      if (e.key === "b") {
         e.preventDefault();
         setVisible(!isVisible);
       }

@@ -30,9 +30,9 @@ const ChatMessage: React.FC<MessageProps> = ({ content, role, timestamp, model }
     : displayModel;
 
   return (
-    <div className={`py-4 px-4 ${role === 'assistant' ? 'bg-[#1A1A1A]' : ''} rounded-md`}>
+    <div className={`py-4 px-4 ${role === 'assistant' ? 'bg-[#1A1A1A]' : ''} rounded-md border-2 border-[#151515]`}>
       <div className="flex items-start gap-3">
-        <div className={`mt-1 p-1.5 rounded-full ${role === 'assistant' ? 'bg-yellow-500' : 'bg-blue-500'}`}>
+        <div className={`mt-1 p-1.5 rounded-full ${role === 'assistant' ? 'bg-[#42ca75]' : 'bg-[#4A8CCA]'}`}>
           {role === 'assistant' ? (
             <Bot size={14} className="text-black" />
           ) : (
@@ -55,7 +55,7 @@ const ChatMessage: React.FC<MessageProps> = ({ content, role, timestamp, model }
         {role === 'assistant' && (
           <button 
             onClick={handleCopy}
-            className="p-1.5 text-white/40 hover:text-white/80 transition-colors"
+            className="p-1.5 text-white/40 hover:text-white/80 transition-colors hover:bg-[#222222] rounded"
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}
           </button>
