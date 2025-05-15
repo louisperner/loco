@@ -94,7 +94,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ className }) => {
   };
   
   return (
-    <div className={`relative ${className}`} ref={selectorRef}>
+    <div className={`relative inline-block ${className}`} ref={selectorRef}>
       <button 
         ref={buttonRef}
         onClick={() => setShowModelSelector(!showModelSelector)}
@@ -113,8 +113,8 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ className }) => {
       
       {showModelSelector && (
         <div 
-          className="fixed z-50 mt-2 bg-[#222222] rounded-xl shadow-xl 
-                     border border-[#333333] overflow-hidden"
+          className="fixed z-50 bg-[#222222] rounded-xl shadow-xl 
+                    border border-[#333333] overflow-hidden animate-in fade-in duration-200"
           style={{
             width: '280px',
             left: '50%',

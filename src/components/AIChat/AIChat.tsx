@@ -497,6 +497,9 @@ You can also just chat with the AI normally!
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
+      // Close command palette immediately
+      setShowCommandPalette(false);
+      
       const file = files[0];
       const objectUrl = URL.createObjectURL(file);
 
@@ -557,9 +560,6 @@ You can also just chat with the AI normally!
             });
         }
         
-        // Close the command palette
-        setShowCommandPalette(false);
-        
         // Add feedback message
         setCommandFeedback(`Added image ${file.name}`);
       };
@@ -580,6 +580,9 @@ You can also just chat with the AI normally!
   const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
+      // Close command palette immediately
+      setShowCommandPalette(false);
+      
       const file = files[0];
       const objectUrl = URL.createObjectURL(file);
       
@@ -613,9 +616,6 @@ You can also just chat with the AI normally!
         isInScene: true,
       });
       
-      // Close command palette
-      setShowCommandPalette(false);
-      
       // Add feedback
       setCommandFeedback(`Added video ${file.name}`);
       
@@ -628,6 +628,9 @@ You can also just chat with the AI normally!
   const handleModelSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
+      // Close command palette immediately
+      setShowCommandPalette(false);
+      
       const file = files[0];
       const objectUrl = URL.createObjectURL(file);
       
@@ -665,9 +668,6 @@ You can also just chat with the AI normally!
         scale: 1,
         isInScene: true,
       });
-      
-      // Close the command palette
-      setShowCommandPalette(false);
       
       // Add feedback
       setCommandFeedback(`Added 3D model ${file.name}`);
@@ -942,8 +942,46 @@ render(<Counter />);`;
           ref={containerRef}
           className="bg-[#1A1A1A] rounded-lg shadow-xl w-full max-w-xl flex flex-col border border-[#333333]"
         >
+
+
+          
           {/* Input area with model selector */}
           <div className="p-3 relative">
+            
+            
+            {/* Most recent message or feedback (if any) - hidden by default but can be expanded */}
+            {(messages.length > 0 || commandFeedback) && (
+              <div className="mt-2 mb-2 max-h-auto overflow-y-auto bg-[#222222] rounded border border-[#333333] p-2
+                [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
+                [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]"
+              >
+                {commandFeedback ? (
+                  <div className="text-sm text-teal-400">
+                    {commandFeedback}
+                  </div>
+                ) : messages.length > 0 && (
+                  <div className="flex items-start gap-2">
+                    <div className={`mt-0.5 p-1 rounded-full flex-shrink-0 ${messages[messages.length - 1].role === 'assistant' ? 'bg-[#42ca75]' : 'bg-[#4A8CCA]'}`}>
+                      {messages[messages.length - 1].role === 'assistant' ? (
+                        <Bot size={10} className="text-black" />
+                      ) : (
+                        <User size={10} className="text-white" />
+                      )}
+                    </div>
+                    <div className="text-sm text-white/80 flex-1">
+                      {formatMessagePreview(messages[messages.length - 1].content, 200)}
+                    </div>
+                  </div>
+                )}
+                {(isLoading || isStreaming) && (
+                  <div className="flex items-center gap-2 mt-2 text-white/60">
+                    <Loader2 size={12} className="animate-spin" />
+                    <span className="text-xs">AI is thinking...</span>
+                  </div>
+                )}
+              </div>
+            )}
+            
             <ChatInput
               onSendMessage={handleSendMessage}
               isLoading={isLoading}
@@ -998,38 +1036,7 @@ render(<Counter />);`;
               </div>
             </div>
             
-            {/* Most recent message or feedback (if any) - hidden by default but can be expanded */}
-            {(messages.length > 0 || commandFeedback) && (
-              <div className="mt-2 max-h-32 overflow-y-auto bg-[#222222] rounded border border-[#333333] p-2
-                [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
-                [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]"
-              >
-                {commandFeedback ? (
-                  <div className="text-sm text-teal-400">
-                    {commandFeedback}
-                  </div>
-                ) : messages.length > 0 && (
-                  <div className="flex items-start gap-2">
-                    <div className={`mt-0.5 p-1 rounded-full flex-shrink-0 ${messages[messages.length - 1].role === 'assistant' ? 'bg-[#42ca75]' : 'bg-[#4A8CCA]'}`}>
-                      {messages[messages.length - 1].role === 'assistant' ? (
-                        <Bot size={10} className="text-black" />
-                      ) : (
-                        <User size={10} className="text-white" />
-                      )}
-                    </div>
-                    <div className="text-sm text-white/80 flex-1">
-                      {formatMessagePreview(messages[messages.length - 1].content, 200)}
-                    </div>
-                  </div>
-                )}
-                {(isLoading || isStreaming) && (
-                  <div className="flex items-center gap-2 mt-2 text-white/60">
-                    <Loader2 size={12} className="animate-spin" />
-                    <span className="text-xs">AI is thinking...</span>
-                  </div>
-                )}
-              </div>
-            )}
+            
             
             {/* Hidden file inputs */}
             <input
@@ -1060,28 +1067,28 @@ render(<Counter />);`;
             {/* Command Palette */}
             {showCommandPalette && (
               <div className="absolute bottom-[calc(100%-0.5rem)] left-0 right-0 bg-[#1A1A1A] rounded-xl shadow-xl border border-[#333333] overflow-hidden z-10 animate-in fade-in duration-200">
-                <div className="p-3 text-sm text-white/70 border-b border-[#333333] bg-[#222222] flex items-center">
-                  <Slash size={16} className="mr-2 text-yellow-400" />
+                <div className="p-2 text-xs text-white/70 border-b border-[#333333] bg-[#222222] flex items-center">
+                  <Slash size={14} className="mr-1.5 text-yellow-400" />
                   <span>Commands</span>
                 </div>
-                <div className="grid grid-cols-3 gap-3 p-4">
+                <div className="grid grid-cols-5 gap-2 p-3">
                   {getFilteredCommands().map((option, index) => (
                     <button
                       key={option.id}
-                      className="flex flex-col items-center justify-center gap-2 p-4 hover:bg-[#333333] rounded-lg text-center transition-colors border border-[#333333] hover:border-[#444444]"
+                      className="flex flex-col items-center justify-center gap-1.5 p-2 hover:bg-[#333333] rounded-lg text-center transition-colors border border-[#333333] hover:border-[#444444] animate-in fade-in zoom-in-95 duration-300"
                       onClick={() => handleCommandSelect(option.command, option.action)}
                       style={{ animationDelay: `${index * 30}ms` }}
                     >
-                      <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-[#222222] text-yellow-400 border border-[#444444]">
-                        <option.icon size={22} />
+                      <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-[#222222] text-yellow-400 border border-[#444444]">
+                        <option.icon size={18} />
                       </div>
-                      <span className="text-sm text-white/80 font-medium">{option.label}</span>
+                      <span className="text-xs text-white/80 font-medium">{option.label}</span>
                     </button>
                   ))}
                 </div>
                 {getFilteredCommands().length === 0 && (
-                  <div className="p-4 text-center text-white/50">
-                    No commands match '{inputValue}'
+                  <div className="p-3 text-center text-white/50 text-sm">
+                    No commands match &apos;{inputValue}&apos;
                   </div>
                 )}
               </div>
@@ -1308,28 +1315,28 @@ render(<Counter />);`;
               {/* Command Palette in expanded view */}
               {showCommandPalette && (
                 <div className="absolute top-0 left-0 right-0 bg-[#2A2A2A] rounded-lg shadow-xl border border-[#333333] overflow-hidden z-10 animate-in fade-in duration-200">
-                  <div className="p-3 text-sm text-white/70 border-b border-[#333333] bg-[#333333] flex items-center">
-                    <Slash size={16} className="mr-2 text-yellow-400" />
+                  <div className="p-2 text-xs text-white/70 border-b border-[#333333] bg-[#333333] flex items-center">
+                    <Slash size={14} className="mr-1.5 text-yellow-400" />
                     <span>Commands</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-3 p-4">
+                  <div className="grid grid-cols-4 gap-2 p-3">
                     {getFilteredCommands().map((option, index) => (
                       <button
                         key={option.id}
-                        className="flex flex-col items-center justify-center gap-2 p-4 hover:bg-[#3A3A3A] rounded-lg text-center transition-colors border border-[#444444] hover:border-[#555555] animate-in fade-in zoom-in-95 duration-300"
+                        className="flex flex-col items-center justify-center gap-1.5 p-2 hover:bg-[#3A3A3A] rounded-lg text-center transition-colors border border-[#444444] hover:border-[#555555] animate-in fade-in zoom-in-95 duration-300"
                         onClick={() => handleCommandSelect(option.command, option.action)}
                         style={{ animationDelay: `${index * 30}ms` }}
                       >
-                        <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-[#333333] text-yellow-400 border border-[#555555]">
-                          <option.icon size={22} />
+                        <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-[#333333] text-yellow-400 border border-[#555555]">
+                          <option.icon size={18} />
                         </div>
-                        <span className="text-sm text-white/80 font-medium">{option.label}</span>
+                        <span className="text-xs text-white/80 font-medium">{option.label}</span>
                       </button>
                     ))}
                   </div>
                   {getFilteredCommands().length === 0 && (
-                    <div className="p-4 text-center text-white/50">
-                      No commands match '{inputValue}'
+                    <div className="p-3 text-center text-white/50 text-sm">
+                      No commands match &apos;{inputValue}&apos;
                     </div>
                   )}
                 </div>
