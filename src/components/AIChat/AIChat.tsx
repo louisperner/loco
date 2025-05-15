@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Trash2, Bot, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef, MutableRefObject } from 'react';
+import { X, Trash2, Bot, Loader2, Image as ImageIcon, Video, Code, Box, Maximize, Square, Circle, Slash } from 'lucide-react';
 import { useOpenRouterStore } from '../../store/useOpenRouterStore';
 import { openRouterApi } from '../../lib/openrouter';
 import { isStreamingSupported } from '../../lib/openrouter-constants';
@@ -7,6 +7,8 @@ import { useAIChatStore } from '../../store/useAIChatStore';
 import { useModelStore } from '../../store/useModelStore';
 import { useImageStore } from '../../store/useImageStore';
 import { useVideoStore } from '../../store/videoStore';
+import { useCodeStore } from '../../store/useCodeStore';
+import { useGameStore } from '../../store/useGameStore';
 import ModelSelector from './ModelSelector';
 import ChatInput from './ChatInput';
 import ChatMessage from './ChatMessage';
@@ -51,9 +53,14 @@ const AIChat: React.FC<AIChatProps> = ({ isVisible, toggleVisibility }) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamContent, setCurrentStreamContent] = useState('');
   const [commandFeedback, setCommandFeedback] = useState<string | null>(null);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [inputValue, setInputValue] = useState('');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const modelInputRef = useRef<HTMLInputElement>(null);
   
   // Store access
   const { 
@@ -72,9 +79,11 @@ const AIChat: React.FC<AIChatProps> = ({ isVisible, toggleVisibility }) => {
   } = useAIChatStore();
 
   // Store access for commands
-  const { addModel } = useModelStore();
-  const { addImage } = useImageStore();
+  const { addModel, updateModel } = useModelStore();
+  const { addImage, updateImage } = useImageStore();
   const { addVideo } = useVideoStore();
+  const { addCodeBlock } = useCodeStore();
+  const { setShowDrawingOverlay } = useGameStore();
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -454,6 +463,375 @@ You can also just chat with the AI normally!
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isVisible, toggleVisibility]);
   
+  // Command palette options
+  const commandOptions = [
+    { id: 'image', label: 'Image', icon: ImageIcon, command: 'add image', action: () => fileInputRef.current?.click() },
+    { id: 'video', label: 'Video', icon: Video, command: 'add video', action: () => videoInputRef.current?.click() },
+    { id: 'screenshot', label: 'Screenshot', icon: Maximize, command: 'add screenshot', action: () => handleScreenshot() },
+    { id: '3d-model', label: '3D Model', icon: Box, command: 'add model', action: () => modelInputRef.current?.click() },
+    { id: 'cube', label: 'Cube', icon: Square, command: 'create cube', action: () => handlePrimitiveSelect('cube') },
+    { id: 'sphere', label: 'Sphere', icon: Circle, command: 'create sphere', action: () => handlePrimitiveSelect('sphere') },
+    { id: 'plane', label: 'Plane', icon: Square, command: 'create plane', action: () => handlePrimitiveSelect('plane') },
+    { id: 'draw', label: 'Draw', icon: Slash, command: 'draw', action: () => setShowDrawingOverlay(true) },
+    { id: 'code', label: 'Code', icon: Code, command: 'add code', action: () => handleCodeAdd() },
+  ];
+  
+  // Handle file select for images
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const objectUrl = URL.createObjectURL(file);
+
+      // Create an image to get dimensions
+      const img = new Image();
+      img.onload = () => {
+        const aspectRatio = img.width / img.height;
+        const scale =
+          aspectRatio > 1
+            ? ([aspectRatio, 1, 1] as [number, number, number])
+            : ([1, 1 / aspectRatio, 1] as [number, number, number]);
+
+        // Get camera position if available
+        let position: [number, number, number] = [0, 1, 0];
+        let rotation: [number, number, number] = [0, 0, 0];
+        
+        if (window.mainCamera) {
+          const camera = window.mainCamera;
+          const direction = new THREE.Vector3(0, 0, -1);
+          direction.applyQuaternion(camera.quaternion);
+
+          const pos = new THREE.Vector3();
+          pos.copy(camera.position);
+          direction.multiplyScalar(3); // Place 3 units in front of camera
+          pos.add(direction);
+          position = [pos.x, pos.y, pos.z];
+          rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
+        }
+
+        // Add image to the store
+        const imageId = addImage({
+          id: `image-${Date.now()}`,
+          src: objectUrl,
+          fileName: file.name,
+          width: img.width,
+          height: img.height,
+          position,
+          rotation,
+          scale,
+          isInScene: true,
+        });
+
+        // Save the file to disk if in Electron environment
+        const electron = (window as any).electron;
+        if (electron?.saveImageFile) {
+          electron
+            .saveImageFile(file, file.name)
+            .then((savedPath: string) => {
+              // Update image with the new file path
+              updateImage(imageId, { src: savedPath });
+              
+              // Clean up the blob URL after saving
+              URL.revokeObjectURL(objectUrl);
+            })
+            .catch((error: Error) => {
+              console.error('Error saving image file:', error);
+              alert(`Error saving image file: ${error.message}`);
+            });
+        }
+        
+        // Close the command palette
+        setShowCommandPalette(false);
+        
+        // Add feedback message
+        setCommandFeedback(`Added image ${file.name}`);
+      };
+
+      img.onerror = () => {
+        console.error('Failed to load image');
+        setCommandFeedback('Failed to load image');
+      };
+
+      img.src = objectUrl;
+      
+      // Reset the input element
+      e.target.value = '';
+    }
+  };
+  
+  // Handle file select for videos
+  const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const objectUrl = URL.createObjectURL(file);
+      
+      // Get camera position if available
+      let position: [number, number, number] = [0, 1, 0];
+      let rotation: [number, number, number] = [0, 0, 0];
+      
+      if (window.mainCamera) {
+        const camera = window.mainCamera;
+        const direction = new THREE.Vector3(0, 0, -1);
+        direction.applyQuaternion(camera.quaternion);
+
+        const pos = new THREE.Vector3();
+        pos.copy(camera.position);
+        direction.multiplyScalar(3);
+        pos.add(direction);
+        position = [pos.x, pos.y, pos.z];
+        rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
+      }
+      
+      // Add video to store
+      addVideo({
+        src: objectUrl,
+        fileName: file.name,
+        position,
+        rotation,
+        scale: 3,
+        isPlaying: true,
+        volume: 0.5,
+        loop: true,
+        isInScene: true,
+      });
+      
+      // Close command palette
+      setShowCommandPalette(false);
+      
+      // Add feedback
+      setCommandFeedback(`Added video ${file.name}`);
+      
+      // Reset input
+      e.target.value = '';
+    }
+  };
+  
+  // Handle file select for 3D models
+  const handleModelSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const objectUrl = URL.createObjectURL(file);
+      
+      // Get camera position if available
+      let position: [number, number, number] = [0, 1, 0];
+      let rotation: [number, number, number] = [0, 0, 0];
+      
+      if (window.mainCamera) {
+        const camera = window.mainCamera;
+        const direction = new THREE.Vector3(0, 0, -1);
+        direction.applyQuaternion(camera.quaternion);
+
+        const pos = new THREE.Vector3();
+        pos.copy(camera.position);
+        direction.multiplyScalar(3);
+        pos.add(direction);
+        position = [pos.x, pos.y, pos.z];
+        rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
+      }
+      
+      // Store the file in the model cache
+      window._modelFileCache = window._modelFileCache || {};
+      window._modelFileCache[objectUrl] = file;
+      
+      // Store in the blob URL cache
+      window._blobUrlCache = window._blobUrlCache || {};
+      window._blobUrlCache[objectUrl] = true;
+      
+      // Add model to the store
+      addModel({
+        url: objectUrl,
+        fileName: file.name,
+        position,
+        rotation,
+        scale: 1,
+        isInScene: true,
+      });
+      
+      // Close the command palette
+      setShowCommandPalette(false);
+      
+      // Add feedback
+      setCommandFeedback(`Added 3D model ${file.name}`);
+      
+      // Reset input
+      e.target.value = '';
+    }
+  };
+  
+  // Handle primitive shapes (cube, sphere, plane)
+  const handlePrimitiveSelect = (type: 'cube' | 'sphere' | 'plane') => {
+    // Get camera position if available
+    let position: [number, number, number] = [0, 1, 0];
+    let rotation: [number, number, number] = [0, 0, 0];
+    
+    if (window.mainCamera) {
+      const camera = window.mainCamera;
+      const direction = new THREE.Vector3(0, 0, -1);
+      direction.applyQuaternion(camera.quaternion);
+
+      const pos = new THREE.Vector3();
+      pos.copy(camera.position);
+      direction.multiplyScalar(3);
+      pos.add(direction);
+      
+      // For cubes, snap to grid
+      if (type === 'cube') {
+        position = [
+          Math.round(pos.x),
+          Math.max(0, Math.round(pos.y)),
+          Math.round(pos.z)
+        ];
+      } else {
+        position = [pos.x, pos.y, pos.z];
+      }
+      
+      rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
+    }
+    
+    const id = `${type}-${Date.now()}`;
+    
+    // Create a simple SVG thumbnail
+    const svgString = `
+      <svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100" height="100" fill="#1A1A1A"/>
+        ${
+          type === 'cube'
+            ? '<rect x="20" y="20" width="60" height="60" fill="#4ade80" stroke="#2dd4bf" stroke-width="2"/>'
+            : type === 'sphere'
+              ? '<circle cx="50" cy="50" r="30" fill="#4ade80" stroke="#2dd4bf" stroke-width="2"/>'
+              : '<rect x="20" y="40" width="60" height="20" fill="#4ade80" stroke="#2dd4bf" stroke-width="2"/>'
+        }
+      </svg>
+    `;
+    
+    // Add primitive to the model store
+    addModel({
+      id,
+      url: `primitive://${type}`,
+      fileName: `${type}.${type === 'plane' ? 'glb' : 'gltf'}`,
+      position,
+      rotation,
+      scale: 1,
+      isInScene: true,
+      isPrimitive: true,
+      primitiveType: type,
+      color: '#4ade80',
+      thumbnailUrl: `data:image/svg+xml;base64,${btoa(svgString)}`,
+    });
+    
+    // Close command palette
+    setShowCommandPalette(false);
+    
+    // Add feedback
+    setCommandFeedback(`Created ${type} at position [${position.join(', ')}]`);
+  };
+  
+  // Handle code block creation
+  const handleCodeAdd = () => {
+    // Get camera position if available
+    let position: [number, number, number] = [0, 1, 0];
+    let rotation: [number, number, number] = [0, 0, 0];
+    
+    if (window.mainCamera) {
+      const camera = window.mainCamera;
+      const direction = new THREE.Vector3(0, 0, -1);
+      direction.applyQuaternion(camera.quaternion);
+
+      const pos = new THREE.Vector3();
+      pos.copy(camera.position);
+      direction.multiplyScalar(3);
+      pos.add(direction);
+      position = [pos.x, pos.y, pos.z];
+      rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
+    }
+    
+    // Create default code
+    const defaultCode = `// Write your React code here
+function Counter() {
+  const [count, setCount] = React.useState(0);
+  
+  return (
+    <div style={{ padding: '1rem', backgroundColor: '#fff', borderRadius: '0.5rem' }}>
+      <h3>Counter: {count}</h3>
+      <button 
+        onClick={() => setCount(count + 1)}
+        style={{ 
+          padding: '0.5rem 1rem', 
+          backgroundColor: '#4ade80', 
+          border: 'none', 
+          borderRadius: '0.25rem',
+          cursor: 'pointer'
+        }}
+      >
+        Click me!
+      </button>
+    </div>
+  );
+}
+
+render(<Counter />);`;
+    
+    // Add code block to the store
+    addCodeBlock({
+      code: defaultCode,
+      fileName: 'Code Block',
+      position,
+      rotation,
+      scale: 1,
+      isInScene: true,
+      noInline: true,
+      language: 'jsx',
+    });
+    
+    // Close command palette
+    setShowCommandPalette(false);
+    
+    // Add feedback
+    setCommandFeedback('Added code block');
+  };
+  
+  // Handle screenshot
+  const handleScreenshot = () => {
+    // Trigger screenshot if available
+    const takeScreenshot = (window as any).takeScreenshot;
+    if (takeScreenshot) {
+      takeScreenshot();
+      
+      // Close command palette
+      setShowCommandPalette(false);
+      
+      // Add feedback
+      setCommandFeedback('Screenshot taken');
+    } else {
+      setCommandFeedback('Screenshot functionality not available');
+    }
+  };
+  
+  // Handle command selection
+  const handleCommandSelect = (command: string, action: () => void) => {
+    action();
+    setInputValue('');
+  };
+  
+  // Handle slash key press to show command palette
+  const handleSlashKeyPress = () => {
+    setShowCommandPalette(true);
+  };
+  
+  // Close command palette when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showCommandPalette && containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowCommandPalette(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showCommandPalette]);
+  
   if (!isVisible) return null;
   
   return (
@@ -550,11 +928,63 @@ You can also just chat with the AI normally!
         </div>
         
         {/* Input */}
-        <div className="p-4 border-t-4 border-[#222222] bg-[#2C2C2C]">
+        <div className="p-4 border-t-4 border-[#222222] bg-[#2C2C2C] relative">
           <ChatInput
             onSendMessage={handleSendMessage}
             isLoading={isLoading}
+            onSlashKeyPress={handleSlashKeyPress}
+            value={inputValue}
+            onChange={setInputValue}
           />
+          
+          {/* Hidden file inputs */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileSelect}
+            multiple={false}
+          />
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={handleVideoSelect}
+            multiple={false}
+          />
+          <input
+            ref={modelInputRef}
+            type="file"
+            accept=".glb,.gltf,.fbx,.obj"
+            className="hidden"
+            onChange={handleModelSelect}
+            multiple={false}
+          />
+          
+          {/* Command Palette */}
+          {showCommandPalette && (
+            <div className="absolute bottom-[calc(100%-0.5rem)] left-4 right-4 bg-[#1A1A1A] rounded-lg shadow-xl border border-[#333333] max-h-[250px] overflow-y-auto z-10">
+              <div className="p-2 text-xs text-white/60 border-b border-[#333333]">
+                Commands
+              </div>
+              <div className="grid grid-cols-3 gap-1 p-2">
+                {commandOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    className="flex items-center gap-2 p-2 hover:bg-[#333333] rounded text-left text-sm text-white/80 transition-colors"
+                    onClick={() => handleCommandSelect(option.command, option.action)}
+                  >
+                    <div className="w-6 h-6 flex items-center justify-center rounded-md bg-[#292929] text-yellow-400">
+                      <option.icon size={14} />
+                    </div>
+                    <span>{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           
           {/* API key warning */}
           {!apiKey && (

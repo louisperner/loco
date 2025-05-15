@@ -5,20 +5,54 @@ interface ChatInputProps {
   onSendMessage: (message: string) => void;
   isLoading: boolean;
   className?: string;
+  onSlashKeyPress?: () => void;
+  value?: string;
+  onChange?: (value: string) => void;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading, className }) => {
-  const [message, setMessage] = useState('');
+const ChatInput: React.FC<ChatInputProps> = ({ 
+  onSendMessage, 
+  isLoading, 
+  className,
+  onSlashKeyPress,
+  value,
+  onChange
+}) => {
+  const [localMessage, setLocalMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Determine if component is controlled or uncontrolled
+  const isControlled = value !== undefined && onChange !== undefined;
+  const message = isControlled ? value : localMessage;
+  
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    if (isControlled) {
+      onChange(newValue);
+    } else {
+      setLocalMessage(newValue);
+    }
+  };
 
   const handleSendMessage = () => {
     if (message.trim() && !isLoading) {
       onSendMessage(message.trim());
-      setMessage('');
+      if (isControlled) {
+        onChange('');
+      } else {
+        setLocalMessage('');
+      }
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Handle slash key to show command palette
+    if (e.key === '/' && message === '' && onSlashKeyPress) {
+      e.preventDefault();
+      onSlashKeyPress();
+      return;
+    }
+    
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -41,9 +75,9 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading, classNa
       <textarea
         ref={textareaRef}
         value={message}
-        onChange={(e) => setMessage(e.target.value)}
+        onChange={handleChange}
         onKeyDown={handleKeyDown}
-        placeholder="Type a message or command (try 'help')..."
+        placeholder="Type / for commands or start typing a message..."
         className="w-full resize-none bg-[#222222] rounded-md px-3 py-2 text-sm text-white/90 focus:outline-none focus:border-[#666666] min-h-[40px] max-h-[150px] border-2 border-[#151515] placeholder-white/40"
         disabled={isLoading}
         rows={1}
