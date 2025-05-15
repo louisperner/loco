@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Search, Sparkles } from 'lucide-react';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -50,6 +50,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
     if (e.key === '/' && message === '' && onSlashKeyPress) {
       e.preventDefault();
       onSlashKeyPress();
+      
+      // Also update input value with the slash character
+      if (isControlled && onChange) {
+        onChange('/');
+      } else {
+        setLocalMessage('/');
+      }
       return;
     }
     
@@ -71,27 +78,40 @@ const ChatInput: React.FC<ChatInputProps> = ({
   }, [message]);
 
   return (
-    <div className={`relative flex items-end ${className}`}>
-      <textarea
-        ref={textareaRef}
-        value={message}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        placeholder="Type / for commands or start typing a message..."
-        className="w-full resize-none bg-[#222222] rounded-md px-3 py-2 text-sm text-white/90 focus:outline-none focus:border-[#666666] min-h-[40px] max-h-[150px] border-2 border-[#151515] placeholder-white/40"
-        disabled={isLoading}
-        rows={1}
-      />
+    <div className={`relative flex flex-col ${className}`}>
+      <div className="relative flex items-center w-full">
+        {/* Search icon */}
+        <div className="absolute left-3 flex items-center justify-center text-gray-400">
+          <Search size={16} className="text-white/30" />
+        </div>
+        
+        <textarea
+          ref={textareaRef}
+          value={message}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          placeholder="Plan, search, build anything"
+          className="w-full resize-none bg-[#1A1A1A] rounded-xl px-10 py-2.5 text-sm text-white/90 
+                    focus:outline-none focus:ring-1 focus:ring-[#444444] min-h-[42px] max-h-[150px] 
+                    border border-[#333333] placeholder-white/40 shadow-lg transition-all duration-150"
+          disabled={isLoading}
+          rows={1}
+        />
+        
+        {/* AI icon on the right */}
+        <div className="absolute right-3 flex items-center justify-center">
+          <Sparkles size={16} className="text-white/30" />
+        </div>
+      </div>
+      
+      {/* Send button is hidden but still functional for keyboard Enter */}
       <button
         onClick={handleSendMessage}
         disabled={!message.trim() || isLoading}
-        className={`ml-2 p-2 rounded-md ${
-          !message.trim() || isLoading
-            ? 'bg-[#333333] text-white/40 border-2 border-[#151515]'
-            : 'bg-[#42ca75] text-white hover:bg-[#666666] border-2 border-[#151515]'
-        } transition-colors`}
+        className="hidden"
+        aria-label="Send message"
       >
-        <Send size={16} />
+        <Send />
       </button>
     </div>
   );

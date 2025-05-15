@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, MutableRefObject } from 'react';
-import { X, Trash2, Bot, Loader2, Image as ImageIcon, Video, Code, Box, Maximize, Square, Circle, Slash } from 'lucide-react';
+import { X, Trash2, Bot, Loader2, Image as ImageIcon, Video, Code, Box, Maximize, Square, Circle, Slash, User, History, ChevronRight, ChevronLeft, Search, MessageSquare } from 'lucide-react';
 import { useOpenRouterStore } from '../../store/useOpenRouterStore';
 import { openRouterApi } from '../../lib/openrouter';
 import { isStreamingSupported } from '../../lib/openrouter-constants';
@@ -13,7 +13,7 @@ import ModelSelector from './ModelSelector';
 import ChatInput from './ChatInput';
 import ChatMessage from './ChatMessage';
 import TypingIndicator from './TypingIndicator';
-import { AIChatProps } from './types';
+import { AIChatProps, ChatMessage as ChatMessageType } from './types';
 import * as THREE from 'three';
 
 // Parse position from a string like "0,0,0" or "x:0 y:0 z:0"
@@ -55,6 +55,8 @@ const AIChat: React.FC<AIChatProps> = ({ isVisible, toggleVisibility }) => {
   const [commandFeedback, setCommandFeedback] = useState<string | null>(null);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+  const [viewMode, setViewMode] = useState<'minimal' | 'expanded'>('minimal');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -76,6 +78,8 @@ const AIChat: React.FC<AIChatProps> = ({ isVisible, toggleVisibility }) => {
     messages,
     addMessage,
     clearMessages,
+    selectedMessageId,
+    selectMessage,
   } = useAIChatStore();
 
   // Store access for commands
@@ -476,6 +480,19 @@ You can also just chat with the AI normally!
     { id: 'code', label: 'Code', icon: Code, command: 'add code', action: () => handleCodeAdd() },
   ];
   
+  // Filter command options based on input
+  const getFilteredCommands = () => {
+    if (!inputValue || inputValue === '/') {
+      return commandOptions;
+    }
+    
+    const searchTerm = inputValue.slice(1).toLowerCase();
+    return commandOptions.filter(option => 
+      option.label.toLowerCase().includes(searchTerm) || 
+      option.command.toLowerCase().includes(searchTerm)
+    );
+  };
+  
   // Handle file select for images
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -811,14 +828,28 @@ render(<Counter />);`;
   
   // Handle command selection
   const handleCommandSelect = (command: string, action: () => void) => {
+    // Execute the action
     action();
+    
+    // Clear input and close command palette
     setInputValue('');
+    setShowCommandPalette(false);
   };
   
   // Handle slash key press to show command palette
   const handleSlashKeyPress = () => {
     setShowCommandPalette(true);
+    if (!inputValue.startsWith('/')) {
+      setInputValue('/');
+    }
   };
+  
+  // Watch for input changes to hide command palette when / is removed
+  useEffect(() => {
+    if (!inputValue.startsWith('/') && showCommandPalette) {
+      setShowCommandPalette(false);
+    }
+  }, [inputValue, showCommandPalette]);
   
   // Close command palette when clicking outside
   useEffect(() => {
@@ -832,13 +863,248 @@ render(<Counter />);`;
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showCommandPalette]);
   
+  // Toggle expanded/minimal view
+  const toggleViewMode = () => {
+    setViewMode(viewMode === 'minimal' ? 'expanded' : 'minimal');
+    if (viewMode === 'minimal') {
+      // Reset selected message when expanding
+      selectMessage(null);
+    }
+  };
+
+  // Get selected message or the most recent one
+  const getSelectedMessage = () => {
+    if (!selectedMessageId) {
+      return messages.length > 0 ? messages[messages.length - 1] : null;
+    }
+    return messages.find(msg => msg.id === selectedMessageId) || null;
+  };
+  
+  // Group messages by conversation context
+  const groupMessagesByContext = () => {
+    const groups: { date: string; messages: ChatMessageType[] }[] = [];
+    
+    let currentDate = '';
+    let currentGroup: ChatMessageType[] = [];
+    
+    messages.forEach(message => {
+      const messageDate = new Date(message.timestamp).toLocaleDateString();
+      
+      if (messageDate !== currentDate) {
+        if (currentGroup.length > 0) {
+          groups.push({ date: currentDate, messages: currentGroup });
+        }
+        currentDate = messageDate;
+        currentGroup = [message];
+      } else {
+        currentGroup.push(message);
+      }
+    });
+    
+    if (currentGroup.length > 0) {
+      groups.push({ date: currentDate, messages: currentGroup });
+    }
+    
+    return groups;
+  };
+  
+  // Format message preview (truncate long messages)
+  const formatMessagePreview = (content: string, maxLength = 60) => {
+    if (content.length <= maxLength) return content;
+    return content.substring(0, maxLength) + '...';
+  };
+  
+  // Toggle history sidebar
+  const toggleHistory = () => {
+    if (viewMode === 'minimal') {
+      // If in minimal mode, switch to expanded first
+      setViewMode('expanded');
+    }
+    setShowHistory(!showHistory);
+  };
+
+  // Handle message selection
+  const handleSelectMessage = (id: string) => {
+    selectMessage(id);
+    if (viewMode === 'minimal') {
+      // If in minimal mode, switch to expanded
+      setViewMode('expanded');
+    }
+  };
+  
   if (!isVisible) return null;
   
+  // Render minimal spotlight-style interface
+  if (viewMode === 'minimal') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20">
+        <div 
+          ref={containerRef}
+          className="bg-[#1A1A1A] rounded-lg shadow-xl w-full max-w-xl flex flex-col border border-[#333333]"
+        >
+          {/* Input area with model selector */}
+          <div className="p-3 relative">
+            <ChatInput
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading}
+              onSlashKeyPress={handleSlashKeyPress}
+              value={inputValue}
+              onChange={setInputValue}
+            />
+            
+            {/* Model selector below input */}
+            <div className="flex items-center mt-2 px-2">
+              <div className="flex-1 flex items-center space-x-1 text-xs text-white/50">
+                <span className="opacity-70">Agent</span>
+                <span className="bg-[#333333] text-xs px-1 rounded text-white/50">AI</span>
+                <span className="mx-1">•</span>
+                <ModelSelector className="inline-block text-xs" />
+              </div>
+              
+              {/* Buttons aligned to the right */}
+              <div className="flex items-center gap-1">
+                {messages.length > 0 && (
+                  <>
+                    <button
+                      onClick={toggleHistory}
+                      className="p-1 rounded hover:bg-[#333333] text-white/40 hover:text-white/70 transition-colors"
+                      title="View message history"
+                    >
+                      <History size={14} />
+                    </button>
+                    <button
+                      onClick={clearMessages}
+                      className="p-1 rounded hover:bg-[#333333] text-white/40 hover:text-white/70 transition-colors"
+                      title="Clear messages"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={toggleViewMode}
+                  className="p-1 rounded hover:bg-[#333333] text-white/40 hover:text-white/70 transition-colors"
+                  title="Expand Chat"
+                >
+                  <Maximize size={14} />
+                </button>
+                <button 
+                  onClick={toggleVisibility}
+                  className="p-1 rounded hover:bg-[#333333] text-white/40 hover:text-white/70 transition-colors"
+                  title="Close"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+            
+            {/* Most recent message or feedback (if any) - hidden by default but can be expanded */}
+            {(messages.length > 0 || commandFeedback) && (
+              <div className="mt-2 max-h-32 overflow-y-auto bg-[#222222] rounded border border-[#333333] p-2
+                [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
+                [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]"
+              >
+                {commandFeedback ? (
+                  <div className="text-sm text-teal-400">
+                    {commandFeedback}
+                  </div>
+                ) : messages.length > 0 && (
+                  <div className="flex items-start gap-2">
+                    <div className={`mt-0.5 p-1 rounded-full flex-shrink-0 ${messages[messages.length - 1].role === 'assistant' ? 'bg-[#42ca75]' : 'bg-[#4A8CCA]'}`}>
+                      {messages[messages.length - 1].role === 'assistant' ? (
+                        <Bot size={10} className="text-black" />
+                      ) : (
+                        <User size={10} className="text-white" />
+                      )}
+                    </div>
+                    <div className="text-sm text-white/80 flex-1">
+                      {formatMessagePreview(messages[messages.length - 1].content, 200)}
+                    </div>
+                  </div>
+                )}
+                {(isLoading || isStreaming) && (
+                  <div className="flex items-center gap-2 mt-2 text-white/60">
+                    <Loader2 size={12} className="animate-spin" />
+                    <span className="text-xs">AI is thinking...</span>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Hidden file inputs */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileSelect}
+              multiple={false}
+            />
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={handleVideoSelect}
+              multiple={false}
+            />
+            <input
+              ref={modelInputRef}
+              type="file"
+              accept=".glb,.gltf,.fbx,.obj"
+              className="hidden"
+              onChange={handleModelSelect}
+              multiple={false}
+            />
+            
+            {/* Command Palette */}
+            {showCommandPalette && (
+              <div className="absolute bottom-[calc(100%-0.5rem)] left-0 right-0 bg-[#1A1A1A] rounded-xl shadow-xl border border-[#333333] overflow-hidden z-10 animate-in fade-in duration-200">
+                <div className="p-3 text-sm text-white/70 border-b border-[#333333] bg-[#222222] flex items-center">
+                  <Slash size={16} className="mr-2 text-yellow-400" />
+                  <span>Commands</span>
+                </div>
+                <div className="grid grid-cols-3 gap-3 p-4">
+                  {getFilteredCommands().map((option, index) => (
+                    <button
+                      key={option.id}
+                      className="flex flex-col items-center justify-center gap-2 p-4 hover:bg-[#333333] rounded-lg text-center transition-colors border border-[#333333] hover:border-[#444444]"
+                      onClick={() => handleCommandSelect(option.command, option.action)}
+                      style={{ animationDelay: `${index * 30}ms` }}
+                    >
+                      <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-[#222222] text-yellow-400 border border-[#444444]">
+                        <option.icon size={22} />
+                      </div>
+                      <span className="text-sm text-white/80 font-medium">{option.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {getFilteredCommands().length === 0 && (
+                  <div className="p-4 text-center text-white/50">
+                    No commands match '{inputValue}'
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* API key warning */}
+            {!apiKey && (
+              <div className="mt-2 text-xs text-yellow-400 p-2 bg-yellow-900/20 rounded">
+                No API key found. Please add your OpenRouter API key in Settings.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Render expanded view with full chat and history
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div 
         ref={containerRef}
-        className="bg-[#2C2C2C] rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden border-2 border-[#151515]"
+        className="bg-[#2C2C2C] rounded-lg shadow-xl w-full max-w-5xl max-h-[80vh] flex flex-col overflow-hidden border-2 border-[#151515]"
       >
         {/* Header */}
         <div className="flex justify-between items-center p-3 bg-[#2C2C2C] border-b-4 border-[#222222]">
@@ -848,11 +1114,25 @@ render(<Counter />);`;
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={toggleHistory}
+              className={`p-1.5 rounded hover:bg-[#222222] ${showHistory ? 'text-yellow-400' : 'text-white/60 hover:text-white/90'} transition-colors`}
+              title="Message History"
+            >
+              <History size={16} />
+            </button>
+            <button
               onClick={clearMessages}
               className="p-1.5 rounded hover:bg-[#222222] text-white/60 hover:text-white/90 transition-colors"
               title="Clear chat"
             >
               <Trash2 size={16} />
+            </button>
+            <button
+              onClick={toggleViewMode}
+              className="p-1.5 rounded hover:bg-[#222222] text-white/60 hover:text-white/90 transition-colors"
+              title="Minimize Chat"
+            >
+              <ChevronLeft size={16} />
             </button>
             <ModelSelector className="mx-2" />
             <button 
@@ -864,134 +1144,205 @@ render(<Counter />);`;
           </div>
         </div>
         
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-2 bg-[#2C2C2C]
-          [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
-          [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]"
-        >
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-white/40 p-6">
-              <Bot size={24} className="mb-2" />
-              <p className="text-center text-sm">No messages yet. Start a conversation!</p>
-              <p className="text-center text-xs mt-2">Try commands like: <span className="text-yellow-400">create cube at 0,0,0</span></p>
-              <p className="text-center text-xs mt-1">Type <span className="text-yellow-400">help</span> to see all commands.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  content={message.content}
-                  role={message.role}
-                  timestamp={message.timestamp}
-                  model={message.model}
-                />
-              ))}
-              
-              {isStreaming && currentStreamContent && (
-                <ChatMessage
-                  content={currentStreamContent}
-                  role="assistant"
-                  timestamp={Date.now()}
-                  model={defaultModel}
-                />
-              )}
-              
-              {isLoading && !isStreaming && (
-                <div className="py-4 px-4 bg-[#1A1A1A] rounded-md">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-1 p-1.5 rounded-full bg-yellow-500">
-                      <Bot size={14} className="text-black" />
+        {/* Main content with sidebar */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* History sidebar */}
+          {showHistory && (
+            <div className="w-64 border-r border-[#222222] bg-[#252525] overflow-y-auto
+              [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
+              [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]"
+            >
+              <div className="p-3 border-b border-[#222222] bg-[#2A2A2A] sticky top-0 z-10">
+                <h3 className="text-sm font-medium text-white/80">Message History</h3>
+              </div>
+              <div className="py-2">
+                {groupMessagesByContext().map((group, groupIndex) => (
+                  <div key={groupIndex} className="mb-3">
+                    <div className="px-3 py-1 text-xs text-white/50 bg-[#2A2A2A]">
+                      {group.date}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="text-xs font-medium text-white/60">
-                          AI
-                        </div>
-                        <Loader2 size={12} className="animate-spin text-white/40" />
-                      </div>
-                      <TypingIndicator />
+                    <div className="divide-y divide-[#333333]">
+                      {group.messages.map((message) => {
+                        const isSelected = message.id === selectedMessageId;
+                        return (
+                          <button
+                            key={message.id}
+                            onClick={() => handleSelectMessage(message.id)}
+                            className={`w-full text-left px-3 py-2 flex items-start gap-2 
+                                      hover:bg-[#333333] transition-colors
+                                      ${isSelected ? 'bg-[#333333]' : ''}`}
+                          >
+                            <div className={`mt-0.5 p-1 rounded-full flex-shrink-0 ${message.role === 'assistant' ? 'bg-[#42ca75]' : 'bg-[#4A8CCA]'}`}>
+                              {message.role === 'assistant' ? (
+                                <Bot size={10} className="text-black" />
+                              ) : (
+                                <User size={10} className="text-white" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs text-white/70 flex items-center justify-between mb-0.5">
+                                <span>{message.role === 'assistant' ? 'AI' : 'You'}</span>
+                                <span className="text-white/40 text-[10px]">
+                                  {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </span>
+                              </div>
+                              <p className="text-xs text-white/60 truncate">
+                                {formatMessagePreview(message.content)}
+                              </p>
+                            </div>
+                            {isSelected && (
+                              <ChevronRight size={14} className="text-yellow-400 flex-shrink-0 mt-1" />
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
-                </div>
-              )}
-              
-              {commandFeedback && (
-                <div className="py-3 px-4 bg-[#1E2D3D] rounded-md border border-[#2A3F50] text-teal-400 text-sm">
-                  {commandFeedback}
-                </div>
-              )}
-              
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
-        
-        {/* Input */}
-        <div className="p-4 border-t-4 border-[#222222] bg-[#2C2C2C] relative">
-          <ChatInput
-            onSendMessage={handleSendMessage}
-            isLoading={isLoading}
-            onSlashKeyPress={handleSlashKeyPress}
-            value={inputValue}
-            onChange={setInputValue}
-          />
-          
-          {/* Hidden file inputs */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileSelect}
-            multiple={false}
-          />
-          <input
-            ref={videoInputRef}
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={handleVideoSelect}
-            multiple={false}
-          />
-          <input
-            ref={modelInputRef}
-            type="file"
-            accept=".glb,.gltf,.fbx,.obj"
-            className="hidden"
-            onChange={handleModelSelect}
-            multiple={false}
-          />
-          
-          {/* Command Palette */}
-          {showCommandPalette && (
-            <div className="absolute bottom-[calc(100%-0.5rem)] left-4 right-4 bg-[#1A1A1A] rounded-lg shadow-xl border border-[#333333] max-h-[250px] overflow-y-auto z-10">
-              <div className="p-2 text-xs text-white/60 border-b border-[#333333]">
-                Commands
-              </div>
-              <div className="grid grid-cols-3 gap-1 p-2">
-                {commandOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    className="flex items-center gap-2 p-2 hover:bg-[#333333] rounded text-left text-sm text-white/80 transition-colors"
-                    onClick={() => handleCommandSelect(option.command, option.action)}
-                  >
-                    <div className="w-6 h-6 flex items-center justify-center rounded-md bg-[#292929] text-yellow-400">
-                      <option.icon size={14} />
-                    </div>
-                    <span>{option.label}</span>
-                  </button>
                 ))}
               </div>
             </div>
           )}
           
-          {/* API key warning */}
-          {!apiKey && (
-            <div className="mt-2 text-xs text-yellow-400 p-2 bg-yellow-900/20 rounded">
-              No API key found. Please add your OpenRouter API key in Settings.
+          {/* Chat content */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-2 bg-[#2C2C2C]
+              [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
+              [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]"
+            >
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-white/40 p-6">
+                  <Bot size={24} className="mb-2" />
+                  <p className="text-center text-sm">No messages yet. Start a conversation!</p>
+                  <p className="text-center text-xs mt-2">Try commands like: <span className="text-yellow-400">create cube at 0,0,0</span></p>
+                  <p className="text-center text-xs mt-1">Type <span className="text-yellow-400">help</span> to see all commands.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {/* Only show selected message or latest if none selected */}
+                  {getSelectedMessage() && (
+                    <ChatMessage
+                      key={getSelectedMessage()!.id}
+                      content={getSelectedMessage()!.content}
+                      role={getSelectedMessage()!.role}
+                      timestamp={getSelectedMessage()!.timestamp}
+                      model={getSelectedMessage()!.model}
+                    />
+                  )}
+                  
+                  {isStreaming && currentStreamContent && !selectedMessageId && (
+                    <ChatMessage
+                      content={currentStreamContent}
+                      role="assistant"
+                      timestamp={Date.now()}
+                      model={defaultModel}
+                    />
+                  )}
+                  
+                  {isLoading && !isStreaming && !selectedMessageId && (
+                    <div className="py-4 px-4 bg-[#1A1A1A] rounded-md">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 p-1.5 rounded-full bg-yellow-500">
+                          <Bot size={14} className="text-black" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="text-xs font-medium text-white/60">
+                              AI
+                            </div>
+                            <Loader2 size={12} className="animate-spin text-white/40" />
+                          </div>
+                          <TypingIndicator />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {commandFeedback && !selectedMessageId && (
+                    <div className="py-3 px-4 bg-[#1E2D3D] rounded-md border border-[#2A3F50] text-teal-400 text-sm">
+                      {commandFeedback}
+                    </div>
+                  )}
+                  
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
             </div>
-          )}
+            
+            {/* Input */}
+            <div className="p-4 border-t-4 border-[#222222] bg-[#2C2C2C] relative">
+              <ChatInput
+                onSendMessage={handleSendMessage}
+                isLoading={isLoading}
+                onSlashKeyPress={handleSlashKeyPress}
+                value={inputValue}
+                onChange={setInputValue}
+              />
+              
+              {/* Hidden file inputs */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
+                multiple={false}
+              />
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={handleVideoSelect}
+                multiple={false}
+              />
+              <input
+                ref={modelInputRef}
+                type="file"
+                accept=".glb,.gltf,.fbx,.obj"
+                className="hidden"
+                onChange={handleModelSelect}
+                multiple={false}
+              />
+              
+              {/* Command Palette in expanded view */}
+              {showCommandPalette && (
+                <div className="absolute top-0 left-0 right-0 bg-[#2A2A2A] rounded-lg shadow-xl border border-[#333333] overflow-hidden z-10 animate-in fade-in duration-200">
+                  <div className="p-3 text-sm text-white/70 border-b border-[#333333] bg-[#333333] flex items-center">
+                    <Slash size={16} className="mr-2 text-yellow-400" />
+                    <span>Commands</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 p-4">
+                    {getFilteredCommands().map((option, index) => (
+                      <button
+                        key={option.id}
+                        className="flex flex-col items-center justify-center gap-2 p-4 hover:bg-[#3A3A3A] rounded-lg text-center transition-colors border border-[#444444] hover:border-[#555555] animate-in fade-in zoom-in-95 duration-300"
+                        onClick={() => handleCommandSelect(option.command, option.action)}
+                        style={{ animationDelay: `${index * 30}ms` }}
+                      >
+                        <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-[#333333] text-yellow-400 border border-[#555555]">
+                          <option.icon size={22} />
+                        </div>
+                        <span className="text-sm text-white/80 font-medium">{option.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {getFilteredCommands().length === 0 && (
+                    <div className="p-4 text-center text-white/50">
+                      No commands match '{inputValue}'
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* API key warning */}
+              {!apiKey && (
+                <div className="mt-2 text-xs text-yellow-400 p-2 bg-yellow-900/20 rounded">
+                  No API key found. Please add your OpenRouter API key in Settings.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

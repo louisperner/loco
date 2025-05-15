@@ -5,12 +5,14 @@ import { ChatMessage } from '../components/AIChat/types';
 interface AIChatState {
   messages: ChatMessage[];
   isVisible: boolean;
+  selectedMessageId: string | null;
   
   // Actions
   addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
   toggleVisibility: () => void;
   setVisibility: (visible: boolean) => void;
   clearMessages: () => void;
+  selectMessage: (id: string | null) => void;
 }
 
 export const useAIChatStore = create<AIChatState>()(
@@ -18,17 +20,20 @@ export const useAIChatStore = create<AIChatState>()(
     (set) => ({
       messages: [],
       isVisible: false,
+      selectedMessageId: null,
       
-      addMessage: (message) => set((state) => ({
-        messages: [
-          ...state.messages,
-          {
-            ...message,
-            id: Date.now().toString(),
-            timestamp: Date.now(),
-          }
-        ]
-      })),
+      addMessage: (message) => set((state) => {
+        const newMessage = {
+          ...message,
+          id: Date.now().toString(),
+          timestamp: Date.now(),
+        };
+        
+        return {
+          messages: [...state.messages, newMessage],
+          selectedMessageId: newMessage.id,
+        };
+      }),
       
       toggleVisibility: () => set((state) => ({
         isVisible: !state.isVisible
@@ -39,13 +44,19 @@ export const useAIChatStore = create<AIChatState>()(
       }),
       
       clearMessages: () => set({
-        messages: []
+        messages: [],
+        selectedMessageId: null
+      }),
+      
+      selectMessage: (id) => set({
+        selectedMessageId: id
       })
     }),
     {
       name: 'ai-chat-storage',
       partialize: (state) => ({
-        messages: state.messages
+        messages: state.messages,
+        selectedMessageId: state.selectedMessageId
       })
     }
   )
