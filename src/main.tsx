@@ -17,7 +17,7 @@ import { useAIChatStore } from './store/useAIChatStore';
 // Global sync state context
 export const SyncContext = React.createContext({
   isSyncing: false,
-  setSyncing: (value: boolean) => {}
+  setSyncing: (isSyncing: boolean) => {}
 });
 
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -58,7 +58,6 @@ const AppContent: React.FC = () => {
             setSyncing(true);
             const { syncAllLocalStorage, initBeforeUnloadSync } = await import('./utils/local-storage-sync');
             await syncAllLocalStorage(currentUser.uid);
-            console.log('Successfully synced all data on app startup');
             
             // Initialize beforeunload event listener
             const removeBeforeUnloadListener = initBeforeUnloadSync(currentUser.uid);

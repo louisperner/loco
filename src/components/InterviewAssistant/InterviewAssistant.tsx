@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FiEyeOff, FiCamera, FiSend, FiRefreshCw, FiMove, FiCopy, FiCheck, FiEdit, FiCrop, FiX } from "react-icons/fi";
+import { FiEyeOff, FiCamera, FiSend, FiRefreshCw, FiMove, FiCopy, FiCheck, FiCrop, FiX } from "react-icons/fi";
 import { useInterviewAssistantStore, Screenshot } from "../../store/interviewAssistantStore";
 import { captureScreen, extractTextFromImage, captureScreenRegion, ScreenRegion } from "../../utils/screenCapture";
 import { generateSolution as generateAiSolution, getAvailableModels } from "../../services/aiService";
@@ -789,7 +789,7 @@ const InterviewAssistant: React.FC = () => {
   
   return (
     <div
-      className="fixed text-white rounded-lg shadow-lg overflow-hidden z-50 border-2 border-[#151515]"
+      className="fixed text-white rounded-lg shadow-lg overflow-hidden z-50 p-1"
       style={{ 
         width: "500px", 
         height: "auto",

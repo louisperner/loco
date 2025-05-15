@@ -113,12 +113,18 @@ const FPSControls: React.FC<FPSControlsProps> = ({
 
     const savedPosition = loadPosition();
     
-    if (savedPosition) {
-      // console.log('Loaded saved position:', savedPosition);
-      initialPosition = [savedPosition.x, savedPosition.y, savedPosition.z];
-    }
-    
-    if (!hasSetInitialPosition.current) {
+    if (savedPosition && !hasSetInitialPosition.current) {
+      // Set initial position from saved position
+      camera.position.set(savedPosition.x, savedPosition.y, savedPosition.z);
+      hasSetInitialPosition.current = true;
+
+      // Initialize rotation values based on current camera rotation
+      targetRotationX.current = camera.rotation.x;
+      targetRotationY.current = camera.rotation.y;
+      currentRotationX.current = camera.rotation.x;
+      currentRotationY.current = camera.rotation.y;
+    } else if (!hasSetInitialPosition.current) {
+      // Use provided initial position
       camera.position.set(initialPosition[0], initialPosition[1], initialPosition[2]);
       hasSetInitialPosition.current = true;
 
@@ -139,7 +145,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
           y: camera.position.y,
           z: camera.position.z
         });
-        console.log('Saved position on component unmount');
+        // Position saved on component unmount
       }
     };
   }, [camera]);

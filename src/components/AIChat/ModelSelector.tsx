@@ -114,7 +114,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ className }) => {
       {showModelSelector && (
         <div 
           className="fixed z-50 bg-[#222222] rounded-xl shadow-xl 
-                    border border-[#333333] overflow-hidden animate-in fade-in duration-200"
+                    border border-[#333333] overflow-hidden fade-in duration-200"
           style={{
             width: '280px',
             left: '50%',

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, MutableRefObject } from 'react';
-import { X, Trash2, Bot, Loader2, Image as ImageIcon, Video, Code, Box, Maximize, Square, Circle, Slash, User, History, ChevronRight, ChevronLeft, Search, MessageSquare } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Trash2, Bot, Loader2, Image as ImageIcon, Video, Code, Box, Maximize, Square, Circle, Slash, User, History, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useOpenRouterStore } from '../../store/useOpenRouterStore';
 import { openRouterApi } from '../../lib/openrouter';
 import { isStreamingSupported } from '../../lib/openrouter-constants';
@@ -83,7 +83,7 @@ const AIChat: React.FC<AIChatProps> = ({ isVisible, toggleVisibility }) => {
   } = useAIChatStore();
 
   // Store access for commands
-  const { addModel, updateModel } = useModelStore();
+  const { addModel } = useModelStore();
   const { addImage, updateImage } = useImageStore();
   const { addVideo } = useVideoStore();
   const { addCodeBlock } = useCodeStore();
@@ -373,7 +373,7 @@ You can also just chat with the AI normally!
         },
         {
           onStart: () => {
-            console.log('Stream started');
+            // Code execution started
           },
           onToken: (token) => {
             setCurrentStreamContent((prev) => prev + token);
@@ -543,7 +543,7 @@ You can also just chat with the AI normally!
         });
 
         // Save the file to disk if in Electron environment
-        const electron = (window as any).electron;
+        const electron = (window as unknown as { electron?: { saveImageFile: (file: File, fileName: string) => Promise<string> } }).electron;
         if (electron?.saveImageFile) {
           electron
             .saveImageFile(file, file.name)
@@ -812,7 +812,7 @@ render(<Counter />);`;
   // Handle screenshot
   const handleScreenshot = () => {
     // Trigger screenshot if available
-    const takeScreenshot = (window as any).takeScreenshot;
+    const takeScreenshot = (window as unknown as { takeScreenshot?: () => void }).takeScreenshot;
     if (takeScreenshot) {
       takeScreenshot();
       
@@ -827,7 +827,7 @@ render(<Counter />);`;
   };
   
   // Handle command selection
-  const handleCommandSelect = (command: string, action: () => void) => {
+  const handleCommandSelect = (action: () => void) => {
     // Execute the action
     action();
     
@@ -940,7 +940,7 @@ render(<Counter />);`;
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20">
         <div 
           ref={containerRef}
-          className="bg-[#1A1A1A] rounded-lg shadow-xl w-full max-w-xl flex flex-col border border-[#333333]"
+          className="bg-[#2C2C2C] rounded-lg shadow-xl w-full max-w-xl flex flex-col border border-[#333333]"
         >
 
 
@@ -951,7 +951,7 @@ render(<Counter />);`;
             
             {/* Most recent message or feedback (if any) - hidden by default but can be expanded */}
             {(messages.length > 0 || commandFeedback) && (
-              <div className="mt-2 mb-2 max-h-auto overflow-y-auto bg-[#222222] rounded border border-[#333333] p-2
+              <div className="mt-2 mb-2 max-h-auto min-h-[300px] overflow-y-auto bg-[#222222] rounded border border-[#333333] p-2
                 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
                 [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]"
               >
@@ -969,7 +969,7 @@ render(<Counter />);`;
                       )}
                     </div>
                     <div className="text-sm text-white/80 flex-1">
-                      {formatMessagePreview(messages[messages.length - 1].content, 200)}
+                      {messages[messages.length - 1].content}
                     </div>
                   </div>
                 )}
@@ -993,9 +993,7 @@ render(<Counter />);`;
             {/* Model selector below input */}
             <div className="flex items-center mt-2 px-2">
               <div className="flex-1 flex items-center space-x-1 text-xs text-white/50">
-                <span className="opacity-70">Agent</span>
                 <span className="bg-[#333333] text-xs px-1 rounded text-white/50">AI</span>
-                <span className="mx-1">•</span>
                 <ModelSelector className="inline-block text-xs" />
               </div>
               
@@ -1066,23 +1064,22 @@ render(<Counter />);`;
             
             {/* Command Palette */}
             {showCommandPalette && (
-              <div className="absolute bottom-[calc(100%-0.5rem)] left-0 right-0 bg-[#1A1A1A] rounded-xl shadow-xl border border-[#333333] overflow-hidden z-10 animate-in fade-in duration-200">
+              <div className="absolute bottom-[calc(100%+0.4rem)] left-0 right-0 bg-[#1A1A1A] rounded-xl shadow-xl border border-[#333333] overflow-hidden z-10 animate-in fade-in duration-200">
                 <div className="p-2 text-xs text-white/70 border-b border-[#333333] bg-[#222222] flex items-center">
                   <Slash size={14} className="mr-1.5 text-yellow-400" />
                   <span>Commands</span>
                 </div>
-                <div className="grid grid-cols-5 gap-2 p-3">
+                <div className="grid grid-cols-9 gap-2 p-3">
                   {getFilteredCommands().map((option, index) => (
                     <button
                       key={option.id}
                       className="flex flex-col items-center justify-center gap-1.5 p-2 hover:bg-[#333333] rounded-lg text-center transition-colors border border-[#333333] hover:border-[#444444] animate-in fade-in zoom-in-95 duration-300"
-                      onClick={() => handleCommandSelect(option.command, option.action)}
+                      onClick={() => handleCommandSelect(option.action)}
                       style={{ animationDelay: `${index * 30}ms` }}
                     >
-                      <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-[#222222] text-yellow-400 border border-[#444444]">
+                      <div className="w-10 h-10 flex items-center justify-center rounded-lg text-yellow-400">
                         <option.icon size={18} />
                       </div>
-                      <span className="text-xs text-white/80 font-medium">{option.label}</span>
                     </button>
                   ))}
                 </div>
@@ -1111,7 +1108,7 @@ render(<Counter />);`;
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div 
         ref={containerRef}
-        className="bg-[#2C2C2C] rounded-lg shadow-xl w-full max-w-5xl max-h-[80vh] flex flex-col overflow-hidden border-2 border-[#151515]"
+        className="bg-[#2C2C2C] rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] min-h-[500px] flex flex-col overflow-hidden border-2 border-[#151515]"
       >
         {/* Header */}
         <div className="flex justify-between items-center p-3 bg-[#2C2C2C] border-b-4 border-[#222222]">
@@ -1324,7 +1321,7 @@ render(<Counter />);`;
                       <button
                         key={option.id}
                         className="flex flex-col items-center justify-center gap-1.5 p-2 hover:bg-[#3A3A3A] rounded-lg text-center transition-colors border border-[#444444] hover:border-[#555555] animate-in fade-in zoom-in-95 duration-300"
-                        onClick={() => handleCommandSelect(option.command, option.action)}
+                        onClick={() => handleCommandSelect(option.action)}
                         style={{ animationDelay: `${index * 30}ms` }}
                       >
                         <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-[#333333] text-yellow-400 border border-[#555555]">
