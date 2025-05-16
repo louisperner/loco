@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Search, Sparkles } from 'lucide-react';
+import { Send, Search, Sparkles, ServerIcon } from 'lucide-react';
+import { useOllamaStore } from '@/store/useOllamaStore';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -20,6 +21,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 }) => {
   const [localMessage, setLocalMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { isEnabled: ollamaEnabled } = useOllamaStore();
   
   // Determine if component is controlled or uncontrolled
   const isControlled = value !== undefined && onChange !== undefined;
@@ -91,16 +93,21 @@ const ChatInput: React.FC<ChatInputProps> = ({
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder="Plan, search, build anything"
-          className="w-full resize-none bg-[#1A1A1A] rounded-xl px-10 py-2.5 text-sm text-white/90 
+          className={`w-full resize-none bg-[#1A1A1A] rounded-xl px-10 py-2.5 text-sm text-white/90 
                     focus:outline-none focus:ring-1 focus:ring-[#444444] min-h-[42px] max-h-[150px] 
-                    border border-[#333333] placeholder-white/40 shadow-lg transition-all duration-150"
+                    border ${ollamaEnabled ? 'border-blue-900/70' : 'border-[#333333]'} 
+                    placeholder-white/40 shadow-lg transition-all duration-150`}
           disabled={isLoading}
           rows={1}
         />
         
-        {/* AI icon on the right */}
+        {/* AI icon on the right - show server for Ollama, sparkles for OpenRouter */}
         <div className="absolute right-3 flex items-center justify-center">
-          <Sparkles size={16} className="text-white/30" />
+          {ollamaEnabled ? (
+            <ServerIcon size={16} className="text-blue-400" />
+          ) : (
+            <Sparkles size={16} className="text-white/30" />
+          )}
         </div>
       </div>
       

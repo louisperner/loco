@@ -11,6 +11,7 @@ export const OPENROUTER_MODELS = [
   { id: 'google/gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
   { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
   { id: 'google/gemini-1.0-pro', name: 'Gemini 1.0 Pro' },
+  { id: 'google/gemma-3-4b-it:free', name: 'Gemma 4B' },
   { id: 'meta-llama/llama-4-maverick:free', name: 'Llama 4 Maverick' },
   { id: 'meta-llama/llama-3-70b-instruct', name: 'Llama 3 70B' },
   { id: 'meta-llama/llama-3-8b-instruct', name: 'Llama 3 8B' },

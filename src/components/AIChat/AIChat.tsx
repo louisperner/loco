@@ -9,6 +9,8 @@ import { useImageStore } from '../../store/useImageStore';
 import { useVideoStore } from '../../store/videoStore';
 import { useCodeStore } from '../../store/useCodeStore';
 import { useGameStore } from '../../store/useGameStore';
+import { useOllamaStore } from '@/store/useOllamaStore';
+import { ollamaApi } from '@/lib/ollama';
 import ModelSelector from './ModelSelector';
 import ChatInput from './ChatInput';
 import ChatMessage from './ChatMessage';
@@ -364,85 +366,185 @@ You can also just chat with the AI normally!
     ];
     
     try {
-      await openRouterApi.streamChat(
-        apiKey,
-        {
-          model: defaultModel,
-          messages,
-          temperature: 0.7,
-        },
-        {
-          onStart: () => {
-            // Code execution started
+      // Check if Ollama is enabled
+      const ollamaStore = useOllamaStore.getState();
+      
+      if (ollamaStore.isEnabled) {
+        // Use Ollama API for streaming
+        await ollamaApi.streamChat(
+          ollamaStore.endpoint,
+          {
+            model: ollamaStore.defaultModel,
+            messages,
+            stream: true,
+            options: {
+              temperature: 0.7,
+            }
           },
-          onToken: (token) => {
-            setCurrentStreamContent((prev) => prev + token);
-          },
-          onComplete: (fullResponse) => {
-            // Add the complete response to chat history
-            addMessage({
-              content: fullResponse,
-              role: 'assistant',
-              model: defaultModel,
-            });
-            
-            // Add to OpenRouter history
-            addToHistory(userMessage, fullResponse, defaultModel);
-            
-            setIsStreaming(false);
-            setCurrentStreamContent('');
-          },
-          onError: (error) => {
-            console.error('Streaming error:', error);
-            throw error;
+          {
+            onStart: () => {
+              // Code execution started
+            },
+            onToken: (token) => {
+              setCurrentStreamContent((prev) => prev + token);
+            },
+            onComplete: (fullResponse) => {
+              // Add the complete response to chat history
+              addMessage({
+                content: fullResponse,
+                role: 'assistant',
+                model: ollamaStore.defaultModel,
+              });
+              
+              // Add to Ollama history
+              ollamaStore.addToHistory(userMessage, fullResponse, ollamaStore.defaultModel);
+              
+              setIsStreaming(false);
+              setCurrentStreamContent('');
+            },
+            onError: (error) => {
+              console.error('Ollama streaming error:', error);
+              addMessage({
+                content: `Error: Could not connect to Ollama at ${ollamaStore.endpoint}. Please check if Ollama is running.`,
+                role: 'assistant',
+                model: ollamaStore.defaultModel,
+              });
+              setIsStreaming(false);
+              setCurrentStreamContent('');
+            }
           }
-        },
-        {
-          url: siteUrl,
-          title: siteName
-        }
-      );
+        );
+      } else {
+        // Use OpenRouter API for streaming
+        await openRouterApi.streamChat(
+          apiKey,
+          {
+            model: defaultModel,
+            messages,
+            temperature: 0.7,
+          },
+          {
+            onStart: () => {
+              // Code execution started
+            },
+            onToken: (token) => {
+              setCurrentStreamContent((prev) => prev + token);
+            },
+            onComplete: (fullResponse) => {
+              // Add the complete response to chat history
+              addMessage({
+                content: fullResponse,
+                role: 'assistant',
+                model: defaultModel,
+              });
+              
+              // Add to OpenRouter history
+              addToHistory(userMessage, fullResponse, defaultModel);
+              
+              setIsStreaming(false);
+              setCurrentStreamContent('');
+            },
+            onError: (error) => {
+              console.error('Stream error:', error);
+              addMessage({
+                content: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`,
+                role: 'assistant',
+                model: defaultModel || 'unknown',
+              });
+              setIsStreaming(false);
+              setCurrentStreamContent('');
+            }
+          },
+          {
+            url: siteUrl,
+            title: siteName
+          }
+        );
+      }
     } catch (error) {
       console.error('Stream error:', error);
-      throw error;
+      addMessage({
+        content: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`,
+        role: 'assistant',
+        model: defaultModel || 'unknown',
+      });
+      setIsStreaming(false);
+      setCurrentStreamContent('');
     }
   };
   
   // Handle standard non-streaming response
   const handleStandardResponse = async (userMessage: string) => {
     try {
-      const response = await openRouterApi.chat(
-        apiKey,
-        {
+      // Check if Ollama is enabled
+      const ollamaStore = useOllamaStore.getState();
+      
+      if (ollamaStore.isEnabled) {
+        // Use Ollama API for non-streaming
+        const response = await ollamaApi.chat(
+          ollamaStore.endpoint,
+          {
+            model: ollamaStore.defaultModel,
+            messages: [
+              { role: 'system', content: 'You are a helpful AI assistant in a 3D environment. You can help create objects using commands like "create cube at 0,0,0" or answer questions.' },
+              ...getRecentMessages(),
+              { role: 'user', content: userMessage }
+            ],
+            options: {
+              temperature: 0.7,
+            }
+          }
+        );
+        
+        const responseContent = response.message.content;
+        
+        // Add the AI response to chat
+        addMessage({
+          content: responseContent,
+          role: 'assistant',
+          model: ollamaStore.defaultModel,
+        });
+        
+        // Add to Ollama history
+        ollamaStore.addToHistory(userMessage, responseContent, ollamaStore.defaultModel);
+      } else {
+        // Use OpenRouter API for non-streaming
+        const response = await openRouterApi.chat(
+          apiKey,
+          {
+            model: defaultModel,
+            messages: [
+              { role: 'system', content: 'You are a helpful AI assistant in a 3D environment. You can help create objects using commands like "create cube at 0,0,0" or answer questions.' },
+              ...getRecentMessages(),
+              { role: 'user', content: userMessage }
+            ],
+            temperature: 0.7,
+          },
+          {
+            url: siteUrl,
+            title: siteName
+          }
+        );
+        
+        const responseContent = response.choices[0].message.content;
+        
+        // Add the AI response to chat
+        addMessage({
+          content: responseContent,
+          role: 'assistant',
           model: defaultModel,
-          messages: [
-            { role: 'system', content: 'You are a helpful AI assistant in a 3D environment. You can help create objects using commands like "create cube at 0,0,0" or answer questions.' },
-            ...getRecentMessages(),
-            { role: 'user', content: userMessage }
-          ],
-          temperature: 0.7,
-        },
-        {
-          url: siteUrl,
-          title: siteName
-        }
-      );
-      
-      const responseContent = response.choices[0].message.content;
-      
-      // Add the AI response to chat
-      addMessage({
-        content: responseContent,
-        role: 'assistant',
-        model: defaultModel,
-      });
-      
-      // Add to OpenRouter history
-      addToHistory(userMessage, responseContent, defaultModel);
-      
+        });
+        
+        // Add to OpenRouter history
+        addToHistory(userMessage, responseContent, defaultModel);
+      }
     } catch (error) {
       console.error('Standard response error:', error);
-      throw error;
+      addMessage({
+        content: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`,
+        role: 'assistant',
+        model: defaultModel || 'unknown',
+      });
     }
   };
   
