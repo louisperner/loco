@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useOllamaStore } from '@/store/useOllamaStore';
 import { Bot, Info, Zap, ServerIcon, Globe } from 'lucide-react';
-import { DEFAULT_OLLAMA_MODELS, testOllamaConnection, DEFAULT_OLLAMA_ENDPOINT } from '@/lib/ollama-constants';
+import { DEFAULT_OLLAMA_MODELS, testOllamaConnection, DEFAULT_OLLAMA_ENDPOINT, normalizeEndpoint } from '@/lib/ollama-constants';
 import { ollamaApi } from '@/lib/ollama';
 
 const OllamaSettings: React.FC = () => {
@@ -22,6 +22,7 @@ const OllamaSettings: React.FC = () => {
   const [availableModels, setAvailableModels] = useState<{ id: string; name: string }[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [customModels, setCustomModels] = useState<{ id: string; name: string }[]>([]);
+  const [inputEndpoint, setInputEndpoint] = useState(endpoint);
 
   // Test connection and load models on settings open or endpoint change
   useEffect(() => {
@@ -37,6 +38,8 @@ const OllamaSettings: React.FC = () => {
     };
     
     checkConnection();
+    // Update the input field with the normalized endpoint
+    setInputEndpoint(endpoint);
   }, [endpoint]);
 
   // Load available models from the Ollama server
@@ -44,12 +47,39 @@ const OllamaSettings: React.FC = () => {
     setIsLoadingModels(true);
     try {
       const response = await ollamaApi.getModels(endpoint);
-      const models = response.models.map(model => ({
-        id: model.name,
-        name: model.name
-      }));
       
-      setCustomModels(models);
+      // Extract models from the response, which may have either models or tags array
+      let modelsList: { id: string; name: string }[] = [];
+      
+      if (response.models && response.models.length > 0) {
+        // Handle response with models field
+        modelsList = response.models.map(model => ({
+          id: model.name,
+          name: model.name
+        }));
+      } else if (response.tags && response.tags.length > 0) {
+        // Handle response with tags field
+        modelsList = response.tags.map(tag => ({
+          id: tag.name,
+          name: tag.name
+        }));
+      }
+      
+      // Update state with the models we found
+      setCustomModels(modelsList);
+      
+      // Store models in localStorage for other components to use
+      try {
+        localStorage.setItem('ollamaModels', JSON.stringify(modelsList));
+      } catch (error) {
+        console.error('Error storing Ollama models in localStorage:', error);
+      }
+      
+      // If we have models and none is currently selected, select the first one
+      if (modelsList.length > 0 && (!defaultModel || !modelsList.some(m => m.id === defaultModel))) {
+        setDefaultModel(modelsList[0].id);
+      }
+      
       setIsLoadingModels(false);
     } catch (error) {
       console.error('Failed to load Ollama models:', error);
@@ -76,6 +106,18 @@ const OllamaSettings: React.FC = () => {
       console.error('Error refreshing connection:', error);
       setConnectionStatus('disconnected');
     }
+  };
+
+  // Handle endpoint change with normalization
+  const handleEndpointChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Update the input field as user types
+    setInputEndpoint(e.target.value);
+  };
+
+  // Apply the normalized endpoint when saving
+  const applyEndpoint = () => {
+    const normalized = normalizeEndpoint(inputEndpoint);
+    setEndpoint(normalized);
   };
 
   return (
@@ -139,8 +181,10 @@ const OllamaSettings: React.FC = () => {
             <input
               id="endpoint"
               type="text"
-              value={endpoint}
-              onChange={(e) => setEndpoint(e.target.value)}
+              value={inputEndpoint}
+              onChange={handleEndpointChange}
+              onBlur={applyEndpoint}
+              onKeyDown={(e) => e.key === 'Enter' && applyEndpoint()}
               className="flex-1 px-3 py-2 bg-black/20 border border-white/10 rounded-l-md text-white"
               placeholder="http://localhost:11434"
             />

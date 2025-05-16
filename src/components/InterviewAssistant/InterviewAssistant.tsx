@@ -1,9 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FiEyeOff, FiCamera, FiSend, FiRefreshCw, FiMove, FiCopy, FiCheck, FiCrop, FiX } from "react-icons/fi";
+import { FiEyeOff, FiCamera, FiSend, FiRefreshCw, FiMove, FiCopy, FiCheck, FiCrop, FiX, FiServer, FiCloud, FiAlertCircle } from "react-icons/fi";
 import { useInterviewAssistantStore, Screenshot } from "../../store/interviewAssistantStore";
 import { captureScreen, extractTextFromImage, captureScreenRegion, ScreenRegion } from "../../utils/screenCapture";
 import { generateSolution as generateAiSolution, getAvailableModels } from "../../services/aiService";
 import { useOpenRouterStore } from "../../store/useOpenRouterStore";
+import { useOllamaStore } from "../../store/useOllamaStore";
+import { OPENROUTER_MODELS } from "../../lib/openrouter-constants";
+import { DEFAULT_OLLAMA_MODELS, testOllamaConnection, normalizeEndpoint } from "../../lib/ollama-constants";
+import { ollamaApi } from "../../lib/ollama";
 
 const logger = {
   log: (...args: unknown[]) => {
@@ -41,13 +45,23 @@ const InterviewAssistant: React.FC = () => {
   } = useInterviewAssistantStore();
   
   // OpenRouter store for models
-  const { defaultModel, setDefaultModel } = useOpenRouterStore();
+  const { defaultModel: openRouterModel, setDefaultModel: setOpenRouterModel } = useOpenRouterStore();
+  
+  // Ollama store
+  const { 
+    isEnabled: ollamaEnabled, 
+    defaultModel: ollamaModel, 
+    setDefaultModel: setOllamaModel,
+    endpoint: ollamaEndpoint,
+    setEndpoint: setOllamaEndpoint
+  } = useOllamaStore();
   
   // Local state for drag functionality and language selection
   const [isDragging, setIsDragging] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState("javascript");
-  const [selectedModel, setSelectedModel] = useState(defaultModel);
-  const [availableModels, setAvailableModels] = useState(getAvailableModels());
+  const [selectedModel, setSelectedModel] = useState(ollamaEnabled ? ollamaModel : openRouterModel);
+  const [customOllamaModels, setCustomOllamaModels] = useState<{ id: string; name: string }[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [typedSolution, setTypedSolution] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -57,6 +71,8 @@ const InterviewAssistant: React.FC = () => {
   
   const dragRef = useRef<{ startX: number; startY: number }>({ startX: 0, startY: 0 });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  const [ollamaConnectionError, setOllamaConnectionError] = useState<string | null>(null);
   
   // Initialize edited problem text when problem text changes
   useEffect(() => {
@@ -680,17 +696,125 @@ const InterviewAssistant: React.FC = () => {
     }
   };
   
-  // Use the selected model from the OpenRouter store as the default
+  // Update selected model when provider changes and test connection if using Ollama
   useEffect(() => {
-    setSelectedModel(defaultModel);
-  }, [defaultModel]);
+    setSelectedModel(ollamaEnabled ? ollamaModel : openRouterModel);
+    
+    // Load Ollama models if needed and test connection
+    if (ollamaEnabled) {
+      testOllamaConnection(ollamaEndpoint).then(isConnected => {
+        if (isConnected) {
+          setOllamaConnectionError(null);
+          loadOllamaModels();
+        } else {
+          setOllamaConnectionError(`Could not connect to Ollama at ${ollamaEndpoint}. Make sure Ollama is running.`);
+        }
+      });
+    } else {
+      setOllamaConnectionError(null);
+    }
+  }, [ollamaEnabled, ollamaModel, openRouterModel, ollamaEndpoint]);
   
+  // Load dynamic Ollama models from API
+  const loadOllamaModels = async () => {
+    if (!ollamaEnabled) return;
+    
+    // Clear any previous models and set loading state
+    setCustomOllamaModels([]);
+    setIsLoadingModels(true);
+    
+    try {
+      // Ensure the endpoint is normalized
+      const normalizedEndpoint = normalizeEndpoint(ollamaEndpoint);
+      
+      // Check if the current endpoint in store is normalized, if not update it
+      if (normalizedEndpoint !== ollamaEndpoint) {
+        console.log(`Updating Ollama endpoint from ${ollamaEndpoint} to ${normalizedEndpoint}`);
+        setOllamaEndpoint(normalizedEndpoint);
+      }
+      
+      const response = await ollamaApi.getModels(normalizedEndpoint);
+      
+      // Extract models from the response, which may have either models or tags array
+      let modelsList: { id: string; name: string }[] = [];
+      
+      if (response.models && response.models.length > 0) {
+        // Handle response with models field
+        modelsList = response.models.map(model => ({
+          id: model.name,
+          name: model.name
+        }));
+      } else if (response.tags && response.tags.length > 0) {
+        // Handle response with tags field
+        modelsList = response.tags.map(tag => ({
+          id: tag.name,
+          name: tag.name
+        }));
+      }
+      
+      if (modelsList.length > 0) {
+        setCustomOllamaModels(modelsList);
+        
+        // Store models in localStorage for other components to use
+        try {
+          localStorage.setItem('ollamaModels', JSON.stringify(modelsList));
+        } catch (error) {
+          console.error('Error storing Ollama models in localStorage:', error);
+        }
+        
+        // If current model is not in the list, select first available
+        if (!modelsList.some(model => model.id === ollamaModel)) {
+          setOllamaModel(modelsList[0].id);
+        }
+        
+        // Clear any connection error if we successfully loaded models
+        setOllamaConnectionError(null);
+      } else {
+        // Fall back to default models if none found
+        setCustomOllamaModels(DEFAULT_OLLAMA_MODELS);
+        setOllamaConnectionError("No models found. You may need to pull models with 'ollama pull gemma3:4b'");
+      }
+    } catch (error) {
+      console.error("Error loading Ollama models:", error);
+      // Fall back to defaults on error
+      setCustomOllamaModels(DEFAULT_OLLAMA_MODELS);
+      setOllamaConnectionError(`Error loading models: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
+  // Get the available models list based on the active provider
+  const getModelsForCurrentProvider = () => {
+    if (ollamaEnabled) {
+      return customOllamaModels.length > 0 ? customOllamaModels : DEFAULT_OLLAMA_MODELS;
+    } else {
+      return OPENROUTER_MODELS;
+    }
+  };
+
   // Handle model change
   const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newModel = e.target.value;
     setSelectedModel(newModel);
-    // Optionally update the default model in the store
-    setDefaultModel(newModel);
+    
+    // Update the appropriate store
+    if (ollamaEnabled) {
+      setOllamaModel(newModel);
+    } else {
+      setOpenRouterModel(newModel);
+    }
+  };
+  
+  // Toggle the provider (Ollama or OpenRouter)
+  const toggleProvider = () => {
+    // Toggle the Ollama enabled state
+    useOllamaStore.setState({ isEnabled: !ollamaEnabled });
+    
+    // If switching to Ollama, load models
+    if (!ollamaEnabled) {
+      loadOllamaModels();
+    }
   };
   
   // Function to cancel region selection
@@ -1030,19 +1154,64 @@ const InterviewAssistant: React.FC = () => {
           )}
           
           <div className="w-1/2">
-            <div className="flex items-center">
-              <span className="text-xs font-minecraft text-white/90 mr-2 whitespace-nowrap">Model:</span>
-              <select
-                className="w-full bg-[#222222] text-white/90 rounded p-1 text-xs border-2 border-[#151515] focus:outline-none focus:border-[#666666] transition-colors duration-200"
-                value={selectedModel}
-                onChange={handleModelChange}
-              >
-                {availableModels.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
-              </select>
+            <div className="flex flex-col">
+              {/* Provider toggle */}
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-minecraft text-white/90 mr-2 whitespace-nowrap">Provider:</span>
+                <button 
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] ${
+                    ollamaEnabled 
+                      ? 'bg-blue-900/30 text-blue-400 border border-blue-600/20' 
+                      : 'bg-yellow-900/30 text-yellow-400 border border-yellow-600/20'
+                  }`}
+                  onClick={toggleProvider}
+                >
+                  {ollamaEnabled ? (
+                    <>
+                      <FiServer className="w-3 h-3" />
+                      Ollama (Local)
+                    </>
+                  ) : (
+                    <>
+                      <FiCloud className="w-3 h-3" />
+                      OpenRouter (Cloud)
+                    </>
+                  )}
+                </button>
+              </div>
+              
+              {/* Show Ollama connection error if any */}
+              {ollamaEnabled && ollamaConnectionError && (
+                <div className="flex items-center text-red-400 text-[10px] mb-1 bg-red-900/20 px-1 py-0.5 rounded">
+                  <FiAlertCircle className="w-3 h-3 mr-1 flex-shrink-0" />
+                  <span className="truncate">{ollamaConnectionError}</span>
+                </div>
+              )}
+              
+              {/* Model selector */}
+              <div className="flex items-center">
+                <span className="text-xs font-minecraft text-white/90 mr-2 whitespace-nowrap">Model:</span>
+                <select
+                  className={`w-full rounded p-1 text-xs border-2 focus:outline-none focus:border-[#666666] transition-colors duration-200 ${
+                    ollamaEnabled 
+                      ? 'bg-[#222222] text-blue-100 border-[#151515]' 
+                      : 'bg-[#222222] text-yellow-100 border-[#151515]'
+                  }`}
+                  value={selectedModel}
+                  onChange={handleModelChange}
+                  disabled={isLoadingModels || (ollamaEnabled && ollamaConnectionError !== null)}
+                >
+                  {isLoadingModels ? (
+                    <option value="">Loading models...</option>
+                  ) : (
+                    getModelsForCurrentProvider().map((model) => (
+                      <option key={model.id} value={model.id} className="bg-[#222222]">
+                        {model.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
             </div>
           </div>
         </div>

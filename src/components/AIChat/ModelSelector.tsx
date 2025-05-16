@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Check, ServerIcon, CloudIcon } from 'lucide-react';
+import { ChevronDown, Check, ServerIcon, CloudIcon, Loader2 } from 'lucide-react';
 import { useOpenRouterStore } from '../../store/useOpenRouterStore';
 import { useOllamaStore } from '../../store/useOllamaStore';
 import { OPENROUTER_MODELS } from '../../lib/openrouter-constants';
 import { DEFAULT_OLLAMA_MODELS } from '../../lib/ollama-constants';
 import { isStreamingSupported } from '../../lib/openrouter-constants';
+import { ollamaApi } from '../../lib/ollama';
 
 // Custom scrollbar styles as a CSS class
 const scrollbarStyles = `
@@ -44,9 +45,10 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ className }) => {
   
   const [showModelSelector, setShowModelSelector] = useState(false);
   const { defaultModel: openRouterModel, setDefaultModel: setOpenRouterModel, useStreaming: openRouterStreaming } = useOpenRouterStore();
-  const { defaultModel: ollamaModel, setDefaultModel: setOllamaModel, isEnabled: ollamaEnabled, useStreaming: ollamaStreaming } = useOllamaStore();
+  const { defaultModel: ollamaModel, setDefaultModel: setOllamaModel, isEnabled: ollamaEnabled, useStreaming: ollamaStreaming, endpoint: ollamaEndpoint } = useOllamaStore();
   const [streamingSupported, setStreamingSupported] = useState(true);
   const [customOllamaModels, setCustomOllamaModels] = useState<{ id: string; name: string }[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
   const selectorRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   
@@ -64,14 +66,64 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ className }) => {
     }
   }, [currentModel, ollamaEnabled]);
   
-  // Load custom Ollama models if available
+  // Load dynamic Ollama models from API
+  const loadOllamaModels = async () => {
+    if (!ollamaEnabled) return;
+    
+    setIsLoadingModels(true);
+    try {
+      const response = await ollamaApi.getModels(ollamaEndpoint);
+      
+      // Extract models from the response, which may have either models or tags array
+      let modelsList: { id: string; name: string }[] = [];
+      
+      if (response.models && response.models.length > 0) {
+        // Handle response with models field
+        modelsList = response.models.map(model => ({
+          id: model.name,
+          name: model.name
+        }));
+      } else if (response.tags && response.tags.length > 0) {
+        // Handle response with tags field
+        modelsList = response.tags.map(tag => ({
+          id: tag.name,
+          name: tag.name
+        }));
+      }
+      
+      if (modelsList.length > 0) {
+        setCustomOllamaModels(modelsList);
+        
+        // If current model is not in the list, select first available
+        if (!modelsList.some(model => model.id === ollamaModel)) {
+          setOllamaModel(modelsList[0].id);
+        }
+      } else {
+        // Fall back to default models if none found
+        setCustomOllamaModels(DEFAULT_OLLAMA_MODELS);
+      }
+    } catch (error) {
+      console.error("Error loading Ollama models:", error);
+      // Fall back to defaults on error
+      setCustomOllamaModels(DEFAULT_OLLAMA_MODELS);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+  
+  // Load Ollama models when needed
   useEffect(() => {
     if (ollamaEnabled) {
-      // This could be expanded to actually fetch from Ollama API
-      // For now we'll just use the defaults
-      setCustomOllamaModels(DEFAULT_OLLAMA_MODELS);
+      loadOllamaModels();
     }
-  }, [ollamaEnabled]);
+  }, [ollamaEnabled, ollamaEndpoint]);
+  
+  // Also load models when selector is opened if using Ollama
+  useEffect(() => {
+    if (showModelSelector && ollamaEnabled) {
+      loadOllamaModels();
+    }
+  }, [showModelSelector, ollamaEnabled]);
   
   // Close when clicking outside
   useEffect(() => {
@@ -180,31 +232,45 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ className }) => {
           
           <div className="overflow-y-auto max-h-[380px] py-2 model-scrollbar">
             {ollamaEnabled ? (
-              // Show Ollama models when Ollama is enabled
-              customOllamaModels.map(model => {
-                const isSelected = model.id === currentModel;
-                
-                return (
-                  <button
-                    key={model.id}
-                    onClick={() => handleModelChange(model.id)}
-                    className={`w-full text-left px-4 py-3 text-base flex items-center justify-between
-                                transition-colors duration-100 outline-none
-                                ${isSelected 
-                                  ? 'bg-blue-900/40 text-blue-400' 
-                                  : 'text-white/90 hover:bg-[#2A2A2A]'}`}
-                    role="option"
-                    aria-selected={isSelected}
-                  >
-                    <div className="flex items-center gap-2 truncate pr-2">
-                      {isSelected && (
-                        <Check className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                      )}
-                      <span className={`truncate ${isSelected ? 'font-medium' : ''}`}>{model.name}</span>
-                    </div>
-                  </button>
-                );
-              })
+              // Show loading state or Ollama models
+              isLoadingModels ? (
+                <div className="flex flex-col items-center justify-center py-6 text-white/60">
+                  <Loader2 className="w-6 h-6 animate-spin mb-2" />
+                  <p className="text-sm">Loading models...</p>
+                </div>
+              ) : customOllamaModels.length > 0 ? (
+                // Show Ollama models when loaded
+                customOllamaModels.map(model => {
+                  const isSelected = model.id === currentModel;
+                  
+                  return (
+                    <button
+                      key={model.id}
+                      onClick={() => handleModelChange(model.id)}
+                      className={`w-full text-left px-4 py-3 text-base flex items-center justify-between
+                                  transition-colors duration-100 outline-none
+                                  ${isSelected 
+                                    ? 'bg-blue-900/40 text-blue-400' 
+                                    : 'text-white/90 hover:bg-[#2A2A2A]'}`}
+                      role="option"
+                      aria-selected={isSelected}
+                    >
+                      <div className="flex items-center gap-2 truncate pr-2">
+                        {isSelected && (
+                          <Check className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                        )}
+                        <span className={`truncate ${isSelected ? 'font-medium' : ''}`}>{model.name}</span>
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                // Show message if no models found
+                <div className="flex flex-col items-center justify-center py-6 text-white/60">
+                  <p className="text-sm">No models found.</p>
+                  <p className="text-xs mt-1">Try pulling models with: ollama pull gemma3:4b</p>
+                </div>
+              )
             ) : (
               // Show OpenRouter models when Ollama is disabled
               OPENROUTER_MODELS.map(model => {

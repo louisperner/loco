@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { normalizeEndpoint } from './ollama-constants';
 
 // Ollama API client
 export interface OllamaResponse {
@@ -22,19 +23,21 @@ export interface OllamaStreamResponse {
   done: boolean;
 }
 
+// Updated to match the actual API response format
 export interface OllamaModelsResponse {
-  models: {
+  models: { 
     name: string;
-    modified_at: string;
-    size: number;
-    digest: string;
-    details: {
-      format: string;
-      family: string;
-      families: string[];
-      parameter_size: string;
-      quantization_level: string;
-    };
+  }[];
+}
+
+// Alternate format that might be returned 
+export interface OllamaTagsResponse {
+  models?: { name: string }[];
+  tags?: { 
+    name: string;
+    modified_at?: string;
+    size?: number;
+    digest?: string;
   }[];
 }
 
@@ -75,16 +78,27 @@ export const ollamaApi = {
       'Content-Type': 'application/json',
     };
     
-    const response = await axios.post(
-      `${endpoint}/api/chat`,
-      request,
-      { 
-        headers,
-        signal 
-      }
-    );
+    const normalizedEndpoint = normalizeEndpoint(endpoint);
     
-    return response.data;
+    try {
+      const response = await axios.post(
+        `${normalizedEndpoint}/api/chat`,
+        request,
+        { 
+          headers,
+          signal
+        }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error(`Ollama chat error: ${error}`);
+      // Include the URL that was attempted in the error to help debug
+      if (error instanceof Error) {
+        error.message = `Error with Ollama API at ${normalizedEndpoint}/api/chat: ${error.message}`;
+      }
+      throw error;
+    }
   },
 
   async streamChat(
@@ -114,9 +128,11 @@ export const ollamaApi = {
 
       const fullResponse: string[] = [];
       
+      const normalizedEndpoint = normalizeEndpoint(endpoint);
+      
       try {
         const response = await axios.post(
-          `${endpoint}/api/chat`,
+          `${normalizedEndpoint}/api/chat`,
           streamRequest,
           { 
             headers,
@@ -178,12 +194,14 @@ export const ollamaApi = {
         });
         
       } catch (error) {
+        console.error(`Ollama stream error: ${error}`);
         if (callbacks.onError) {
           callbacks.onError(error);
         }
         activeStreamController = null;
       }
     } catch (error) {
+      console.error(`Ollama stream setup error: ${error}`);
       if (callbacks.onError) {
         callbacks.onError(error);
       }
@@ -199,8 +217,17 @@ export const ollamaApi = {
     }
   },
 
-  async getModels(endpoint: string): Promise<OllamaModelsResponse> {
-    const response = await axios.get(`${endpoint}/api/tags`);
-    return response.data;
+  async getModels(endpoint: string): Promise<OllamaTagsResponse> {
+    try {
+      const normalizedEndpoint = normalizeEndpoint(endpoint);
+      
+      // Try the newer API format first
+      const response = await axios.get(`${normalizedEndpoint}/api/tags`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching models:", error);
+      // Return an empty response that matches expected format
+      return { models: [], tags: [] };
+    }
   }
 }; 

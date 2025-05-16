@@ -5,7 +5,7 @@ import { OPENROUTER_MODELS } from '../lib/openrouter-constants';
 import { openRouterApi, MessageContent } from '../lib/openrouter';
 import { ollamaApi } from '../lib/ollama';
 import { useInterviewAssistantStore } from '../store/interviewAssistantStore';
-import { DEFAULT_OLLAMA_MODELS } from '../lib/ollama-constants';
+import { DEFAULT_OLLAMA_MODELS, normalizeEndpoint } from '../lib/ollama-constants';
 
 // Logger to handle console safely
 const logger = {
@@ -28,9 +28,23 @@ const logger = {
 export const getAvailableModels = (): { id: string; name: string }[] => {
   const ollamaStore = useOllamaStore.getState();
   
-  // If Ollama is enabled, return Ollama models
+  // If Ollama is enabled, try to use stored custom models or default to built-in models
   if (ollamaStore.isEnabled) {
-    return DEFAULT_OLLAMA_MODELS; // We could fetch these dynamically but a reasonable default is fine
+    // Check if we have dynamically loaded models in localStorage
+    try {
+      const storedModels = localStorage.getItem('ollamaModels');
+      if (storedModels) {
+        const parsedModels = JSON.parse(storedModels);
+        if (Array.isArray(parsedModels) && parsedModels.length > 0) {
+          return parsedModels;
+        }
+      }
+    } catch (error) {
+      console.error('Error reading Ollama models from localStorage:', error);
+    }
+    
+    // If no stored models, return default models
+    return DEFAULT_OLLAMA_MODELS;
   }
   
   // Otherwise return OpenRouter models
@@ -255,17 +269,56 @@ async function generateSolutionWithOllama(
     // Use provided modelId or fall back to store default
     const selectedModel = modelId || store.defaultModel;
     
+    // Normalize the endpoint URL
+    const endpoint = normalizeEndpoint(store.endpoint);
+    
     // Check if we can connect to Ollama
     try {
-      const response = await fetch(`${store.endpoint}/api/version`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
+      const response = await fetch(`${endpoint}/api/version`, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
-        throw new Error('Could not connect to Ollama');
+        throw new Error(`Ollama server responded with status: ${response.status}`);
       }
-    } catch (error) {
-      logger.error('Ollama connection error:', error);
+      
+      // Try to parse the response
+      const data = await response.json();
+      if (!data || !data.version) {
+        throw new Error("Invalid response from Ollama server (missing version info)");
+      }
+      
+      logger.log("Connected to Ollama. Version:", data.version);
+      
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error 
+        ? error.message 
+        : 'Unknown error connecting to Ollama';
+        
+      logger.error('Ollama connection error:', errorMsg);
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        return {
+          code: `// Error: Connection to Ollama timed out\n// Please make sure Ollama is running at ${endpoint}`,
+          explanation: `Connection to Ollama timed out. Please make sure Ollama is running at ${endpoint}`,
+          complexity: {
+            time: 'N/A',
+            space: 'N/A'
+          }
+        };
+      }
+      
       return {
-        code: `// Error: Could not connect to Ollama\n// Please make sure Ollama is running at ${store.endpoint}`,
-        explanation: `Could not connect to Ollama. Please make sure Ollama is running at ${store.endpoint}`,
+        code: `// Error: Could not connect to Ollama\n// Please make sure Ollama is running at ${endpoint}\n// ${errorMsg}`,
+        explanation: `Could not connect to Ollama. Please make sure Ollama is running at ${endpoint}`,
         complexity: {
           time: 'N/A',
           space: 'N/A'
@@ -307,7 +360,7 @@ async function generateSolutionWithOllama(
     try {
       // Make the API request using the Ollama API client
       const response = await ollamaApi.chat(
-        store.endpoint,
+        endpoint,
         requestPayload
       );
       
