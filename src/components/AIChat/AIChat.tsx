@@ -328,9 +328,32 @@ You can also just chat with the AI normally!
     setIsLoading(true);
     
     try {
-      // Check if streaming is supported for this model
-      const supportsStreaming = isStreamingSupported(defaultModel);
-      const shouldStream = useStreaming && supportsStreaming;
+      // Check if Ollama is enabled
+      const ollamaStore = useOllamaStore.getState();
+      
+      // Determine if streaming should be used
+      let shouldStream = false;
+      
+      if (ollamaStore.isEnabled) {
+        // For Ollama, always use streaming if enabled in settings
+        shouldStream = ollamaStore.useStreaming;
+        console.log("[DEBUG] Ollama streaming check:", { 
+          ollamaEnabled: ollamaStore.isEnabled,
+          ollamaModel: ollamaStore.defaultModel, 
+          useStreaming: ollamaStore.useStreaming, 
+          shouldStream 
+        });
+      } else {
+        // For OpenRouter, check if the model supports streaming
+        const supportsStreaming = isStreamingSupported(defaultModel);
+        shouldStream = useStreaming && supportsStreaming;
+        console.log("[DEBUG] OpenRouter streaming check:", { 
+          defaultModel, 
+          useStreaming, 
+          supportsStreaming, 
+          shouldStream 
+        });
+      }
       
       if (shouldStream) {
         await handleStreamResponse(content);
@@ -370,6 +393,8 @@ You can also just chat with the AI normally!
       const ollamaStore = useOllamaStore.getState();
       
       if (ollamaStore.isEnabled) {
+        console.log("[DEBUG] Using Ollama:", ollamaStore.endpoint, ollamaStore.defaultModel, messages);
+
         // Use Ollama API for streaming
         await ollamaApi.streamChat(
           ollamaStore.endpoint,

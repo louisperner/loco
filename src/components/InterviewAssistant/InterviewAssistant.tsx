@@ -544,7 +544,7 @@ const InterviewAssistant: React.FC = () => {
     // Get current screenshots directly from the store to ensure we have the latest state
     const currentScreenshots = useInterviewAssistantStore.getState().screenshots;
     logger.log("Generate solution called, component screenshots:", screenshots.length, 
-                "store screenshots:", currentScreenshots.length);
+              "store screenshots:", currentScreenshots.length);
     
     // Check if there's a valid screenshot or problem text
     if (currentScreenshots.length === 0 && (!problemText || problemText.trim() === "")) {
@@ -595,18 +595,52 @@ const InterviewAssistant: React.FC = () => {
       
       addScreenshot(newScreenshot);
       logger.log("Added placeholder screenshot, store now has:", 
-                  useInterviewAssistantStore.getState().screenshots.length, "screenshots");
+                useInterviewAssistantStore.getState().screenshots.length, "screenshots");
     }
+    
+    if (isGenerating) return;
     
     setGenerating(true);
     
     try {
-      // Pass the isCode flag to the AI service
-      const generatedSolution = await generateAiSolution(problemText, selectedLanguage, selectedModel, isCode);
+      // Update the model selection in the respective store
+      if (ollamaEnabled) {
+        setOllamaModel(selectedModel);
+      } else {
+        setOpenRouterModel(selectedModel);
+      }
+      
+      // Call the AI service to generate a solution
+      console.log("Generating solution with model:", selectedModel);
+      
+      const generatedSolution = await generateAiSolution(
+        problemText,
+        selectedLanguage,
+        selectedModel,
+        isCode
+      );
+      
+      // Add debug logging for solution parsing
+      console.log("Solution received from AI:", typeof generatedSolution, 
+        generatedSolution.code ? generatedSolution.code.substring(0, 100) + "..." : "No code");
+      
+      // Update state with the generated solution
       setSolution(generatedSolution);
-      setGenerating(false);
     } catch (error) {
-      logger.error("Error generating solution:", error);
+      console.error("Error generating solution:", error);
+      
+      // Create fallback solution to display the error to the user
+      const errorSolution = {
+        code: `// Error: ${error instanceof Error ? error.message : "An unexpected error occurred"}`,
+        explanation: "There was a problem generating a solution. Please try again with different settings or a different model.",
+        complexity: {
+          time: "N/A",
+          space: "N/A"
+        }
+      };
+      
+      setSolution(errorSolution);
+    } finally {
       setGenerating(false);
     }
   };

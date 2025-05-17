@@ -106,20 +106,22 @@ export const generateSolution = async (
     
     // Prepare the system prompt based on whether this is a coding question or general question
     const systemPrompt = isCode
-      ? `You are a coding assistant. Solve the given coding problem in ${language}. 
-         Your response should be in valid JSON format containing:
-         {
-           "code": "The full code solution with comments",
-           "explanation": "A brief explanation of your approach",
-           "timeComplexity": "The time complexity of your solution",
-           "spaceComplexity": "The space complexity of your solution"
-         }`
-      : `You are a helpful assistant. Answer the following question in a clear and concise way. 
-         Your response should be in valid JSON format containing:
-         {
-           "code": "Any code snippets relevant to the answer",
-           "explanation": "Your detailed answer to the question"
-         }`;
+      ? `You are a coding assistant. Solve the given coding problem in ${language}.
+YOUR RESPONSE MUST BE VALID JSON. Format your response EXACTLY as follows (including the outer braces):
+{
+  "code": "The full code solution with comments",
+  "explanation": "A brief explanation of your approach",
+  "timeComplexity": "The time complexity of your solution",
+  "spaceComplexity": "The space complexity of your solution"
+}
+DO NOT include any text before or after the JSON. Return ONLY the JSON object.`
+      : `You are a helpful assistant. Answer the following question in a clear and concise way.
+YOUR RESPONSE MUST BE VALID JSON. Format your response EXACTLY as follows (including the outer braces):
+{
+  "code": "Any code snippets relevant to the answer",
+  "explanation": "Your detailed answer to the question"
+}
+DO NOT include any text before or after the JSON. Return ONLY the JSON object.`;
     
     // Prepare the messages for the API request
     let messages: { role: string; content: MessageContent }[] = [
@@ -328,19 +330,22 @@ async function generateSolutionWithOllama(
     
     // Prepare the system prompt based on whether this is a coding question or general question
     const systemPrompt = isCode
-      ? `You are a coding assistant. Solve the given coding problem in ${language}. 
-         Your response should be in valid JSON format containing:
-         {
-           "code": "The full code solution with comments",
-           "explanation": "A brief explanation of your approach",
-           "timeComplexity": "The time complexity of your solution",
-           "spaceComplexity": "The space complexity of your solution"
-         }`
-      : `You are a helpful assistant. Answer the following question in a clear and concise way. 
-         Your response should be in valid JSON format containing:
-           "code": "Any code snippets relevant to the answer",
-           "explanation": "Your detailed answer to the question"
-         }`;
+      ? `You are a coding assistant. Solve the given coding problem in ${language}.
+YOUR RESPONSE MUST BE VALID JSON. Format your response EXACTLY as follows (including the outer braces):
+{
+  "code": "The full code solution with comments",
+  "explanation": "A brief explanation of your approach",
+  "timeComplexity": "The time complexity of your solution",
+  "spaceComplexity": "The space complexity of your solution"
+}
+DO NOT include any text before or after the JSON. Return ONLY the JSON object.`
+      : `You are a helpful assistant. Answer the following question in a clear and concise way.
+YOUR RESPONSE MUST BE VALID JSON. Format your response EXACTLY as follows (including the outer braces):
+{
+  "code": "Any code snippets relevant to the answer",
+  "explanation": "Your detailed answer to the question"
+}
+DO NOT include any text before or after the JSON. Return ONLY the JSON object.`;
     
     // Prepare the messages for the API request
     const messages = [
@@ -358,8 +363,10 @@ async function generateSolutionWithOllama(
     };
     
     try {
-      // Make the API request using the Ollama API client
-      const response = await ollamaApi.chat(
+      // Make the API request using the specialized Ollama API client for interview assistant
+      logger.log('Sending request to Ollama using specialized interview assistant method');
+      
+      const response = await ollamaApi.interviewAssistantChat(
         endpoint,
         requestPayload
       );
@@ -367,7 +374,7 @@ async function generateSolutionWithOllama(
       logger.log('Received response from Ollama API:', response.model);
       
       // Extract the content from the response
-      const content = response.message?.content || '';
+      const content = response.content || '';
       
       // Add to history if we have a valid response
       if (content) {
@@ -378,53 +385,96 @@ async function generateSolutionWithOllama(
         );
       }
       
+      // Log the full content for debugging
+      logger.log('Raw content from Ollama:', content.substring(0, 200) + '...');
+      
+      // First check if the entire content is valid JSON
+      let parsedResponse = null;
+      
+      // Try with multiple approaches to extract valid JSON
       try {
-        // Try to find and parse a JSON response in the content
-        const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || 
-                         content.match(/{[\s\S]*}/) ||
-                         content.match(/\{[\s\S]*\}/);
+        // Direct parsing of the entire content
+        parsedResponse = JSON.parse(content);
+        logger.log('Successfully parsed full content as JSON');
+      } catch (fullContentError) {
+        // Content is not directly parseable as JSON
+        logger.log('Full content parsing failed, trying JSON extraction');
         
-        if (jsonMatch) {
-          const jsonContent = jsonMatch[0].replace(/```json\n|```/g, '');
-          const parsedResponse = JSON.parse(jsonContent);
-          
-          // Format the solution
-          return {
-            code: parsedResponse.code || 'Error: No code was generated',
-            explanation: parsedResponse.explanation || 'No explanation provided',
-            complexity: {
-              time: parsedResponse.timeComplexity || 'Unknown',
-              space: parsedResponse.spaceComplexity || 'Unknown'
+        // Try to extract JSON from the content using regex patterns
+        const jsonRegex = /\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}))*\}/g;
+        const jsonMatches = content.match(jsonRegex);
+        
+        if (jsonMatches && jsonMatches.length > 0) {
+          // Try each match until we find a valid one
+          for (const jsonStr of jsonMatches) {
+            try {
+              const parsed = JSON.parse(jsonStr);
+              
+              // Check if this has the expected properties
+              if (parsed.code !== undefined || parsed.explanation !== undefined) {
+                parsedResponse = parsed;
+                logger.log('Found valid JSON object in content');
+                break;
+              }
+            } catch (err) {
+              // Continue to next match
             }
-          };
-        } else {
-          // If no JSON found, try to extract code section
-          const codeSection = extractCodeSection(content);
-          
-          return {
-            code: codeSection || content || 'Error: Could not parse the response',
-            explanation: 'The AI generated an invalid response format. Using best-effort extraction.',
-            complexity: {
-              time: 'Unknown',
-              space: 'Unknown'
-            }
-          };
+          }
         }
-      } catch (parseError) {
-        logger.error('Error parsing Ollama response:', parseError);
         
-        // If parsing fails, try to extract code section
-        const codeSection = extractCodeSection(content);
-        
+        if (!parsedResponse) {
+          // Try to extract individual fields with regex if all JSON parsing fails
+          logger.log('JSON extraction failed, trying regex field extraction');
+          
+          const codeMatch = content.match(/"code"\s*:\s*"([^"]*)"/);
+          const explanationMatch = content.match(/"explanation"\s*:\s*"([^"]*)"/);
+          const timeMatch = content.match(/"timeComplexity"\s*:\s*"([^"]*)"/);
+          const spaceMatch = content.match(/"spaceComplexity"\s*:\s*"([^"]*)"/);
+          
+          if (codeMatch || explanationMatch) {
+            parsedResponse = {
+              code: codeMatch ? codeMatch[1] : extractCodeSection(content) || 'No code extracted',
+              explanation: explanationMatch ? explanationMatch[1] : 'No explanation extracted',
+              timeComplexity: timeMatch ? timeMatch[1] : 'Unknown',
+              spaceComplexity: spaceMatch ? spaceMatch[1] : 'Unknown'
+            };
+            logger.log('Created response object from regex extraction');
+          } else {
+            // Last resort: extract code and use the content as explanation
+            const extractedCode = extractCodeSection(content);
+            if (extractedCode) {
+              parsedResponse = {
+                code: extractedCode,
+                explanation: 'Extracted from AI response',
+                timeComplexity: 'Unknown',
+                spaceComplexity: 'Unknown'
+              };
+              logger.log('Created response from code extraction');
+            }
+          }
+        }
+      }
+      
+      if (parsedResponse) {
         return {
-          code: codeSection || content || 'Error: Could not parse the response',
-          explanation: 'The AI generated a non-JSON response. Using best-effort extraction.',
+          code: parsedResponse.code || 'Error: No code was generated',
+          explanation: parsedResponse.explanation || 'No explanation provided',
           complexity: {
-            time: 'Unknown',
-            space: 'Unknown'
+            time: parsedResponse.timeComplexity || parsedResponse.time_complexity || 'Unknown',
+            space: parsedResponse.spaceComplexity || parsedResponse.space_complexity || 'Unknown'
           }
         };
       }
+      
+      // If all parsing attempts fail, return the raw content with an error message
+      return {
+        code: content || 'Error: Could not parse the response',
+        explanation: 'The AI generated a response that could not be parsed. Using the raw response.',
+        complexity: {
+          time: 'Unknown',
+          space: 'Unknown'
+        }
+      };
     } catch (apiError) {
       // Handle API-specific errors
       logger.error('Ollama API error:', apiError);

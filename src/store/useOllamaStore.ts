@@ -26,7 +26,7 @@ interface OllamaState {
 export const useOllamaStore = create<OllamaState>()(
   persist(
     (set) => ({
-      endpoint: "http://192.168.15.57:11434", // Use HTTP for local development to avoid self-signed certificate issues
+      endpoint: "https://192.168.15.57:11434", // Updated to HTTPS to match server configuration
       defaultModel: 'llama3',
       useStreaming: true,
       isEnabled: true,

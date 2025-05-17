@@ -65,6 +65,12 @@ const OllamaSettings: React.FC = () => {
         }));
       }
       
+      // Fallback to default models if no models were found
+      if (modelsList.length === 0) {
+        console.log("No models found in API response, using defaults");
+        modelsList = DEFAULT_OLLAMA_MODELS;
+      }
+      
       // Update state with the models we found
       setCustomModels(modelsList);
       
@@ -83,6 +89,15 @@ const OllamaSettings: React.FC = () => {
       setIsLoadingModels(false);
     } catch (error) {
       console.error('Failed to load Ollama models:', error);
+      
+      // Use default models on error
+      setCustomModels(DEFAULT_OLLAMA_MODELS);
+      
+      // If no model is selected, select the first default model
+      if (!defaultModel || !DEFAULT_OLLAMA_MODELS.some(m => m.id === defaultModel)) {
+        setDefaultModel(DEFAULT_OLLAMA_MODELS[0].id);
+      }
+      
       setIsLoadingModels(false);
     }
   };

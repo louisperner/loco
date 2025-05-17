@@ -208,6 +208,7 @@ const OpenRouterSpotlight: React.FC<OpenRouterSpotlightProps> = () => {
       
       if (ollamaEnabled) {
         // Use Ollama API
+        debugger;
         if (currentUseStreaming) {
           setIsStreaming(true);
           ollamaApi.streamChat(
