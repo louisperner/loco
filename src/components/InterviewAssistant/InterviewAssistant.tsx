@@ -1032,12 +1032,12 @@ const InterviewAssistant: React.FC = () => {
           <div className="h-[180px] overflow-y-auto
             [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
             [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]">
-            <div className="grid grid-cols-2 gap-1">
+            <div className="grid grid-cols-1 gap-1">
               {screenshots.map((ss, index) => (
                 <div 
                   key={ss.id} 
                   className="relative rounded overflow-hidden border-2 border-[#151515] shadow-md group hover:border-[#555555] transition-colors duration-200"
-                  style={{ height: '100px' }}
+                  style={{ height: '200px' }}
                 >
                   <div className="absolute top-0 left-0 bg-[#151515] bg-opacity-70 text-xs text-white py-0.5 px-1 rounded-br">
                     #{screenshots.length - index}
@@ -1296,7 +1296,7 @@ const InterviewAssistant: React.FC = () => {
             <div className="bg-[#222222] rounded p-2 text-xs font-mono whitespace-pre overflow-x-auto border-2 border-[#151515] h-[66%] overflow-y-auto shadow-inner text-white/90
               [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
               [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]">
-              {isTyping ? typedSolution : solution.code}
+              {isTyping ? 'Loading...' : JSON.parse(solution.code).code}
               {isTyping && <span className="animate-pulse">|</span>}
             </div>
             
@@ -1306,7 +1306,7 @@ const InterviewAssistant: React.FC = () => {
                 <div className="bg-[#222222] rounded p-1.5 text-xs border-2 border-[#151515] h-20 overflow-y-auto shadow-inner
                   [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
                   [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]">
-                  <p className="text-white/90">{solution.explanation}</p>
+                  <p className="text-white/90">{JSON.parse(solution.code).explanation}</p>
                 </div>
               </div>
               

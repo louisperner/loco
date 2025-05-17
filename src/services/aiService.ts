@@ -2,8 +2,8 @@ import { Solution } from '../store/interviewAssistantStore';
 import { useOpenRouterStore } from '../store/useOpenRouterStore';
 import { useOllamaStore } from '../store/useOllamaStore';
 import { OPENROUTER_MODELS } from '../lib/openrouter-constants';
-import { openRouterApi, MessageContent } from '../lib/openrouter';
-import { ollamaApi } from '../lib/ollama';
+import { openRouterApi, MessageContent as OpenRouterMessageContent, TextContent, ImageContent } from '../lib/openrouter';
+import { ollamaApi, OllamaContent, OllamaTextContent, OllamaImageContent, MessageContent as OllamaMessageContent } from '../lib/ollama';
 import { useInterviewAssistantStore } from '../store/interviewAssistantStore';
 import { DEFAULT_OLLAMA_MODELS, normalizeEndpoint } from '../lib/ollama-constants';
 
@@ -124,7 +124,7 @@ YOUR RESPONSE MUST BE VALID JSON. Format your response EXACTLY as follows (inclu
 DO NOT include any text before or after the JSON. Return ONLY the JSON object.`;
     
     // Prepare the messages for the API request
-    let messages: { role: string; content: MessageContent }[] = [
+    let messages: { role: string; content: OpenRouterMessageContent }[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: problemText }
     ];
@@ -274,59 +274,8 @@ async function generateSolutionWithOllama(
     // Normalize the endpoint URL
     const endpoint = normalizeEndpoint(store.endpoint);
     
-    // Check if we can connect to Ollama
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-      
-      const response = await fetch(`${endpoint}/api/version`, {
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-        }
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`Ollama server responded with status: ${response.status}`);
-      }
-      
-      // Try to parse the response
-      const data = await response.json();
-      if (!data || !data.version) {
-        throw new Error("Invalid response from Ollama server (missing version info)");
-      }
-      
-      logger.log("Connected to Ollama. Version:", data.version);
-      
-    } catch (error: unknown) {
-      const errorMsg = error instanceof Error 
-        ? error.message 
-        : 'Unknown error connecting to Ollama';
-        
-      logger.error('Ollama connection error:', errorMsg);
-      
-      if (error instanceof Error && error.name === 'AbortError') {
-        return {
-          code: `// Error: Connection to Ollama timed out\n// Please make sure Ollama is running at ${endpoint}`,
-          explanation: `Connection to Ollama timed out. Please make sure Ollama is running at ${endpoint}`,
-          complexity: {
-            time: 'N/A',
-            space: 'N/A'
-          }
-        };
-      }
-      
-      return {
-        code: `// Error: Could not connect to Ollama\n// Please make sure Ollama is running at ${endpoint}\n// ${errorMsg}`,
-        explanation: `Could not connect to Ollama. Please make sure Ollama is running at ${endpoint}`,
-        complexity: {
-          time: 'N/A',
-          space: 'N/A'
-        }
-      };
-    }
+    // Get screenshots from the interview assistant store
+    const { screenshots } = useInterviewAssistantStore.getState();
     
     // Prepare the system prompt based on whether this is a coding question or general question
     const systemPrompt = isCode
@@ -346,12 +295,179 @@ YOUR RESPONSE MUST BE VALID JSON. Format your response EXACTLY as follows (inclu
   "explanation": "Your detailed answer to the question"
 }
 DO NOT include any text before or after the JSON. Return ONLY the JSON object.`;
-    
-    // Prepare the messages for the API request
-    const messages = [
+
+    // Prepare messages array
+    let messages = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: problemText }
     ];
+    
+    // Check if we have screenshots and if the model might support images
+    // For now, treat any model with "llava" in the name as a vision model
+    const supportsVision = selectedModel.toLowerCase().includes('llava');
+    
+    // If we have screenshots and the model supports vision, add screenshots as base64 data
+    if (screenshots.length > 0) {
+      logger.log('Including screenshots in the Ollama request for vision model');
+      
+      // Extract base64 data from all screenshots
+      const imageBase64Array: string[] = [];
+      
+      // Function to resize image data and reduce size
+      const resizeBase64Image = async (base64Data: string, maxWidth = 800, quality = 0.8): Promise<string> => {
+        return new Promise((resolve) => {
+          // Create an image element to work with the image data
+          const img = new Image();
+          img.onload = () => {
+            // Calculate new dimensions while preserving aspect ratio
+            let width = img.width;
+            let height = img.height;
+            
+            // Only resize if larger than maxWidth
+            if (width > maxWidth) {
+              const aspectRatio = width / height;
+              width = maxWidth;
+              height = width / aspectRatio;
+            }
+            
+            // Create a canvas to draw the resized image
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Draw the image on the canvas with the new dimensions
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              
+              // Get the resized image as base64 (with quality parameter to reduce file size)
+              const resizedBase64 = canvas.toDataURL('image/jpeg', quality).replace(/^data:image\/\w+;base64,/, '');
+              resolve(resizedBase64);
+            } else {
+              // Fallback if context is not available - use original but log warning
+              logger.error('Failed to get canvas context for image resizing');
+              resolve(base64Data);
+            }
+          };
+          
+          img.onerror = () => {
+            // Fallback in case of error
+            logger.error('Error loading image for resizing');
+            resolve(base64Data);
+          };
+          
+          // Set source to the original base64 image data 
+          img.src = `data:image/png;base64,${base64Data}`;
+        });
+      };
+      
+      // Process each screenshot - resize and add to array
+      const processScreenshots = async () => {
+        try {
+          // Process each screenshot, resize and add to array
+          for (const screenshot of screenshots) {
+            // Extract base64 data (remove the data:image/png;base64, prefix)
+            const originalBase64 = screenshot.dataUrl.replace(/^data:image\/\w+;base64,/, '');
+            
+            // Resize the image to reduce payload size
+            const resizedBase64 = await resizeBase64Image(originalBase64);
+            imageBase64Array.push(resizedBase64);
+            
+            // Debug the image data (truncated for brevity)
+            const reductionPercent = Math.round((1 - (resizedBase64.length / originalBase64.length)) * 100);
+            logger.log(`Added image to base64 array, reduced by ${reductionPercent}%, original: ${originalBase64.length}, new: ${resizedBase64.length} bytes`);
+          }
+          
+          // Check if the total size is still too large
+          const totalSize = imageBase64Array.reduce((sum, img) => sum + img.length, 0);
+          const maxRequestSize = 10 * 1024 * 1024; // 10MB limit
+          
+          if (totalSize > maxRequestSize) {
+            logger.log(`Image payload large (${Math.round(totalSize/1024/1024)}MB), attempting more aggressive reduction.`);
+            
+            // Try to reduce the size more aggressively with smaller dimensions and quality
+            try {
+              // Empty the array and re-add the images with more aggressive reduction
+              const aggressiveReduction = async () => {
+                imageBase64Array.length = 0; // Clear the array
+                
+                // Only process the first image if there are multiple to reduce payload further
+                const imagesToProcess = screenshots.length > 2 ? [screenshots[0]] : screenshots;
+                
+                for (const screenshot of imagesToProcess) {
+                  const originalBase64 = screenshot.dataUrl.replace(/^data:image\/\w+;base64,/, '');
+                  // Use smaller dimensions (400px) and lower quality (0.6)
+                  const smallerBase64 = await resizeBase64Image(originalBase64, 400, 0.6);
+                  imageBase64Array.push(smallerBase64);
+                  
+                  const reductionPercent = Math.round((1 - (smallerBase64.length / originalBase64.length)) * 100);
+                  logger.log(`Reduced image more aggressively: ${reductionPercent}% reduction, size: ${smallerBase64.length} bytes`);
+                }
+              };
+              
+              await aggressiveReduction();
+              
+              // Check size again
+              const newTotalSize = imageBase64Array.reduce((sum, img) => sum + img.length, 0);
+              
+              // If still too large, use text only
+              if (newTotalSize > maxRequestSize) {
+                logger.error(`Image payload still too large (${Math.round(newTotalSize/1024/1024)}MB) after reduction. Using text only.`);
+                messages = [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: `${problemText} (Note: Images were removed due to size limitations.)` }
+                ];
+                return; // Exit the function early
+              }
+            } catch (error) {
+              logger.error('Error during aggressive image reduction, fallback to text only:', error);
+              messages = [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: problemText }
+              ];
+              return; // Exit the function early
+            }
+          }
+          
+          // Continue with the request now that images are processed
+          // Update the messages array with the multimodal message
+          // Ollama's newer API expects 'images' array rather than content array with 'image' objects
+          const updatedMessage = {
+            role: 'user',
+            content: problemText,
+            images: imageBase64Array
+          };
+          
+          // Define a new properly-typed messages array
+          const multimodalMessages = [
+            { role: 'system', content: systemPrompt },
+            updatedMessage
+          ];
+          
+          // TypeScript hack: we know this will work with Ollama API even though types don't match
+          messages = multimodalMessages as unknown as typeof messages;
+          
+          logger.log('Added screenshots to Ollama request:', 
+            JSON.stringify({
+              messageCount: messages.length,
+              imagesCount: imageBase64Array.length,
+              totalSizeKB: Math.round(imageBase64Array.reduce((sum, img) => sum + img.length, 0) / 1024),
+              messageFormat: 'Using images array format for Ollama vision models'
+            })
+          );
+        } catch (error) {
+          logger.error('Error processing screenshots:', error);
+          // Continue with text-only request as fallback
+          messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: problemText }
+          ];
+        }
+      };
+      
+      // Start the screenshot processing and wait for it to complete
+      await processScreenshots();
+    }
     
     // Prepare the request payload
     const requestPayload = {
@@ -361,6 +477,25 @@ DO NOT include any text before or after the JSON. Return ONLY the JSON object.`;
         temperature: 0.7 // Moderate creativity
       }
     };
+    
+    // Debug the full request payload structure (without the actual image data for brevity)
+    logger.log('Request payload structure:', JSON.stringify({
+      model: requestPayload.model,
+      messageCount: requestPayload.messages.length,
+      messageTypes: requestPayload.messages.map(msg => {
+        if (typeof msg.content === 'string') {
+          return { role: msg.role, contentType: 'string' };
+        } else {
+          return { 
+            role: msg.role, 
+            contentType: 'array', 
+            contentItems: Array.isArray(msg.content) 
+              ? (msg.content as OllamaContent[]).map((item: OllamaContent) => item.type) 
+              : 'unknown'
+          };
+        }
+      })
+    }));
     
     try {
       // Make the API request using the specialized Ollama API client for interview assistant
@@ -388,74 +523,12 @@ DO NOT include any text before or after the JSON. Return ONLY the JSON object.`;
       // Log the full content for debugging
       logger.log('Raw content from Ollama:', content.substring(0, 200) + '...');
       
-      // First check if the entire content is valid JSON
-      let parsedResponse = null;
-      
-      // Try with multiple approaches to extract valid JSON
+      // Try to parse as JSON
       try {
-        // Direct parsing of the entire content
-        parsedResponse = JSON.parse(content);
-        logger.log('Successfully parsed full content as JSON');
-      } catch (fullContentError) {
-        // Content is not directly parseable as JSON
-        logger.log('Full content parsing failed, trying JSON extraction');
+        // Try direct JSON parsing first
+        const parsedResponse = JSON.parse(content);
+        logger.log('Successfully parsed response as JSON');
         
-        // Try to extract JSON from the content using regex patterns
-        const jsonRegex = /\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}))*\}/g;
-        const jsonMatches = content.match(jsonRegex);
-        
-        if (jsonMatches && jsonMatches.length > 0) {
-          // Try each match until we find a valid one
-          for (const jsonStr of jsonMatches) {
-            try {
-              const parsed = JSON.parse(jsonStr);
-              
-              // Check if this has the expected properties
-              if (parsed.code !== undefined || parsed.explanation !== undefined) {
-                parsedResponse = parsed;
-                logger.log('Found valid JSON object in content');
-                break;
-              }
-            } catch (err) {
-              // Continue to next match
-            }
-          }
-        }
-        
-        if (!parsedResponse) {
-          // Try to extract individual fields with regex if all JSON parsing fails
-          logger.log('JSON extraction failed, trying regex field extraction');
-          
-          const codeMatch = content.match(/"code"\s*:\s*"([^"]*)"/);
-          const explanationMatch = content.match(/"explanation"\s*:\s*"([^"]*)"/);
-          const timeMatch = content.match(/"timeComplexity"\s*:\s*"([^"]*)"/);
-          const spaceMatch = content.match(/"spaceComplexity"\s*:\s*"([^"]*)"/);
-          
-          if (codeMatch || explanationMatch) {
-            parsedResponse = {
-              code: codeMatch ? codeMatch[1] : extractCodeSection(content) || 'No code extracted',
-              explanation: explanationMatch ? explanationMatch[1] : 'No explanation extracted',
-              timeComplexity: timeMatch ? timeMatch[1] : 'Unknown',
-              spaceComplexity: spaceMatch ? spaceMatch[1] : 'Unknown'
-            };
-            logger.log('Created response object from regex extraction');
-          } else {
-            // Last resort: extract code and use the content as explanation
-            const extractedCode = extractCodeSection(content);
-            if (extractedCode) {
-              parsedResponse = {
-                code: extractedCode,
-                explanation: 'Extracted from AI response',
-                timeComplexity: 'Unknown',
-                spaceComplexity: 'Unknown'
-              };
-              logger.log('Created response from code extraction');
-            }
-          }
-        }
-      }
-      
-      if (parsedResponse) {
         return {
           code: parsedResponse.code || 'Error: No code was generated',
           explanation: parsedResponse.explanation || 'No explanation provided',
@@ -464,17 +537,21 @@ DO NOT include any text before or after the JSON. Return ONLY the JSON object.`;
             space: parsedResponse.spaceComplexity || parsedResponse.space_complexity || 'Unknown'
           }
         };
+      } catch (jsonError) {
+        logger.error('Failed to parse response as JSON:', jsonError);
+        
+        // Fall back to extracting code blocks
+        const codeSection = extractCodeSection(content);
+        
+        return {
+          code: codeSection || content || 'Error: Could not parse the response',
+          explanation: 'The AI generated a response that could not be parsed as JSON. Showing raw response.',
+          complexity: {
+            time: 'Unknown',
+            space: 'Unknown'
+          }
+        };
       }
-      
-      // If all parsing attempts fail, return the raw content with an error message
-      return {
-        code: content || 'Error: Could not parse the response',
-        explanation: 'The AI generated a response that could not be parsed. Using the raw response.',
-        complexity: {
-          time: 'Unknown',
-          space: 'Unknown'
-        }
-      };
     } catch (apiError) {
       // Handle API-specific errors
       logger.error('Ollama API error:', apiError);

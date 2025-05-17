@@ -39,7 +39,20 @@ export interface OllamaModelsResponse {
 // Keeping OllamaTagsResponse as an alias for backward compatibility
 export type OllamaTagsResponse = OllamaModelsResponse;
 
-export type MessageContent = string;
+// Define types for multimodal content
+export interface OllamaTextContent {
+  type: 'text';
+  text: string;
+}
+
+export interface OllamaImageContent {
+  type: 'image';
+  image: string;
+}
+
+export type OllamaContent = OllamaTextContent | OllamaImageContent;
+
+export type MessageContent = string | OllamaContent[];
 
 export interface OllamaRequest {
   model: string;
@@ -217,6 +230,7 @@ export const ollamaApi = {
             
             if (line) {
               try {
+                console.log("[DEBUG] Processing line:", line.substring(0, 100) + (line.length > 100 ? '...' : ''));
                 const parsed = JSON.parse(line) as OllamaStreamResponse;
                 
                 // Extract content from different possible locations in the response
@@ -225,10 +239,12 @@ export const ollamaApi = {
                 // Check for direct 'response' field (older API style)
                 if (parsed.response !== undefined) {
                   content = parsed.response;
+                  console.log("[DEBUG] Found response field in parsed JSON");
                 } 
                 // Check for nested content in message (newer API style)
                 else if (parsed.message?.content !== undefined) {
                   content = parsed.message.content;
+                  console.log("[DEBUG] Found message.content field in parsed JSON");
                 }
                 
                 if (content !== undefined) {
@@ -333,52 +349,123 @@ export const ollamaApi = {
       const normalizedEndpoint = normalizeEndpoint(endpoint);
       
       console.log("[DEBUG] Interview Assistant request to:", normalizedEndpoint, request.model);
-      
-      const response = await axios.post(
-        `${normalizedEndpoint}/api/chat`,
-        {
-          ...request,
-          format: "json" // Try to explicitly request JSON format if the model supports it
-        },
-        { 
-          headers: { 'Content-Type': 'application/json' },
-          responseType: 'text'
-        }
-      );
-      
-      console.log("[DEBUG] Interview Assistant raw response:", 
-        typeof response.data === 'string' ? response.data.substring(0, 100) : 'Not a string');
-      
-      // Handle different response formats
-      let data = response.data;
-      
-      // Check if the response is a string instead of a JSON object
-      if (typeof data === 'string') {
-        try {
-          // Try to parse it as JSON
-          data = JSON.parse(data);
-        } catch (parseError) {
-          // If it's not valid JSON, it might be a stream format or raw text
-          // Return the raw string for custom handling at the application level
-          return {
-            content: data,
-            model: request.model
+      console.log("[DEBUG] Request message structure:", request.messages.map(msg => {
+        if (typeof msg.content === 'string') {
+          return { role: msg.role, contentType: 'string', length: msg.content.length };
+        } else if (Array.isArray(msg.content)) {
+          return { 
+            role: msg.role, 
+            contentType: 'array', 
+            contentItems: msg.content.map(item => ({
+              type: item.type,
+              dataLength: item.type === 'image' ? (item as OllamaImageContent).image.length : 
+                           item.type === 'text' ? (item as OllamaTextContent).text.length : 0
+            }))
           };
+        } else {
+          return { role: msg.role, contentType: 'unknown' };
+        }
+      }));
+      
+      // Also log if messages contain the 'images' array from the new format
+      console.log("[DEBUG] Checking for images array in messages:", request.messages.map(msg => {
+        return {
+          role: msg.role,
+          hasImages: 'images' in msg,
+          imagesCount: 'images' in msg ? (msg as any).images.length : 0
+        };
+      }));
+      
+      // Use the same fetch and streaming approach as streamChat for consistency
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Deep clone and stringify the request to avoid reference issues
+      // This is important for multimodal content
+      const requestBody = JSON.stringify({
+        ...request,
+        stream: true
+      });
+      console.log("[DEBUG] Request body size:", requestBody.length, "bytes");
+      
+      const response = await fetch(`${normalizedEndpoint}/api/chat`, {
+        method: 'POST',
+        headers,
+        body: requestBody
+      });
+
+      console.log("[DEBUG] Interview Assistant fetch response:", { 
+        status: response.status, 
+        ok: response.ok, 
+        contentType: response.headers.get('content-type') 
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ollama API returned ${response.status}: ${response.statusText}`);
+      }
+
+      if (!response.body) {
+        throw new Error('Response body is null');
+      }
+
+      // Collect the full response in a string
+      const fullResponse: string[] = [];
+      
+      // Create a reader from the response body stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      
+      // Read and process the stream until complete
+      let reading = true;
+      while (reading) {
+        const { done, value } = await reader.read();
+        if (done) {
+          reading = false;
+        } else {
+          const chunk = decoder.decode(value, { stream: true });
+          buffer += chunk;
+          
+          let lineEnd = buffer.indexOf('\n');
+          while (lineEnd !== -1) {
+            const line = buffer.slice(0, lineEnd).trim();
+            buffer = buffer.slice(lineEnd + 1);
+            
+            if (line) {
+              try {
+                console.log("[DEBUG] Processing line:", line.substring(0, 100) + (line.length > 100 ? '...' : ''));
+                const parsed = JSON.parse(line);
+                
+                // Extract content from parsed JSON
+                let content: string | undefined = undefined;
+                
+                if (parsed.response !== undefined) {
+                  content = parsed.response;
+                  console.log("[DEBUG] Found response field in parsed JSON");
+                } else if (parsed.message?.content !== undefined) {
+                  content = parsed.message.content;
+                  console.log("[DEBUG] Found message.content field in parsed JSON");
+                }
+                
+                if (content !== undefined) {
+                  fullResponse.push(content);
+                }
+              } catch (error) {
+                // Skip invalid JSON
+                console.log("Error parsing JSON in stream:", error);
+              }
+            }
+            
+            lineEnd = buffer.indexOf('\n');
+          }
         }
       }
       
-      // Ensure the response has expected fields
-      if (data && !data.message && data.response) {
-        // Convert older API format to newer format
-        data.message = {
-          role: 'assistant',
-          content: data.response
-        };
-      }
-      
+      // Return the combined response
       return {
-        content: data.message?.content || data.response || '',
-        model: data.model || request.model
+        content: fullResponse.join(''),
+        model: request.model
       };
     } catch (error) {
       console.error(`Ollama interview assistant error:`, error);
