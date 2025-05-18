@@ -17,13 +17,15 @@ import Inventory from '../Inventory/Inventory';
 import { Bloom, EffectComposer } from '@react-three/postprocessing';
 import WebFrames from '../Models/WebFrames';
 import { Crosshair, Floor, PreviewFrame, FrameRateLimiter, CameraExposer } from '../Scene';
+import Minimap, { MinimapRenderer } from '../Scene/Minimap';
 import CoordinateDisplay from '../ui/CoordinateDisplay';
 import { rgbaToString } from '../../utils/colorUtils';
 import { useFileHandling } from '../../hooks/useFileHandling';
 import { useGameStore, HotbarContext, EnvironmentSettings } from '../../store/useGameStore';
 import TouchControls from '../Scene/TouchControls';
 import GamepadController from './GamepadController';
-import { useAuth } from '@/contexts/AuthContext';
+// Fix for missing AuthContext - replace with your actual import if available
+// import { useAuth } from '@/contexts/AuthContext';
 import UserProfile from './UserProfile';
 import { User as UserIcon } from 'lucide-react';
 
@@ -612,6 +614,9 @@ const Player: React.FC = () => {
                 isInfinite={isGroundInfinite}
                 groundShape={groundShape as 'circle' | 'square' | 'hexagon'}
               />
+              
+              {/* Minimap renderer - only renders to the shared canvas */}
+              {visibilitySettings.minimapVisible && <MinimapRenderer />}
             </Bvh>
 
             <EffectComposer>
@@ -703,12 +708,14 @@ const Player: React.FC = () => {
                   grid: visibilitySettings.gridVisible,
                   floorPlane: visibilitySettings.floorPlaneVisible,
                   background: visibilitySettings.backgroundVisible,
+                  minimap: visibilitySettings.minimapVisible,
                 }}
                 onVisibilityChange={(setting: string, value: boolean) => {
                   if (setting === 'floor') setVisibilitySetting('floorVisible', value);
                   else if (setting === 'grid') setVisibilitySetting('gridVisible', value);
                   else if (setting === 'floorPlane') setVisibilitySetting('floorPlaneVisible', value);
                   else if (setting === 'background') setVisibilitySetting('backgroundVisible', value);
+                  else if (setting === 'minimap') setVisibilitySetting('minimapVisible', value);
                 }}
                 gravityEnabled={gravityEnabled}
                 onGravityToggle={setGravityEnabled}
@@ -924,6 +931,9 @@ const Player: React.FC = () => {
 
           {/* Coordinate Display */}
           {uiVisible && showCoordinates && <CoordinateDisplay cameraRef={cameraRef} />}
+
+          {/* Minimap */}
+          {uiVisible && visibilitySettings.minimapVisible && <Minimap size={180} opacity={0.9} scale={25} />}
 
           {/* FrameLoop Indicator */}
           <div

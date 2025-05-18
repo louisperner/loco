@@ -11,6 +11,7 @@ interface GroundTabProps {
   visibilitySettings: {
     floorPlane: boolean;
     grid: boolean;
+    minimap: boolean;
   };
   onVisibilityChange: (setting: string, checked: boolean) => void;
   onColorChange: (type: string, color: string | RgbaColor) => void;
@@ -188,6 +189,23 @@ export function GroundTab({
                 className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer"
               />
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Minimap Settings */}
+      <div className="space-y-3 bg-[#222222] p-3 rounded-md">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-white/90">Minimap</h3>
+          <Switch 
+            checked={visibilitySettings.minimap}
+            onCheckedChange={(checked) => onVisibilityChange('minimap', checked)}
+          />
+        </div>
+        
+        {visibilitySettings.minimap && (
+          <div className="mt-2 text-xs text-white/70">
+            Shows a top-down minimap view of the scene in the bottom-right corner
           </div>
         )}
       </div>

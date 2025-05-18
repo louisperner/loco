@@ -116,6 +116,7 @@ export function SettingsPanel({
     grid: true,
     floorPlane: true,
     background: true,
+    minimap: true,
   },
   onVisibilityChange,
   gravityEnabled = false,
@@ -434,6 +435,7 @@ export function SettingsPanel({
           visibilitySettings={{
             floorPlane: !!visibilitySettings.floorPlane,
             grid: !!visibilitySettings.grid,
+            minimap: !!visibilitySettings.minimap,
           }}
           onVisibilityChange={handleVisibilityChange}
           onColorChange={handleColorChange}

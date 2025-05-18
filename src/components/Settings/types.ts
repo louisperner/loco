@@ -28,6 +28,7 @@ export interface LocoSettings {
     grid: boolean;
     floorPlane: boolean;
     background: boolean;
+    minimap: boolean;
   };
   gravityEnabled: boolean;
   selectedTheme: string;
@@ -109,6 +110,7 @@ export interface SettingsPanelProps {
     grid: boolean;
     floorPlane: boolean;
     background: boolean;
+    minimap: boolean;
   };
   onVisibilityChange?: (setting: string, value: boolean) => void;
   gravityEnabled: boolean;

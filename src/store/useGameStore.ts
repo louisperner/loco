@@ -25,6 +25,7 @@ export interface VisibilitySettings {
   gridVisible: boolean;
   floorPlaneVisible: boolean;
   backgroundVisible: boolean;
+  minimapVisible: boolean;
 }
 
 export interface EnvironmentSettings {
@@ -76,6 +77,7 @@ interface GameState {
   // Mode states
   currentMode: string;
   movementEnabled: boolean;
+  viewMode: string;
 
   // Frame states
   frames: WebFrame[];
@@ -230,6 +232,7 @@ export const useGameStore = create<GameState & GameStateActions>()(
       // Mode states
       currentMode: 'live',
       movementEnabled: true,
+      viewMode: '3D',
 
       // Frame states
       frames: [],
@@ -258,6 +261,7 @@ export const useGameStore = create<GameState & GameStateActions>()(
         gridVisible: true,
         floorPlaneVisible: true,
         backgroundVisible: true,
+        minimapVisible: true,
       },
 
       // Crosshair states
@@ -480,12 +484,13 @@ export const useGameStore = create<GameState & GameStateActions>()(
             thickness: 2,
             style: 'circle',
           },
-          visibilitySettings: {
-            floorVisible: true,
-            gridVisible: true,
-            floorPlaneVisible: true,
-            backgroundVisible: true,
-          },
+                visibilitySettings: {
+        floorVisible: true,
+        gridVisible: true,
+        floorPlaneVisible: true,
+        backgroundVisible: true,
+        minimapVisible: true,
+      },
         });
       },
 
