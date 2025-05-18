@@ -116,6 +116,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ className }) => {
     if (ollamaEnabled) {
       loadOllamaModels();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ollamaEnabled, ollamaEndpoint]);
   
   // Also load models when selector is opened if using Ollama
@@ -123,6 +124,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ className }) => {
     if (showModelSelector && ollamaEnabled) {
       loadOllamaModels();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showModelSelector, ollamaEnabled]);
   
   // Close when clicking outside

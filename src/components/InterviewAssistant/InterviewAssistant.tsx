@@ -13,7 +13,7 @@ const logger = {
   log: (...args: unknown[]) => {
     if (process.env.NODE_ENV === 'development') {
       // eslint-disable-next-line no-console
-      console.log(...args);
+      // console.log(...args);
     }
   },
   error: (...args: unknown[]) => {
@@ -896,54 +896,53 @@ const InterviewAssistant: React.FC = () => {
   // Update this part in the return section where you render the problem text
   // Look for where you render the problem text and add this conditional rendering
   
-  // For example:
-  const renderProblemText = () => {
-    if (problemText && problemText.includes("Screen capture failed")) {
-      return (
-        <div className="flex flex-col space-y-4">
-          <p className="text-red-400">{problemText}</p>
-          <button
-            onClick={handleRestartApp}
-            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md"
-          >
-            Restart Application
-          </button>
-        </div>
-      );
-    }
+  // const renderProblemText = () => {
+  //   if (problemText && problemText.includes("Screen capture failed")) {
+  //     return (
+  //       <div className="flex flex-col space-y-4">
+  //         <p className="text-red-400">{problemText}</p>
+  //         <button
+  //           onClick={handleRestartApp}
+  //           className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md"
+  //         >
+  //           Restart Application
+  //         </button>
+  //       </div>
+  //     );
+  //   }
     
-    if (isEditingProblem) {
-      return (
-        <div className="flex flex-col space-y-2">
-          <textarea
-            ref={textareaRef}
-            className="w-full h-48 p-2 bg-gray-900 border border-gray-700 rounded-md"
-            value={editedProblemText}
-            onChange={(e) => setEditedProblemText(e.target.value)}
-            placeholder="Enter your problem description or code here..."
-          />
-          <div className="text-xs text-gray-400 italic">
-            Press ⌘+E again to save your changes
-          </div>
-        </div>
-      );
-    }
+  //   if (isEditingProblem) {
+  //     return (
+  //       <div className="flex flex-col space-y-2">
+  //         <textarea
+  //           ref={textareaRef}
+  //           className="w-full h-48 p-2 bg-gray-900 border border-gray-700 rounded-md"
+  //           value={editedProblemText}
+  //           onChange={(e) => setEditedProblemText(e.target.value)}
+  //           placeholder="Enter your problem description or code here..."
+  //         />
+  //         <div className="text-xs text-gray-400 italic">
+  //           Press ⌘+E again to save your changes
+  //         </div>
+  //       </div>
+  //     );
+  //   }
     
-    // If there's no problem text and no screenshot
-    if (!problemText && screenshots.length === 0) {
-      return (
-        <div className="flex flex-col space-y-2">
-          <div className="text-gray-400">
-            Capture a screenshot or <button onClick={toggleProblemEditing} className="text-blue-400 hover:underline">click here</button> to enter problem text manually
-          </div>
-        </div>
-      );
-    }
+  //   // If there's no problem text and no screenshot
+  //   if (!problemText && screenshots.length === 0) {
+  //     return (
+  //       <div className="flex flex-col space-y-2">
+  //         <div className="text-gray-400">
+  //           Capture a screenshot or <button onClick={toggleProblemEditing} className="text-blue-400 hover:underline">click here</button> to enter problem text manually
+  //         </div>
+  //       </div>
+  //     );
+  //   }
     
-    return (
-      <div className="whitespace-pre-wrap">{problemText || "Capture a screenshot to start"}</div>
-    );
-  };
+  //   return (
+  //     <div className="whitespace-pre-wrap">{problemText || "Capture a screenshot to start"}</div>
+  //   );
+  // };
   
   return (
     <div

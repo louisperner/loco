@@ -172,8 +172,9 @@ const FPSControls: React.FC<FPSControlsProps> = ({
       setIsLocked(!!document.pointerLockElement);
     };
 
+    // @ts-ignore
     const onLockError = (event: Event): void => {
-      console.warn('Pointer Lock Error:', event);
+      //console.warn('Pointer Lock Error:', event);
     };
 
     document.addEventListener('pointerlockchange', onLockStateChange);

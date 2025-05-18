@@ -126,7 +126,7 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
     <>
       {showFullInventory && (
         <div
-          className='fixed inset-0 z-40 bg-black/70'
+          className='fixed inset-0 z-40 bg-black/30'
           onClick={(e) => {
             e.preventDefault();
             onClose();

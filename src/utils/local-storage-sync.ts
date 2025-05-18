@@ -190,6 +190,11 @@ export const syncAllLocalStorage = async (
     // First load any cloud items that don't exist locally
     if (userDoc.exists() && cloudItems) {
       for (const key in cloudItems) {
+
+        if(key.startsWith('firestore_zombie_')) {
+          continue;
+        }
+
         try {
           // Only overwrite if item doesn't exist locally
           if (localStorage.getItem(key) === null) {
@@ -207,6 +212,11 @@ export const syncAllLocalStorage = async (
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key) {
+
+        if(key.startsWith('firestore_zombie_')) {
+          continue;
+        }
+
         try {
           const value = localStorage.getItem(key);
           if (value) {
@@ -242,7 +252,7 @@ export const syncAllLocalStorage = async (
           : { localStorage: localStorageItems };
           
         await setDoc(userDocRef, updateData, { merge: true });
-        console.log('All localStorage items synced to Firestore');
+        // console.log('All localStorage items synced to Firestore');
       } else {
         console.log('No changes needed, localStorage and cloud are in sync');
       }
