@@ -125,7 +125,7 @@ const Minimap: React.FC<MinimapProps> = ({
         height: `${size}px`,
         borderRadius: '50%',
         overflow: 'hidden',
-        border: '2px solid white',
+        border: '2px solid black',
         opacity: opacity,
         boxShadow: '0 0 10px rgba(0, 0, 0, 0.5)',
         pointerEvents: 'none', // Make it click-through
