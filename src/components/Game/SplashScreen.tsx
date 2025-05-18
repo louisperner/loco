@@ -24,7 +24,7 @@ const SplashScreen: React.FC<SplashScreenProps> = () => {
       }`}
     >
       <div 
-        className="fixed z-[9999] object-contain max-w-[80%] max-h-[80%] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 md:max-w-[30%] md:max-h-[30%] md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 shadow-lg"
+        className="fixed z-[9999] object-contain max-w-[80%] max-h-[80%] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 md:max-w-[30%] md:max-h-[30%] md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2"
         style={{ backgroundImage: `url(${coverImage})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', width: '100%', height: '100%' }}
       />
     </div>

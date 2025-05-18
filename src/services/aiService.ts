@@ -132,28 +132,159 @@ DO NOT include any text before or after the JSON. Return ONLY the JSON object.`;
     // Include screenshots if available and the selected model supports vision
     const supportsVision = ['openai/gpt-4-vision', 'openai/gpt-4o', 'anthropic/claude-3-opus', 'anthropic/claude-3-sonnet', 'anthropic/claude-3-haiku'].includes(selectedModel);
     
-    if (screenshots.length > 0 && supportsVision) {
-      logger.log('Including screenshots in the request');
+    if (screenshots.length > 0) {
+      logger.log('Including screenshots in the OpenRouter request for vision model');
       
-      // Convert screenshots to image_url content format
-      const imageContents = screenshots.map(screenshot => ({
-        type: 'image_url' as const,
-        image_url: {
-          url: screenshot.dataUrl
-        }
-      }));
+      // Function to resize image data and reduce size - shared with Ollama implementation
+      const resizeBase64Image = async (base64Data: string, maxWidth = 800, quality = 0.8): Promise<string> => {
+        return new Promise((resolve) => {
+          // Create an image element to work with the image data
+          const img = new Image();
+          img.onload = () => {
+            // Calculate new dimensions while preserving aspect ratio
+            let width = img.width;
+            let height = img.height;
+            
+            // Only resize if larger than maxWidth
+            if (width > maxWidth) {
+              const aspectRatio = width / height;
+              width = maxWidth;
+              height = width / aspectRatio;
+            }
+            
+            // Create a canvas to draw the resized image
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Draw the image on the canvas with the new dimensions
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              
+              // Get the resized image as base64 (with quality parameter to reduce file size)
+              // We keep the full data URL for OpenRouter (unlike Ollama which needs just the base64 data)
+              const resizedBase64 = canvas.toDataURL('image/jpeg', quality);
+              resolve(resizedBase64);
+            } else {
+              // Fallback if context is not available - use original but log warning
+              logger.error('Failed to get canvas context for image resizing');
+              resolve(base64Data);
+            }
+          };
+          
+          img.onerror = () => {
+            // Fallback in case of error
+            logger.error('Error loading image for resizing');
+            resolve(base64Data);
+          };
+          
+          // Set source to the original base64 image data 
+          img.src = base64Data;
+        });
+      };
       
-      // Create a multimodal message with text and images
-      messages = [
-        { role: 'system', content: systemPrompt },
-        { 
-          role: 'user',
-          content: [
-            { type: 'text', text: problemText },
-            ...imageContents
-          ]
+      // Process images with resizing
+      const processScreenshots = async () => {
+        try {
+          // Resize all screenshots
+          const resizedImageContents: ImageContent[] = [];
+          
+          // Process each screenshot
+          for (const screenshot of screenshots) {
+            // Keep track of the original size for comparison
+            const originalSize = screenshot.dataUrl.length;
+            
+            // Resize the image to reduce payload size
+            const resizedBase64 = await resizeBase64Image(screenshot.dataUrl, 800, 0.8);
+            
+            // Add the resized image to the contents array
+            resizedImageContents.push({
+              type: 'image_url' as const,
+              image_url: {
+                url: resizedBase64
+              }
+            });
+            
+            // Debug the image data (truncated for brevity)
+            const reductionPercent = Math.round((1 - (resizedBase64.length / originalSize)) * 100);
+            logger.log(`Added image to OpenRouter request, reduced by ${reductionPercent}%, original: ${originalSize}, new: ${resizedBase64.length} bytes`);
+          }
+          
+          // Check if the total size is still too large
+          const totalSize = resizedImageContents.reduce((sum, img) => sum + img.image_url.url.length, 0);
+          const maxRequestSize = 20 * 1024 * 1024; // 20MB limit for OpenRouter
+          
+          if (totalSize > maxRequestSize) {
+            logger.log(`Image payload large (${Math.round(totalSize/1024/1024)}MB), attempting more aggressive reduction.`);
+            
+            // Try to reduce the size more aggressively with smaller dimensions and quality
+            try {
+              // Empty the array and re-add the images with more aggressive reduction
+              resizedImageContents.length = 0;
+              
+              // Only process the first image if there are multiple
+              const imagesToProcess = screenshots.length > 2 ? [screenshots[0]] : screenshots;
+              
+              for (const screenshot of imagesToProcess) {
+                // Use smaller dimensions (400px) and lower quality (0.6)
+                const smallerBase64 = await resizeBase64Image(screenshot.dataUrl, 400, 0.6);
+                
+                resizedImageContents.push({
+                  type: 'image_url' as const,
+                  image_url: {
+                    url: smallerBase64
+                  }
+                });
+                
+                const reductionPercent = Math.round((1 - (smallerBase64.length / screenshot.dataUrl.length)) * 100);
+                logger.log(`Reduced image more aggressively for OpenRouter: ${reductionPercent}% reduction, size: ${smallerBase64.length} bytes`);
+              }
+            } catch (error) {
+              logger.error('Error during aggressive image reduction for OpenRouter, continuing with text only:', error);
+              
+              // Fall back to text-only request
+              messages = [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `${problemText} (Note: Images were removed due to size limitations.)` }
+              ];
+              
+              return;
+            }
+          }
+          
+          // Create a multimodal message with text and images
+          messages = [
+            { role: 'system', content: systemPrompt },
+            { 
+              role: 'user',
+              content: [
+                { type: 'text', text: problemText },
+                ...resizedImageContents
+              ]
+            }
+          ];
+          
+          logger.log('Added screenshots to OpenRouter request:', 
+            JSON.stringify({
+              messageCount: messages.length,
+              imagesCount: resizedImageContents.length,
+              totalSizeKB: Math.round(resizedImageContents.reduce((sum, img) => sum + img.image_url.url.length, 0) / 1024),
+              messageFormat: 'Using image_url format for OpenRouter vision models'
+            })
+          );
+        } catch (error) {
+          logger.error('Error processing screenshots for OpenRouter:', error);
+          // Fall back to text-only request
+          messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: problemText }
+          ];
         }
-      ];
+      };
+      
+      // Process the screenshots and prepare the messages
+      await processScreenshots();
     }
     
     // Define site information for the API request

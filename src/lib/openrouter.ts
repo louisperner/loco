@@ -123,25 +123,39 @@ export const openRouterApi = {
       const fullResponse: string[] = [];
       
       try {
-        const response = await axios.post(
-          'https://openrouter.ai/api/v1/chat/completions',
-          streamRequest,
-          { 
-            headers,
-            responseType: 'stream',
-            signal: activeStreamController.signal
-          }
-        );
+        // Use fetch instead of axios for proper streaming
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(streamRequest),
+          signal: activeStreamController.signal
+        });
 
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        if (!response.body) {
+          throw new Error('Response body is null');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
         let buffer = '';
         
-        response.data.on('data', (chunk: Buffer) => {
-          const chunkStr = chunk.toString();
-          buffer += chunkStr;
+        let reading = true;
+        while (reading) {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            reading = false;
+            break;
+          }
+          
+          buffer += decoder.decode(value, { stream: true });
           
           let lineEnd = buffer.indexOf('\n');
           while (lineEnd !== -1) {
-            // Find the next complete SSE line
             const line = buffer.slice(0, lineEnd).trim();
             buffer = buffer.slice(lineEnd + 1);
             
@@ -175,21 +189,13 @@ export const openRouterApi = {
             
             lineEnd = buffer.indexOf('\n');
           }
-        });
+        }
         
-        response.data.on('end', () => {
-          if (callbacks.onComplete) {
-            callbacks.onComplete(fullResponse.join(''));
-          }
-          activeStreamController = null;
-        });
-        
-        response.data.on('error', (err: Error | unknown) => {
-          if (callbacks.onError) {
-            callbacks.onError(err);
-          }
-          activeStreamController = null;
-        });
+        // If we reached here, the stream is complete
+        if (callbacks.onComplete) {
+          callbacks.onComplete(fullResponse.join(''));
+        }
+        activeStreamController = null;
         
       } catch (error) {
         if (callbacks.onError) {

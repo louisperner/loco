@@ -1006,6 +1006,30 @@ render(<Counter />);`;
     }
     return messages.find(msg => msg.id === selectedMessageId) || null;
   };
+
+  // Get the conversation related to a selected message
+  const getSelectedConversation = () => {
+    if (!selectedMessageId) {
+      return messages;
+    }
+
+    // Find the index of the selected message
+    const index = messages.findIndex(msg => msg.id === selectedMessageId);
+    if (index === -1) return [];
+
+    // If the selected message is a user message, find the corresponding AI response
+    if (messages[index].role === 'user' && index + 1 < messages.length && messages[index + 1].role === 'assistant') {
+      return [messages[index], messages[index + 1]];
+    }
+    
+    // If the selected message is an AI response, find the corresponding user message
+    if (messages[index].role === 'assistant' && index > 0 && messages[index - 1].role === 'user') {
+      return [messages[index - 1], messages[index]];
+    }
+    
+    // Fallback to just showing the selected message
+    return [messages[index]];
+  };
   
   // Group messages by conversation context
   const groupMessagesByContext = () => {
@@ -1052,7 +1076,13 @@ render(<Counter />);`;
 
   // Handle message selection
   const handleSelectMessage = (id: string) => {
-    selectMessage(id);
+    // If already selected, deselect it (showing full conversation)
+    if (id === selectedMessageId) {
+      selectMessage(null);
+    } else {
+      selectMessage(id);
+    }
+    
     if (viewMode === 'minimal') {
       // If in minimal mode, switch to expanded
       setViewMode('expanded');
@@ -1076,7 +1106,7 @@ render(<Counter />);`;
           <div className="p-3 relative">
             
             
-            {/* Most recent message or feedback (if any) - hidden by default but can be expanded */}
+            {/* Messages container - updated to show conversation thread */}
             {(messages.length > 0 || commandFeedback) && (
               <div className="mt-2 mb-2 max-h-auto min-h-[300px] overflow-y-auto bg-[#222222] rounded border border-[#333333] p-2
                 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
@@ -1086,18 +1116,24 @@ render(<Counter />);`;
                   <div className="text-sm text-teal-400">
                     {commandFeedback}
                   </div>
-                ) : messages.length > 0 && (
-                  <div className="flex items-start gap-2">
-                    <div className={`mt-0.5 p-1 rounded-full flex-shrink-0 ${messages[messages.length - 1].role === 'assistant' ? 'bg-[#42ca75]' : 'bg-[#4A8CCA]'}`}>
-                      {messages[messages.length - 1].role === 'assistant' ? (
-                        <Bot size={10} className="text-black" />
-                      ) : (
-                        <User size={10} className="text-white" />
-                      )}
-                    </div>
-                    <div className="text-sm text-white/80 flex-1">
-                      {messages[messages.length - 1].content}
-                    </div>
+                ) : (
+                  <div className="space-y-2">
+                    {/* Display conversation based on selection */}
+                    {getSelectedConversation().map((message) => (
+                      <div key={message.id} className="flex items-start gap-2">
+                        <div className={`mt-0.5 p-1 rounded-full flex-shrink-0 ${message.role === 'assistant' ? 'bg-[#42ca75]' : 'bg-[#4A8CCA]'}`}>
+                          {message.role === 'assistant' ? (
+                            <Bot size={10} className="text-black" />
+                          ) : (
+                            <User size={10} className="text-white" />
+                          )}
+                        </div>
+                        <div className="text-sm text-white/80 flex-1">
+                          {message.content}
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
                   </div>
                 )}
                 {(isLoading || isStreaming) && (
@@ -1284,7 +1320,7 @@ render(<Counter />);`;
               [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]"
             >
               <div className="p-3 border-b border-[#222222] bg-[#2A2A2A] sticky top-0 z-10">
-                <h3 className="text-sm font-medium text-white/80">Message History</h3>
+                <h3 className="text-sm font-medium text-white/80">Conversation History</h3>
               </div>
               <div className="py-2">
                 {groupMessagesByContext().map((group, groupIndex) => (
@@ -1293,8 +1329,12 @@ render(<Counter />);`;
                       {group.date}
                     </div>
                     <div className="divide-y divide-[#333333]">
-                      {group.messages.map((message) => {
+                      {group.messages.filter(message => message.role === 'user').map((message) => {
                         const isSelected = message.id === selectedMessageId;
+                        // Find the assistant response that follows this message
+                        const nextIndex = group.messages.findIndex(msg => msg.id === message.id) + 1;
+                        const hasResponse = nextIndex < group.messages.length && group.messages[nextIndex].role === 'assistant';
+                        
                         return (
                           <button
                             key={message.id}
@@ -1303,16 +1343,12 @@ render(<Counter />);`;
                                       hover:bg-[#333333] transition-colors
                                       ${isSelected ? 'bg-[#333333]' : ''}`}
                           >
-                            <div className={`mt-0.5 p-1 rounded-full flex-shrink-0 ${message.role === 'assistant' ? 'bg-[#42ca75]' : 'bg-[#4A8CCA]'}`}>
-                              {message.role === 'assistant' ? (
-                                <Bot size={10} className="text-black" />
-                              ) : (
-                                <User size={10} className="text-white" />
-                              )}
+                            <div className="mt-0.5 p-1 rounded-full flex-shrink-0 bg-[#4A8CCA]">
+                              <User size={10} className="text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-xs text-white/70 flex items-center justify-between mb-0.5">
-                                <span>{message.role === 'assistant' ? 'AI' : 'You'}</span>
+                                <span>Conversation {group.messages.length > 2 ? `(${Math.ceil(group.messages.length/2)} msgs)` : ''}</span>
                                 <span className="text-white/40 text-[10px]">
                                   {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                 </span>
@@ -1320,6 +1356,11 @@ render(<Counter />);`;
                               <p className="text-xs text-white/60 truncate">
                                 {formatMessagePreview(message.content)}
                               </p>
+                              {hasResponse && (
+                                <p className="text-xs text-green-400/60 truncate mt-1">
+                                  {formatMessagePreview(group.messages[nextIndex].content, 30)}
+                                </p>
+                              )}
                             </div>
                             {isSelected && (
                               <ChevronRight size={14} className="text-yellow-400 flex-shrink-0 mt-1" />
@@ -1350,16 +1391,16 @@ render(<Counter />);`;
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {/* Only show selected message or latest if none selected */}
-                  {getSelectedMessage() && (
+                  {/* Show conversation related to selected message or full conversation */}
+                  {getSelectedConversation().map((message) => (
                     <ChatMessage
-                      key={getSelectedMessage()!.id}
-                      content={getSelectedMessage()!.content}
-                      role={getSelectedMessage()!.role}
-                      timestamp={getSelectedMessage()!.timestamp}
-                      model={getSelectedMessage()!.model}
+                      key={message.id}
+                      content={message.content}
+                      role={message.role}
+                      timestamp={message.timestamp}
+                      model={message.model}
                     />
-                  )}
+                  ))}
                   
                   {isStreaming && currentStreamContent && !selectedMessageId && (
                     <ChatMessage

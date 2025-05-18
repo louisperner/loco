@@ -1086,7 +1086,9 @@ const InterviewAssistant: React.FC = () => {
       </div>
       
       {/* SECOND: Problem Text Section - shorter, can be toggled */}
-      <div className="p-2 bg-[#2C2C2C] border-t-2 border-[#222222]">
+      {
+        !isCode ? (
+          <div className="p-2 bg-[#2C2C2C] border-t-2 border-[#222222]">
         <div className="flex justify-between items-center mb-1">
           <div className="flex items-center">
             <h4 className="text-xs font-medium font-minecraft text-white/90 mr-2">{isCode ? "Problem Text" : "Question"}</h4>
@@ -1127,6 +1129,8 @@ const InterviewAssistant: React.FC = () => {
           </div>
         )}
       </div>
+        ) : <></>
+      }
       
       {/* THIRD: Mode selection, Language and Model selection in a compact row */}
       <div className="flex flex-col gap-2 p-2 border-t-2 border-b-2 border-[#222222] bg-[#2C2C2C]">
@@ -1147,7 +1151,33 @@ const InterviewAssistant: React.FC = () => {
               Question
             </button>
           </div>
+          {/* Provider toggle */}
+          <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-minecraft text-white/90 mr-2 whitespace-nowrap">Provider:</span>
+                <button 
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] ${
+                    ollamaEnabled 
+                      ? 'bg-blue-900/30 text-blue-400 border border-blue-600/20' 
+                      : 'bg-yellow-900/30 text-yellow-400 border border-yellow-600/20'
+                  }`}
+                  onClick={toggleProvider}
+                >
+                  {ollamaEnabled ? (
+                    <>
+                      <FiServer className="w-3 h-3" />
+                      Ollama (Local)
+                    </>
+                  ) : (
+                    <>
+                      <FiCloud className="w-3 h-3" />
+                      OpenRouter (Cloud)
+                    </>
+                  )}
+                </button>
+              </div>
         </div>
+
+        
         
         {/* Language and Model selection */}
         <div className="flex gap-2">
@@ -1189,30 +1219,7 @@ const InterviewAssistant: React.FC = () => {
           
           <div className="w-1/2">
             <div className="flex flex-col">
-              {/* Provider toggle */}
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-minecraft text-white/90 mr-2 whitespace-nowrap">Provider:</span>
-                <button 
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] ${
-                    ollamaEnabled 
-                      ? 'bg-blue-900/30 text-blue-400 border border-blue-600/20' 
-                      : 'bg-yellow-900/30 text-yellow-400 border border-yellow-600/20'
-                  }`}
-                  onClick={toggleProvider}
-                >
-                  {ollamaEnabled ? (
-                    <>
-                      <FiServer className="w-3 h-3" />
-                      Ollama (Local)
-                    </>
-                  ) : (
-                    <>
-                      <FiCloud className="w-3 h-3" />
-                      OpenRouter (Cloud)
-                    </>
-                  )}
-                </button>
-              </div>
+              
               
               {/* Show Ollama connection error if any */}
               {ollamaEnabled && ollamaConnectionError && (
@@ -1307,17 +1314,6 @@ const InterviewAssistant: React.FC = () => {
                   [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm
                   [&::-webkit-scrollbar-thumb]:bg-[#555555] [&::-webkit-scrollbar-track]:bg-[#333333]">
                   <p className="text-white/90">{JSON.parse(solution.code).explanation}</p>
-                </div>
-              </div>
-              
-              <div className="flex flex-col justify-between bg-[#222222] rounded p-1.5 border-2 border-[#151515] text-[10px]">
-                <div>
-                  <span className="text-white/60 font-minecraft">Time:</span>
-                  <span className="ml-1 text-[#42ca75] font-mono">{solution.complexity.time}</span>
-                </div>
-                <div>
-                  <span className="text-white/60 font-minecraft">Space:</span>
-                  <span className="ml-1 text-[#42ca75] font-mono">{solution.complexity.space}</span>
                 </div>
               </div>
             </div>
