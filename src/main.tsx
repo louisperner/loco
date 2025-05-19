@@ -10,7 +10,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { useAuthStore } from './store/useAuthStore';
 import AuthWrapper from './components/Game/AuthWrapper';
 import { Cloud } from 'lucide-react';
-import { InterviewAssistant } from './components';
+import { InterviewAssistant } from './components/InterviewAssistant';
 import AIChat from './components/AIChat';
 import { useAIChatStore } from './store/useAIChatStore';
 

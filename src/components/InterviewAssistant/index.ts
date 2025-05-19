@@ -1,4 +1,1 @@
-import InterviewAssistant from './InterviewAssistant';
-
-export { InterviewAssistant };
-export default InterviewAssistant; 
+export { default as InterviewAssistant } from './InterviewAssistant'; 

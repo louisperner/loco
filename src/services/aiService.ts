@@ -1,9 +1,9 @@
-import { Solution } from '../store/interviewAssistantStore';
+import { Solution } from '../components/InterviewAssistant/InterviewAssistantTypes';
 import { useOpenRouterStore } from '../store/useOpenRouterStore';
 import { useOllamaStore } from '../store/useOllamaStore';
 import { OPENROUTER_MODELS } from '../lib/openrouter-constants';
-import { openRouterApi, MessageContent as OpenRouterMessageContent, TextContent, ImageContent } from '../lib/openrouter';
-import { ollamaApi, OllamaContent, OllamaTextContent, OllamaImageContent, MessageContent as OllamaMessageContent } from '../lib/ollama';
+import { openRouterApi, MessageContent as OpenRouterMessageContent, ImageContent } from '../lib/openrouter';
+import { ollamaApi, OllamaContent } from '../lib/ollama';
 import { useInterviewAssistantStore } from '../store/interviewAssistantStore';
 import { DEFAULT_OLLAMA_MODELS, normalizeEndpoint } from '../lib/ollama-constants';
 
