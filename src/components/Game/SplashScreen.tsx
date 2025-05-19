@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import coverImage from '../../assets/imgs/cover_loco.png';
+import coverImage from '../../assets/imgs/cover_loco_2.png';
 
 type SplashScreenProps = {
   // Add any props here if needed in the future

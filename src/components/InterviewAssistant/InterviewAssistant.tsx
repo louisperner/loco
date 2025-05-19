@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { FiEyeOff, FiCamera, FiSend, FiRefreshCw, FiMove, FiCopy, FiCheck, FiCrop, FiX, FiServer, FiCloud, FiAlertCircle } from "react-icons/fi";
 import { useInterviewAssistantStore, Screenshot } from "../../store/interviewAssistantStore";
 import { captureScreen, extractTextFromImage, captureScreenRegion, ScreenRegion } from "../../utils/screenCapture";
-import { generateSolution as generateAiSolution, getAvailableModels } from "../../services/aiService";
+import { generateSolution as generateAiSolution } from "../../services/aiService";
 import { useOpenRouterStore } from "../../store/useOpenRouterStore";
 import { useOllamaStore } from "../../store/useOllamaStore";
 import { OPENROUTER_MODELS } from "../../lib/openrouter-constants";
@@ -10,6 +10,7 @@ import { DEFAULT_OLLAMA_MODELS, testOllamaConnection, normalizeEndpoint } from "
 import { ollamaApi } from "../../lib/ollama";
 
 const logger = {
+  // @ts-ignore
   log: (...args: unknown[]) => {
     if (process.env.NODE_ENV === 'development') {
       // eslint-disable-next-line no-console
@@ -63,6 +64,7 @@ const InterviewAssistant: React.FC = () => {
   const [customOllamaModels, setCustomOllamaModels] = useState<{ id: string; name: string }[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  // @ts-ignore
   const [typedSolution, setTypedSolution] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isEditingProblem, setIsEditingProblem] = useState(false);
@@ -611,7 +613,7 @@ const InterviewAssistant: React.FC = () => {
       }
       
       // Call the AI service to generate a solution
-      console.log("Generating solution with model:", selectedModel);
+      // console.log("Generating solution with model:", selectedModel);
       
       const generatedSolution = await generateAiSolution(
         problemText,
@@ -621,8 +623,8 @@ const InterviewAssistant: React.FC = () => {
       );
       
       // Add debug logging for solution parsing
-      console.log("Solution received from AI:", typeof generatedSolution, 
-        generatedSolution.code ? generatedSolution.code.substring(0, 100) + "..." : "No code");
+      //console.log("Solution received from AI:", typeof generatedSolution, 
+      //  generatedSolution.code ? generatedSolution.code.substring(0, 100) + "..." : "No code");
       
       // Update state with the generated solution
       setSolution(generatedSolution);
@@ -703,15 +705,15 @@ const InterviewAssistant: React.FC = () => {
   };
   
   // Function to handle the app restart (in Electron environment)
-  const handleRestartApp = () => {
-    if (window.electron && window.electron.reloadApp) {
-      // Use the Electron API to reload the app if available
-      window.electron.reloadApp();
-    } else {
-      // Fallback for browser environment: just reload the current page
-      window.location.reload();
-    }
-  };
+  // const handleRestartApp = () => {
+  //   if (window.electron && window.electron.reloadApp) {
+  //     // Use the Electron API to reload the app if available
+  //     window.electron.reloadApp();
+  //   } else {
+  //     // Fallback for browser environment: just reload the current page
+  //     window.location.reload();
+  //   }
+  // };
   
   // Monitor screenshots state changes
   useEffect(() => {
@@ -747,6 +749,7 @@ const InterviewAssistant: React.FC = () => {
     } else {
       setOllamaConnectionError(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ollamaEnabled, ollamaModel, openRouterModel, ollamaEndpoint]);
   
   // Load dynamic Ollama models from API
@@ -763,7 +766,7 @@ const InterviewAssistant: React.FC = () => {
       
       // Check if the current endpoint in store is normalized, if not update it
       if (normalizedEndpoint !== ollamaEndpoint) {
-        console.log(`Updating Ollama endpoint from ${ollamaEndpoint} to ${normalizedEndpoint}`);
+        // console.log(`Updating Ollama endpoint from ${ollamaEndpoint} to ${normalizedEndpoint}`);
         setOllamaEndpoint(normalizedEndpoint);
       }
       

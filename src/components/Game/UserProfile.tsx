@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { LogOut, Upload, Download, Check, AlertCircle, Info } from 'lucide-react';
-import { syncSettingsToFirestore, loadSettingsFromFirestore, syncSettings, syncAllLocalStorage } from '@/utils/local-storage-sync';
+import { LogOut, Check, AlertCircle, Info } from 'lucide-react';
+import { syncAllLocalStorage } from '@/utils/local-storage-sync';
 import { SyncContext } from '@/main';
 
 interface UserProfileProps {
@@ -14,6 +14,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
     message: string;
     type: 'success' | 'error' | 'info' | null;
   }>({ message: '', type: null });
+  const { setSyncing } = useContext(SyncContext);
 
   const handleSignOut = async (): Promise<void> => {
     await signOut();
@@ -27,7 +28,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
     if (!currentUser) return;
     
     setSyncStatus({ message: 'Syncing all data...', type: 'info' });
-    const { setSyncing } = useContext(SyncContext);
 
     try {
       const success = await syncAllLocalStorage(currentUser.uid, setSyncing);
@@ -54,94 +54,94 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
   };
 
   // New function to sync settings (cloud-first approach)
-  const handleSyncSettings = async (): Promise<void> => {
-    if (!currentUser) return;
+  // const handleSyncSettings = async (): Promise<void> => {
+  //   if (!currentUser) return;
     
-    setSyncStatus({ message: 'Syncing settings...', type: 'info' });
-    const { setSyncing } = useContext(SyncContext);
+  //   setSyncStatus({ message: 'Syncing settings...', type: 'info' });
+  //   const { setSyncing } = useContext(SyncContext);
     
-    try {
-      const success = await syncSettings(currentUser.uid, setSyncing);
+  //   try {
+  //     const success = await syncSettings(currentUser.uid, setSyncing);
       
-      if (success) {
-        setSyncStatus({ message: 'Settings synced successfully', type: 'success' });
-        // Clear message after 3 seconds
-        setTimeout(() => {
-          setSyncStatus({ message: '', type: null });
-        }, 3000);
-      } else {
-        setSyncStatus({ message: 'No settings found', type: 'info' });
-        setTimeout(() => {
-          setSyncStatus({ message: '', type: null });
-        }, 3000);
-      }
-    } catch (error) {
-      console.error('Error syncing settings:', error);
-      setSyncStatus({ message: 'Error syncing settings', type: 'error' });
-      setTimeout(() => {
-        setSyncStatus({ message: '', type: null });
-      }, 3000);
-    }
-  };
+  //     if (success) {
+  //       setSyncStatus({ message: 'Settings synced successfully', type: 'success' });
+  //       // Clear message after 3 seconds
+  //       setTimeout(() => {
+  //         setSyncStatus({ message: '', type: null });
+  //       }, 3000);
+  //     } else {
+  //       setSyncStatus({ message: 'No settings found', type: 'info' });
+  //       setTimeout(() => {
+  //         setSyncStatus({ message: '', type: null });
+  //       }, 3000);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error syncing settings:', error);
+  //     setSyncStatus({ message: 'Error syncing settings', type: 'error' });
+  //     setTimeout(() => {
+  //       setSyncStatus({ message: '', type: null });
+  //     }, 3000);
+  //   }
+  // };
 
-  const handleSyncToFirestore = async (): Promise<void> => {
-    if (!currentUser) return;
+  // const handleSyncToFirestore = async (): Promise<void> => {
+  //   if (!currentUser) return;
     
-    setSyncStatus({ message: 'Saving settings...', type: 'info' });
-    const { setSyncing } = useContext(SyncContext);
+  //   setSyncStatus({ message: 'Saving settings...', type: 'info' });
+  //   const { setSyncing } = useContext(SyncContext);
     
-    try {
-      const success = await syncSettingsToFirestore(currentUser.uid, setSyncing);
+  //   try {
+  //     const success = await syncSettingsToFirestore(currentUser.uid, setSyncing);
       
-      if (success) {
-        setSyncStatus({ message: 'Settings saved to cloud', type: 'success' });
-        // Clear message after 3 seconds
-        setTimeout(() => {
-          setSyncStatus({ message: '', type: null });
-        }, 3000);
-      } else {
-        setSyncStatus({ message: 'No settings to save', type: 'info' });
-        setTimeout(() => {
-          setSyncStatus({ message: '', type: null });
-        }, 3000);
-      }
-    } catch (error) {
-      console.error('Error syncing settings:', error);
-      setSyncStatus({ message: 'Error saving settings', type: 'error' });
-      setTimeout(() => {
-        setSyncStatus({ message: '', type: null });
-      }, 3000);
-    }
-  };
+  //     if (success) {
+  //       setSyncStatus({ message: 'Settings saved to cloud', type: 'success' });
+  //       // Clear message after 3 seconds
+  //       setTimeout(() => {
+  //         setSyncStatus({ message: '', type: null });
+  //       }, 3000);
+  //     } else {
+  //       setSyncStatus({ message: 'No settings to save', type: 'info' });
+  //       setTimeout(() => {
+  //         setSyncStatus({ message: '', type: null });
+  //       }, 3000);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error syncing settings:', error);
+  //     setSyncStatus({ message: 'Error saving settings', type: 'error' });
+  //     setTimeout(() => {
+  //       setSyncStatus({ message: '', type: null });
+  //     }, 3000);
+  //   }
+  // };
 
-  const handleLoadFromFirestore = async (): Promise<void> => {
-    if (!currentUser) return;
+  // const handleLoadFromFirestore = async (): Promise<void> => {
+  //   if (!currentUser) return;
     
-    setSyncStatus({ message: 'Loading settings...', type: 'info' });
-    const { setSyncing } = useContext(SyncContext);
+  //   setSyncStatus({ message: 'Loading settings...', type: 'info' });
+  //   const { setSyncing } = useContext(SyncContext);
     
-    try {
-      const success = await loadSettingsFromFirestore(currentUser.uid, setSyncing);
+  //   try {
+  //     const success = await loadSettingsFromFirestore(currentUser.uid, setSyncing);
       
-      if (success) {
-        setSyncStatus({ 
-          message: 'Settings loaded from cloud. Page will reload to apply changes.', 
-          type: 'success' 
-        });
-      } else {
-        setSyncStatus({ message: 'No settings found in cloud', type: 'info' });
-        setTimeout(() => {
-          setSyncStatus({ message: '', type: null });
-        }, 3000);
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error);
-      setSyncStatus({ message: 'Error loading settings', type: 'error' });
-      setTimeout(() => {
-        setSyncStatus({ message: '', type: null });
-      }, 3000);
-    }
-  };
+  //     if (success) {
+  //       setSyncStatus({ 
+  //         message: 'Settings loaded from cloud. Page will reload to apply changes.', 
+  //         type: 'success' 
+  //       });
+  //     } else {
+  //       setSyncStatus({ message: 'No settings found in cloud', type: 'info' });
+  //       setTimeout(() => {
+  //         setSyncStatus({ message: '', type: null });
+  //       }, 3000);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error loading settings:', error);
+  //     setSyncStatus({ message: 'Error loading settings', type: 'error' });
+  //     setTimeout(() => {
+  //       setSyncStatus({ message: '', type: null });
+  //     }, 3000);
+  //   }
+  // };
 
   if (!currentUser) {
     return null;
