@@ -8,8 +8,7 @@ import { EnvironmentTab } from './tabs/EnvironmentTab';
 import InterfaceSettings from './InterfaceSettings';
 import { OpenRouterTab } from './tabs/OpenRouterTab';
 import { OllamaTab } from './tabs/OllamaTab';
-import { SettingsPanelProps, SettingsTab, SettingValue } from './types';
-import { loadSettings, saveSettings } from './utils';
+import { SettingsPanelProps, SettingsTab } from './types';
 import { RgbaColor } from 'react-colorful';
 import { UserIcon, Save, Cloud, CheckCircle, Download, Database } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -101,8 +100,6 @@ export function SettingsPanel({
   onVisibilityChange,
   gravityEnabled = false,
   onGravityToggle,
-  selectedTheme = 'dark',
-  onThemeSelect,
   showCoordinates = true,
   onCoordinatesToggle,
   environmentSettings = {
@@ -130,7 +127,6 @@ export function SettingsPanel({
 
   // State hooks for internal component state
   const [showUserProfile, setShowUserProfile] = useState<boolean>(false);
-  const [settingChanges, setSettingChanges] = useState<Record<string, SettingValue>>({});
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [open, setOpen] = useState<boolean>(isOpen || false);
   
@@ -138,7 +134,7 @@ export function SettingsPanel({
   const colorPickerContainerRef = useRef<HTMLDivElement>(null);
 
   // Get auth state for showing user profile and sync operations
-  const { currentUser, toggleAuthModal } = useAuthStore();
+  const { currentUser, toggleAuthModal, isFirebaseAvailable } = useAuthStore();
   
   // Sync context for cloud operations
   const { setSyncing } = useContext(SyncContext);
@@ -157,18 +153,18 @@ export function SettingsPanel({
   }, []);
 
   // Handle panel open/close and notify parent
-  const handleOpenChange = useCallback(
-    (isOpen: boolean) => {
-      setOpen(isOpen);
-      if (onToggle) {
-        onToggle(isOpen);
-      }
-      if (!isOpen && onClose) {
-        onClose();
-      }
-    },
-    [onToggle, onClose]
-  );
+  // const handleOpenChange = useCallback(
+  //   (isOpen: boolean) => {
+  //     setOpen(isOpen);
+  //     if (onToggle) {
+  //       onToggle(isOpen);
+  //     }
+  //     if (!isOpen && onClose) {
+  //       onClose();
+  //     }
+  //   },
+  //   [onToggle, onClose]
+  // );
 
   // Tab change handler that also notifies parent
   const handleTabChange = useCallback(
@@ -434,7 +430,7 @@ export function SettingsPanel({
 
       {/* User profile button in top right */}
       <div className='fixed top-[70px] right-6 z-50 bg-white hover:bg-white/40 text-white rounded-full backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 border border-white/10 select-none'>
-        {!currentUser && (
+        {!currentUser && isFirebaseAvailable && (
           <button
             onClick={() => toggleAuthModal(true)}
             className='bg-[#222222] bg-opacity-80 p-2 rounded-full hover:bg-white/20 transition-colors flex items-center'
@@ -514,7 +510,7 @@ export function SettingsPanel({
                       </span>
                     )}
                   </span>
-                  {currentUser && (
+                  {/* {currentUser && (
                     <div className="flex space-x-2">
                       <Button
                         variant="outline"
@@ -557,7 +553,7 @@ export function SettingsPanel({
                         Load
                       </Button>
                     </div>
-                  )}
+                  )} */}
                 </div>
               </div>
             </div>

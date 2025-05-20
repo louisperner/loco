@@ -20,25 +20,46 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Check if Firebase is configured
+export const isFirebaseConfigured = Boolean(
+  firebaseConfig.apiKey && 
+  firebaseConfig.authDomain && 
+  firebaseConfig.projectId
+);
 
-export const auth: Auth = getAuth(app);
+// Initialize Firebase only if it's configured
+export let auth: Auth | null = null;
+export let db: any = null;
+export let googleProvider: GoogleAuthProvider | null = null;
 
-// Use the new recommended approach for persistence
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentSingleTabManager({})
-  })
-});
-
-export const googleProvider: GoogleAuthProvider = new GoogleAuthProvider();
-
-googleProvider.setCustomParameters({
-  prompt: 'select_account'
-});
+// Only initialize Firebase if the configuration is available
+if (isFirebaseConfigured) {
+  try {
+    const app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    
+    // Use the new recommended approach for persistence
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentSingleTabManager({})
+      })
+    });
+    
+    googleProvider = new GoogleAuthProvider();
+    googleProvider.setCustomParameters({
+      prompt: 'select_account'
+    });
+  } catch (error) {
+    console.error('Error initializing Firebase:', error);
+  }
+}
 
 export const createUserDocument = async (userId: string, userData: Record<string, any>) => {
+  if (!isFirebaseConfigured || !db) {
+    console.error('Firebase is not configured');
+    return false;
+  }
+  
   if (!userId) {
     console.error('Attempted to create user document with undefined userId');
     return false;

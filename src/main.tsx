@@ -46,7 +46,7 @@ const SyncingIndicator: React.FC<{ isSyncing: boolean }> = ({ isSyncing }) => {
 
 const AppContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { currentUser, authModalOpen } = useAuthStore();
+  const { currentUser, authModalOpen, initialize, isFirebaseAvailable } = useAuthStore();
   const [isSyncing, setSyncing] = useState<boolean>(false);
   const { isVisible, toggleVisibility } = useAIChatStore();
   const interviewAssistant = useInterviewAssistantStore();
@@ -202,7 +202,7 @@ const AppContent: React.FC = () => {
     <SyncContext.Provider value={{ isSyncing, setSyncing }}>
       <div className='fixed inset-0 w-screen h-screen overflow-hidden select-none' draggable={false}>
         {isLoading && <SplashScreen />}
-        {!currentUser && authModalOpen && <AuthWrapper />}
+        {!currentUser && authModalOpen && isFirebaseAvailable && <AuthWrapper />}
         <Player />
         <DrawingOverlay />
         <DownloadBanner />

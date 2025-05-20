@@ -1,4 +1,453 @@
-"use strict";const o=require("electron"),p=require("path"),d=require("fs"),A=require("os"),E=require("crypto"),u=[];for(let t=0;t<256;++t)u.push((t+256).toString(16).slice(1));function I(t,l=0){return(u[t[l+0]]+u[t[l+1]]+u[t[l+2]]+u[t[l+3]]+"-"+u[t[l+4]]+u[t[l+5]]+"-"+u[t[l+6]]+u[t[l+7]]+"-"+u[t[l+8]]+u[t[l+9]]+"-"+u[t[l+10]]+u[t[l+11]]+u[t[l+12]]+u[t[l+13]]+u[t[l+14]]+u[t[l+15]]).toLowerCase()}const y=new Uint8Array(256);let m=y.length;function $(){return m>y.length-16&&(E.randomFillSync(y),m=0),y.slice(m,m+=16)}const x={randomUUID:E.randomUUID};function w(t,l,f){var e;if(x.randomUUID&&!t)return x.randomUUID();t=t||{};const r=t.random??((e=t.rng)==null?void 0:e.call(t))??$();if(r.length<16)throw new Error("Random bytes length must be >= 16");return r[6]=r[6]&15|64,r[8]=r[8]&63|128,I(r)}const h=p.join(A.homedir(),".loco"),v=p.join(h,"models"),C=p.join(h,"images"),g=p.join(h,"videos");function O(){try{d.existsSync(h)||d.mkdirSync(h),d.existsSync(v)||d.mkdirSync(v),d.existsSync(C)||d.mkdirSync(C),d.existsSync(g)||d.mkdirSync(g)}catch(t){console.error("Error creating app directories:",t)}}const a={log:(...t)=>{process.env.NODE_ENV==="development"&&console.log(...t)},error:(...t)=>{console.error(...t)}};let b=null;o.app.whenReady().then(()=>{O(),T(),o.protocol.registerFileProtocol("app-file",(r,e)=>{const s=r.url.substring(10);try{const n=decodeURI(s);if(!d.existsSync(n))return console.error("File not found:",n),e({error:-2});const i=p.extname(n).toLowerCase();let c="application/octet-stream";return i===".jpg"||i===".jpeg"?c="image/jpeg":i===".png"?c="image/png":i===".gif"?c="image/gif":i===".webp"?c="image/webp":i===".svg"&&(c="image/svg+xml"),e({path:n,mimeType:c})}catch(n){return console.error("Protocol handler error:",n),e({error:-2})}});const t=new o.BrowserWindow({show:!0,transparent:!0,frame:!1,center:!0,hasShadow:!1,movable:!0,alwaysOnTop:!0,focusable:!0,skipTaskbar:!0,titleBarStyle:"hidden",icon:p.join(process.cwd(),"loco-icon.icns"),webPreferences:{sandbox:!0,webviewTag:!0,nodeIntegration:!1,contextIsolation:!0,preload:p.join(__dirname,"preload.js"),webSecurity:!0}});t.setAlwaysOnTop(!0,"floating",1),t.webContents.session.webRequest.onHeadersReceived((r,e)=>{r.url.startsWith("blob:")?e({responseHeaders:{...r.responseHeaders,"Access-Control-Allow-Origin":["*"],"Access-Control-Allow-Methods":["GET, POST, OPTIONS"],"Access-Control-Allow-Headers":["Content-Type, Authorization"],"Content-Security-Policy":["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file: data:; img-src 'self' data: blob: https://* http://* app-file:;"]}}):e({responseHeaders:{...r.responseHeaders,"Content-Security-Policy":["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file: data:; img-src 'self' data: blob: https://* http://* app-file:;"]}})}),t.webContents.session.webRequest.onBeforeRequest((r,e)=>{r.url.startsWith("app-file://"),e({})});const l=o.session.fromPartition("persist:webviewsession");l.protocol.registerFileProtocol("app-file",(r,e)=>{const s=r.url.substring(10);try{const n=decodeURI(s);if(!d.existsSync(n))return console.error("File not found:",n),e({error:-2});const i=p.extname(n).toLowerCase();let c="application/octet-stream";return i===".jpg"||i===".jpeg"?c="image/jpeg":i===".png"?c="image/png":i===".gif"?c="image/gif":i===".webp"?c="image/webp":i===".svg"&&(c="image/svg+xml"),e({path:n,mimeType:c})}catch(n){return console.error("Protocol handler error in webview session:",n),e({error:-2})}}),l.webRequest.onHeadersReceived((r,e)=>{e({responseHeaders:{...r.responseHeaders,"Content-Security-Policy":["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file: data:; img-src 'self' data: blob: https://* http://* app-file:;"]}})}),l.setPermissionRequestHandler((r,e,s)=>{const n=r.getURL();a.log(`Permission request: ${e} for ${n}`),e==="media"||e==="mediaKeySystem"||e==="geolocation"||e==="notifications"||e==="fullscreen"||e==="display-capture"||e==="pointerLock"?(a.log(`Granting permission: ${e}`),s(!0)):(a.log(`Denying permission: ${e}`),s(!1))}),t.webContents.session.setPermissionRequestHandler((r,e,s)=>{r.getURL(),e==="media"||e==="mediaKeySystem"||e==="geolocation"||e==="notifications"||e==="fullscreen"||e==="display-capture"||e==="pointerLock"?(a.log(`Granting permission: ${e}`),s(!0)):(a.log(`Denying permission: ${e}`),s(!1))}),t.webContents.session.setPermissionCheckHandler((r,e)=>e==="media"||e==="pointerLock"),t.maximize(),t.show(),t.setFocusable(!0),t.setAlwaysOnTop(!0,"floating",1),F(t),process.env.VITE_DEV_SERVER_URL?t.loadURL(process.env.VITE_DEV_SERVER_URL):t.loadFile("dist/index.html"),setInterval(()=>{const r=o.screen.getCursorScreenPoint(),[e,s]=t.getPosition(),[n,i]=t.getSize();r.x>e&&r.x<e+n&&r.y>s&&r.y<s+i&&f(r.x-e,r.y-s)},300);const f=async(r,e)=>{const n=(await t.webContents.capturePage({x:r,y:e,width:1,height:1})).getBitmap();t.setIgnoreMouseEvents(!n[3])};setInterval(()=>{t.setAlwaysOnTop(!0,"floating",1)},1e3),o.ipcMain.handle("save-model-file",async(r,e,s)=>{try{const n=`${w()}-${s}`,i=p.join(v,n);return d.writeFileSync(i,Buffer.from(e)),`app-file://${i}`}catch(n){throw a.error("Error saving model file:",n),n}}),o.ipcMain.handle("save-image-file",async(r,e,s)=>{try{const n=`${w()}-${s}`,i=p.join(C,n);return d.writeFileSync(i,Buffer.from(e)),`app-file://${i}`}catch(n){throw console.error("Error saving image file:",n),n}}),o.ipcMain.handle("save-video-file",async(r,e,s)=>{try{const n=`${w()}-${s}`,i=p.join(g,n);return d.writeFileSync(i,Buffer.from(e)),`app-file://${i}`}catch(n){throw console.error("Error saving video file:",n),n}}),o.ipcMain.handle("list-videos-from-disk",async r=>{try{return{success:!0,videos:d.readdirSync(g).filter(i=>{const c=p.extname(i).toLowerCase();return[".mp4",".webm",".mov",".avi",".mkv"].includes(c)}).map(i=>{const c=p.join(g,i),S=d.statSync(c),R=i.includes("-")?i.substring(i.indexOf("-")+1):i;return{id:w(),fileName:R,url:`app-file://${c}`,thumbnailUrl:"",filePath:c,fileSize:S.size,createdAt:S.birthtime.toISOString(),modifiedAt:S.mtime.toISOString(),type:"video"}})}}catch(e){return a.error("Error listing videos from disk:",e),{success:!1,videos:[],error:e.message}}}),o.ipcMain.handle("test-file-access",async(r,e)=>{try{const s=d.existsSync(e);if(s){const n=d.statSync(e);return{exists:s,size:n.size,isFile:n.isFile()}}return{exists:s}}catch(s){throw console.error(`Erro ao verificar arquivo ${e}:`,s),s}}),o.ipcMain.handle("read-file-as-buffer",async(r,e)=>{try{if(!d.existsSync(e))throw new Error(`Arquivo não encontrado: ${e}`);return d.readFileSync(e)}catch(s){throw a.error(`Erro ao ler arquivo ${e}:`,s),s}}),o.ipcMain.handle("get-screen-sources",async()=>{try{a.log("Electron: Fetching screen sources");const r=await o.desktopCapturer.getSources({types:["screen","window"],thumbnailSize:{width:150,height:150},fetchWindowIcons:!0});return a.log(`Electron: Found ${r.length} screen sources:`,r.map(e=>e.name)),r.map(e=>({id:e.id,name:e.name,display_id:e.display_id,thumbnail:e.thumbnail.toDataURL(),appIcon:e.appIcon?e.appIcon.toDataURL():null}))}catch(r){throw a.error("Electron: Error getting screen sources:",r),r}}),o.ipcMain.handle("reload-app",()=>{a.log("Reloading application..."),o.app.relaunch(),o.app.exit(0)}),o.ipcMain.handle("toggle-always-on-top",(r,e)=>(a.log(`Setting always-on-top: ${e}`),t.setAlwaysOnTop(e,"floating",1),t.isAlwaysOnTop())),o.app.on("will-quit",()=>{o.globalShortcut.unregisterAll()}),o.ipcMain.on("toggle-interview-assistant",()=>{t.webContents.send("global-shortcut","toggle-interview-assistant")}),o.ipcMain.on("capture-screenshot",()=>{t.webContents.send("global-shortcut","capture-screenshot")}),o.ipcMain.on("generate-solution",()=>{t.webContents.send("global-shortcut","generate-solution")})});function T(){const t=p.join(process.cwd(),"loco-icon.png");let l;try{if(l=o.nativeImage.createFromPath(t),l.isEmpty()){a.log("Tray icon not found, using fallback"),l=o.nativeImage.createEmpty();const r=16;l=o.nativeImage.createFromBuffer(Buffer.from(`<svg width="${r}" height="${r}" viewBox="0 0 ${r} ${r}" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="${r}" height="${r}" rx="${r/4}" fill="#FF5A5A"/>
-          <text x="${r/2}" y="${r*.75}" font-family="Arial" font-size="${r*.7}" text-anchor="middle" fill="white">L</text>
-        </svg>`))}}catch(r){a.error("Error creating tray icon:",r),l=o.nativeImage.createEmpty()}l=l.resize({width:16,height:16}),b=new o.Tray(l),b.setToolTip("Loco App");const f=o.Menu.buildFromTemplate([{label:"Show App",click:()=>{o.BrowserWindow.getAllWindows()[0].show()}},{label:"Always on Top",type:"checkbox",checked:!0,click:r=>{o.BrowserWindow.getAllWindows()[0].setAlwaysOnTop(r.checked,"floating",1)}},{type:"separator"},{label:"Global Shortcuts:",enabled:!1},{label:"Cmd+Shift+Space: Show/Hide App",enabled:!1},{label:"Cmd+B: Toggle Interview Assistant",enabled:!1},{label:"Cmd+H: Capture Screenshot",enabled:!1},{label:"Cmd+Enter: Generate Solution",enabled:!1},{type:"separator"},{label:"Quit",click:()=>{o.app.quit()}}]);b.setContextMenu(f),b.on("click",()=>{const r=o.BrowserWindow.getAllWindows()[0];r.isVisible()?r.hide():(r.show(),r.setAlwaysOnTop(!0,"screen-saver"))})}function F(t){o.globalShortcut.unregisterAll(),o.globalShortcut.register("CommandOrControl+Shift+Space",()=>{a.log("Global shortcut triggered: CommandOrControl+Shift+Space"),t.isVisible()?t.hide():(t.show(),t.setAlwaysOnTop(!0,"floating",1))}),o.globalShortcut.register("CommandOrControl+B",()=>{a.log("Global shortcut triggered: CommandOrControl+B"),t.webContents.send("global-shortcut","toggle-interview-assistant")}),o.globalShortcut.register("CommandOrControl+H",()=>{a.log("Global shortcut triggered: CommandOrControl+H"),t.webContents.send("global-shortcut","capture-screenshot")}),o.globalShortcut.register("CommandOrControl+Return",()=>{a.log("Global shortcut triggered: CommandOrControl+Return"),t.webContents.send("global-shortcut","generate-solution")}),(!o.globalShortcut.isRegistered("CommandOrControl+Shift+Space")||!o.globalShortcut.isRegistered("CommandOrControl+B")||!o.globalShortcut.isRegistered("CommandOrControl+H")||!o.globalShortcut.isRegistered("CommandOrControl+Return"))&&a.error("Global shortcut registration failed")}
+"use strict";
+const electron = require("electron");
+const path = require("path");
+const fs = require("fs");
+const os = require("os");
+const crypto = require("crypto");
+const byteToHex = [];
+for (let i = 0; i < 256; ++i) {
+  byteToHex.push((i + 256).toString(16).slice(1));
+}
+function unsafeStringify(arr, offset = 0) {
+  return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
+}
+const rnds8Pool = new Uint8Array(256);
+let poolPtr = rnds8Pool.length;
+function rng() {
+  if (poolPtr > rnds8Pool.length - 16) {
+    crypto.randomFillSync(rnds8Pool);
+    poolPtr = 0;
+  }
+  return rnds8Pool.slice(poolPtr, poolPtr += 16);
+}
+const native = { randomUUID: crypto.randomUUID };
+function v4(options, buf, offset) {
+  var _a;
+  if (native.randomUUID && true && !options) {
+    return native.randomUUID();
+  }
+  options = options || {};
+  const rnds = options.random ?? ((_a = options.rng) == null ? void 0 : _a.call(options)) ?? rng();
+  if (rnds.length < 16) {
+    throw new Error("Random bytes length must be >= 16");
+  }
+  rnds[6] = rnds[6] & 15 | 64;
+  rnds[8] = rnds[8] & 63 | 128;
+  return unsafeStringify(rnds);
+}
+const APP_DIR = path.join(os.homedir(), ".loco");
+const MODELS_DIR = path.join(APP_DIR, "models");
+const IMAGES_DIR = path.join(APP_DIR, "images");
+const VIDEOS_DIR = path.join(APP_DIR, "videos");
+function ensureDirectoriesExist() {
+  try {
+    if (!fs.existsSync(APP_DIR)) fs.mkdirSync(APP_DIR);
+    if (!fs.existsSync(MODELS_DIR)) fs.mkdirSync(MODELS_DIR);
+    if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR);
+    if (!fs.existsSync(VIDEOS_DIR)) fs.mkdirSync(VIDEOS_DIR);
+  } catch (error) {
+    console.error("Error creating app directories:", error);
+  }
+}
+const logger = {
+  log: (...args) => {
+    if (process.env.NODE_ENV === "development") {
+      console.log(...args);
+    }
+  },
+  error: (...args) => {
+    console.error(...args);
+  }
+};
+let tray = null;
+electron.app.whenReady().then(() => {
+  ensureDirectoriesExist();
+  createTrayIcon();
+  electron.protocol.registerFileProtocol("app-file", (request, callback) => {
+    const url = request.url.substring(10);
+    try {
+      const decodedUrl = decodeURI(url);
+      if (!fs.existsSync(decodedUrl)) {
+        console.error("File not found:", decodedUrl);
+        return callback({ error: -2 });
+      }
+      const ext = path.extname(decodedUrl).toLowerCase();
+      let mimeType = "application/octet-stream";
+      if (ext === ".jpg" || ext === ".jpeg") mimeType = "image/jpeg";
+      else if (ext === ".png") mimeType = "image/png";
+      else if (ext === ".gif") mimeType = "image/gif";
+      else if (ext === ".webp") mimeType = "image/webp";
+      else if (ext === ".svg") mimeType = "image/svg+xml";
+      return callback({
+        path: decodedUrl,
+        mimeType
+      });
+    } catch (error) {
+      console.error("Protocol handler error:", error);
+      return callback({ error: -2 });
+    }
+  });
+  const win = new electron.BrowserWindow({
+    show: true,
+    transparent: true,
+    frame: false,
+    // width: 1500,
+    // height: 1500,
+    center: true,
+    hasShadow: false,
+    movable: true,
+    alwaysOnTop: true,
+    focusable: true,
+    skipTaskbar: true,
+    // Hide from taskbar
+    titleBarStyle: "hidden",
+    // simpleFullscreen: true
+    icon: path.join(process.cwd(), "loco-icon.icns"),
+    webPreferences: {
+      sandbox: true,
+      webviewTag: true,
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, "preload.js"),
+      webSecurity: true
+      // Permite carregar arquivos locais (use com cuidado em produção)
+    }
+  });
+  win.setAlwaysOnTop(true, "floating", 1);
+  win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    if (details.url.startsWith("blob:")) {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Access-Control-Allow-Origin": ["*"],
+          "Access-Control-Allow-Methods": ["GET, POST, OPTIONS"],
+          "Access-Control-Allow-Headers": ["Content-Type, Authorization"],
+          "Content-Security-Policy": ["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file: data:; img-src 'self' data: blob: https://* http://* app-file:;"]
+        }
+      });
+    } else {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Content-Security-Policy": ["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file: data:; img-src 'self' data: blob: https://* http://* app-file:;"]
+        }
+      });
+    }
+  });
+  win.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+    if (details.url.startsWith("app-file://")) ;
+    callback({});
+  });
+  const persistentSession = electron.session.fromPartition("persist:webviewsession");
+  persistentSession.protocol.registerFileProtocol("app-file", (request, callback) => {
+    const url = request.url.substring(10);
+    try {
+      const decodedUrl = decodeURI(url);
+      if (!fs.existsSync(decodedUrl)) {
+        console.error("File not found:", decodedUrl);
+        return callback({ error: -2 });
+      }
+      const ext = path.extname(decodedUrl).toLowerCase();
+      let mimeType = "application/octet-stream";
+      if (ext === ".jpg" || ext === ".jpeg") mimeType = "image/jpeg";
+      else if (ext === ".png") mimeType = "image/png";
+      else if (ext === ".gif") mimeType = "image/gif";
+      else if (ext === ".webp") mimeType = "image/webp";
+      else if (ext === ".svg") mimeType = "image/svg+xml";
+      return callback({
+        path: decodedUrl,
+        mimeType
+      });
+    } catch (error) {
+      console.error("Protocol handler error in webview session:", error);
+      return callback({ error: -2 });
+    }
+  });
+  persistentSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        "Content-Security-Policy": ["default-src 'self' app-file: file: data: blob: 'unsafe-inline' 'unsafe-eval' https://* http://*; media-src 'self' https://* http://* blob: app-file:; connect-src 'self' https://* http://* ws://* wss://* blob: app-file: data:; img-src 'self' data: blob: https://* http://* app-file:;"]
+      }
+    });
+  });
+  persistentSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    const url = webContents.getURL();
+    logger.log(`Permission request: ${permission} for ${url}`);
+    if (permission === "media" || permission === "mediaKeySystem" || permission === "geolocation" || permission === "notifications" || permission === "fullscreen" || permission === "display-capture" || permission === "pointerLock") {
+      logger.log(`Granting permission: ${permission}`);
+      callback(true);
+    } else {
+      logger.log(`Denying permission: ${permission}`);
+      callback(false);
+    }
+  });
+  win.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    webContents.getURL();
+    if (permission === "media" || permission === "mediaKeySystem" || permission === "geolocation" || permission === "notifications" || permission === "fullscreen" || permission === "display-capture" || permission === "pointerLock") {
+      logger.log(`Granting permission: ${permission}`);
+      callback(true);
+    } else {
+      logger.log(`Denying permission: ${permission}`);
+      callback(false);
+    }
+  });
+  win.webContents.session.setPermissionCheckHandler((webContents, permission) => {
+    if (permission === "media" || permission === "pointerLock") {
+      return true;
+    }
+    return false;
+  });
+  win.maximize();
+  win.show();
+  win.setFocusable(true);
+  win.setAlwaysOnTop(true, "floating", 1);
+  registerGlobalShortcuts(win);
+  if (process.env.VITE_DEV_SERVER_URL) {
+    win.loadURL(process.env.VITE_DEV_SERVER_URL);
+  } else {
+    win.loadFile("dist/index.html");
+  }
+  setInterval(() => {
+    const point = electron.screen.getCursorScreenPoint();
+    const [x, y] = win.getPosition();
+    const [w, h] = win.getSize();
+    if (point.x > x && point.x < x + w && point.y > y && point.y < y + h) {
+      updateIgnoreMouseEvents(point.x - x, point.y - y);
+    }
+  }, 300);
+  const updateIgnoreMouseEvents = async (x, y) => {
+    const image = await win.webContents.capturePage({
+      x,
+      y,
+      width: 1,
+      height: 1
+    });
+    const buffer = image.getBitmap();
+    win.setIgnoreMouseEvents(!buffer[3]);
+  };
+  setInterval(() => {
+    win.setAlwaysOnTop(true, "floating", 1);
+  }, 1e3);
+  electron.ipcMain.handle("save-model-file", async (event, fileBuffer, fileName) => {
+    try {
+      const uniqueFileName = `${v4()}-${fileName}`;
+      const filePath = path.join(MODELS_DIR, uniqueFileName);
+      fs.writeFileSync(filePath, Buffer.from(fileBuffer));
+      return `app-file://${filePath}`;
+    } catch (error) {
+      logger.error("Error saving model file:", error);
+      throw error;
+    }
+  });
+  electron.ipcMain.handle("save-image-file", async (event, fileBuffer, fileName) => {
+    try {
+      const uniqueFileName = `${v4()}-${fileName}`;
+      const filePath = path.join(IMAGES_DIR, uniqueFileName);
+      fs.writeFileSync(filePath, Buffer.from(fileBuffer));
+      return `app-file://${filePath}`;
+    } catch (error) {
+      console.error("Error saving image file:", error);
+      throw error;
+    }
+  });
+  electron.ipcMain.handle("save-video-file", async (event, fileBuffer, fileName) => {
+    try {
+      const uniqueFileName = `${v4()}-${fileName}`;
+      const filePath = path.join(VIDEOS_DIR, uniqueFileName);
+      fs.writeFileSync(filePath, Buffer.from(fileBuffer));
+      return `app-file://${filePath}`;
+    } catch (error) {
+      console.error("Error saving video file:", error);
+      throw error;
+    }
+  });
+  electron.ipcMain.handle("list-videos-from-disk", async (event) => {
+    try {
+      const files = fs.readdirSync(VIDEOS_DIR);
+      const videoFiles = files.filter((file) => {
+        const ext = path.extname(file).toLowerCase();
+        return [".mp4", ".webm", ".mov", ".avi", ".mkv"].includes(ext);
+      });
+      const videos = videoFiles.map((file) => {
+        const filePath = path.join(VIDEOS_DIR, file);
+        const stats = fs.statSync(filePath);
+        const fileName = file.includes("-") ? file.substring(file.indexOf("-") + 1) : file;
+        return {
+          id: v4(),
+          // Generate a new ID for each video
+          fileName,
+          url: `app-file://${filePath}`,
+          thumbnailUrl: "",
+          // No thumbnail for now
+          filePath,
+          fileSize: stats.size,
+          createdAt: stats.birthtime.toISOString(),
+          modifiedAt: stats.mtime.toISOString(),
+          type: "video"
+        };
+      });
+      return { success: true, videos };
+    } catch (error) {
+      logger.error("Error listing videos from disk:", error);
+      return { success: false, videos: [], error: error.message };
+    }
+  });
+  electron.ipcMain.handle("test-file-access", async (event, filePath) => {
+    try {
+      const exists = fs.existsSync(filePath);
+      if (exists) {
+        const stats = fs.statSync(filePath);
+        return { exists, size: stats.size, isFile: stats.isFile() };
+      }
+      return { exists };
+    } catch (error) {
+      console.error(`Erro ao verificar arquivo ${filePath}:`, error);
+      throw error;
+    }
+  });
+  electron.ipcMain.handle("read-file-as-buffer", async (event, filePath) => {
+    try {
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`Arquivo não encontrado: ${filePath}`);
+      }
+      const buffer = fs.readFileSync(filePath);
+      return buffer;
+    } catch (error) {
+      logger.error(`Erro ao ler arquivo ${filePath}:`, error);
+      throw error;
+    }
+  });
+  electron.ipcMain.handle("get-screen-sources", async () => {
+    try {
+      logger.log("Electron: Fetching screen sources");
+      const sources = await electron.desktopCapturer.getSources({
+        types: ["screen", "window"],
+        thumbnailSize: { width: 150, height: 150 },
+        // Small thumbnails for debugging
+        fetchWindowIcons: true
+      });
+      logger.log(`Electron: Found ${sources.length} screen sources:`, sources.map((s) => s.name));
+      return sources.map((source) => ({
+        id: source.id,
+        name: source.name,
+        display_id: source.display_id,
+        thumbnail: source.thumbnail.toDataURL(),
+        appIcon: source.appIcon ? source.appIcon.toDataURL() : null
+      }));
+    } catch (error) {
+      logger.error("Electron: Error getting screen sources:", error);
+      throw error;
+    }
+  });
+  electron.ipcMain.handle("reload-app", () => {
+    logger.log("Reloading application...");
+    electron.app.relaunch();
+    electron.app.exit(0);
+  });
+  electron.ipcMain.handle("toggle-always-on-top", (event, shouldBeOnTop) => {
+    logger.log(`Setting always-on-top: ${shouldBeOnTop}`);
+    win.setAlwaysOnTop(shouldBeOnTop, "floating", 1);
+    return win.isAlwaysOnTop();
+  });
+  electron.app.on("will-quit", () => {
+    electron.globalShortcut.unregisterAll();
+  });
+  electron.ipcMain.on("toggle-interview-assistant", () => {
+    win.webContents.send("global-shortcut", "toggle-interview-assistant");
+  });
+  electron.ipcMain.on("capture-screenshot", () => {
+    win.webContents.send("global-shortcut", "capture-screenshot");
+  });
+  electron.ipcMain.on("generate-solution", () => {
+    win.webContents.send("global-shortcut", "generate-solution");
+  });
+});
+function createTrayIcon() {
+  const iconPath = path.join(process.cwd(), "loco-icon.png");
+  let trayIcon;
+  try {
+    trayIcon = electron.nativeImage.createFromPath(iconPath);
+    if (trayIcon.isEmpty()) {
+      logger.log("Tray icon not found, using fallback");
+      trayIcon = electron.nativeImage.createEmpty();
+      const size = 16;
+      trayIcon = electron.nativeImage.createFromBuffer(Buffer.from(
+        `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="${size}" height="${size}" rx="${size / 4}" fill="#FF5A5A"/>
+          <text x="${size / 2}" y="${size * 0.75}" font-family="Arial" font-size="${size * 0.7}" text-anchor="middle" fill="white">L</text>
+        </svg>`
+      ));
+    }
+  } catch (error) {
+    logger.error("Error creating tray icon:", error);
+    trayIcon = electron.nativeImage.createEmpty();
+  }
+  trayIcon = trayIcon.resize({ width: 16, height: 16 });
+  tray = new electron.Tray(trayIcon);
+  tray.setToolTip("Loco App");
+  const contextMenu = electron.Menu.buildFromTemplate([
+    { label: "Show App", click: () => {
+      electron.BrowserWindow.getAllWindows()[0].show();
+    } },
+    {
+      label: "Always on Top",
+      type: "checkbox",
+      checked: true,
+      click: (menuItem) => {
+        const win = electron.BrowserWindow.getAllWindows()[0];
+        win.setAlwaysOnTop(menuItem.checked, "floating", 1);
+      }
+    },
+    { type: "separator" },
+    { label: "Global Shortcuts:", enabled: false },
+    { label: "Cmd+Shift+Space: Show/Hide App", enabled: false },
+    { label: "Cmd+B: Toggle Interview Assistant", enabled: false },
+    { label: "Cmd+H: Capture Screenshot", enabled: false },
+    { label: "Cmd+Enter: Generate Solution", enabled: false },
+    { type: "separator" },
+    {
+      label: "Quit",
+      click: () => {
+        electron.app.quit();
+      }
+    }
+  ]);
+  tray.setContextMenu(contextMenu);
+  tray.on("click", () => {
+    const win = electron.BrowserWindow.getAllWindows()[0];
+    if (win.isVisible()) {
+      win.hide();
+    } else {
+      win.show();
+      win.setAlwaysOnTop(true, "screen-saver");
+    }
+  });
+}
+function registerGlobalShortcuts(win) {
+  electron.globalShortcut.unregisterAll();
+  electron.globalShortcut.register("CommandOrControl+Shift+Space", () => {
+    logger.log("Global shortcut triggered: CommandOrControl+Shift+Space");
+    if (win.isVisible()) {
+      win.hide();
+    } else {
+      win.show();
+      win.setAlwaysOnTop(true, "floating", 1);
+    }
+  });
+  electron.globalShortcut.register("CommandOrControl+B", () => {
+    logger.log("Global shortcut triggered: CommandOrControl+B");
+    win.webContents.send("global-shortcut", "toggle-interview-assistant");
+  });
+  electron.globalShortcut.register("CommandOrControl+H", () => {
+    logger.log("Global shortcut triggered: CommandOrControl+H");
+    win.webContents.send("global-shortcut", "capture-screenshot");
+  });
+  electron.globalShortcut.register("CommandOrControl+Return", () => {
+    logger.log("Global shortcut triggered: CommandOrControl+Return");
+    win.webContents.send("global-shortcut", "generate-solution");
+  });
+  if (!electron.globalShortcut.isRegistered("CommandOrControl+Shift+Space") || !electron.globalShortcut.isRegistered("CommandOrControl+B") || !electron.globalShortcut.isRegistered("CommandOrControl+H") || !electron.globalShortcut.isRegistered("CommandOrControl+Return")) {
+    logger.error("Global shortcut registration failed");
+  }
+}

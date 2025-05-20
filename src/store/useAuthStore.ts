@@ -7,7 +7,7 @@ import {
   onAuthStateChanged,
   signInWithPopup,
 } from 'firebase/auth';
-import { auth, googleProvider, createUserDocument, db } from '../utils/firebase';
+import { auth, googleProvider, createUserDocument, db, isFirebaseConfigured } from '../utils/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { syncSettings, syncAllLocalStorage } from '../utils/local-storage-sync';
 import { SETTINGS_STORAGE_KEY } from '@/components/Settings/utils';
@@ -17,6 +17,7 @@ interface AuthState {
   loading: boolean;
   error: string | null;
   authModalOpen: boolean;
+  isFirebaseAvailable: boolean;
 
   // Actions
   signIn: (email: string, password: string) => Promise<void>;
@@ -55,8 +56,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: false,
   error: null,
   authModalOpen: false,
+  isFirebaseAvailable: isFirebaseConfigured,
 
   signIn: async (email: string, password: string) => {
+    if (!isFirebaseConfigured || !auth) {
+      set({ error: 'Firebase authentication is not configured' });
+      return;
+    }
+    
     set({ loading: true, error: null });
     try {
       console.log('Tentando fazer login com email:', email);
@@ -81,6 +88,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signUp: async (email: string, password: string, name: string) => {
+    if (!isFirebaseConfigured || !auth) {
+      set({ error: 'Firebase authentication is not configured' });
+      return;
+    }
+    
     set({ loading: true, error: null });
     try {
       // Create the user account with Firebase Auth
@@ -108,6 +120,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signInWithGoogle: async () => {
+    if (!isFirebaseConfigured || !auth || !googleProvider) {
+      set({ error: 'Firebase authentication is not configured' });
+      return;
+    }
+    
     set({ loading: true, error: null });
     try {
       console.log('Tentando fazer login com Google');
@@ -134,6 +151,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
+    if (!isFirebaseConfigured || !auth) {
+      return;
+    }
+    
     try {
       console.log('Tentando fazer logout');
       await firebaseSignOut(auth);
@@ -147,6 +168,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   clearError: () => set({ error: null }),
 
   initialize: () => {
+    if (!isFirebaseConfigured || !auth) {
+      // Return a no-op function if Firebase is not configured
+      return () => {};
+    }
+    
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       set({ currentUser: user });
       
