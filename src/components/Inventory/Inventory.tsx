@@ -141,7 +141,7 @@ const Inventory: ForwardRefRenderFunction<InventoryRefHandle, InventoryProps> = 
 
       {showFullInventory && (
         <div className='absolute inset-0 z-[9999] w-screen h-screen flex items-center justify-center pointer-events-none rounded-md'>
-          <div className='relative w-screen h-screen lg:max-h-[500px] lg:max-w-[750px] rounded-md shadow-2xl flex flex-col overflow-hidden text-white font-minecraft pointer-events-auto shadow-black/50 opacity-90'>            
+          <div className='relative w-screen h-screen lg:max-h-[500px] lg:max-w-[750px] rounded-md shadow-2xl flex flex-col overflow-hidden text-white font-minecraft pointer-events-auto shadow-black/50'>            
             <InventoryHeader
               searchTerm={searchTerm}
               handleSearchChange={handleSearchChange}

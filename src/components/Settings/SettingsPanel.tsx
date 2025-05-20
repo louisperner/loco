@@ -574,7 +574,7 @@ export function SettingsPanel({
             )}
           </SlidePanelBody>
 
-          <SlidePanelFooter>
+          {/* <SlidePanelFooter>
             <div className="flex justify-between items-center w-full">
               <span className="text-xs text-gray-400">
                 {syncStatus && (
@@ -630,7 +630,7 @@ export function SettingsPanel({
                 </div>
               )}
             </div>
-          </SlidePanelFooter>
+          </SlidePanelFooter> */}
         </div>
       </SlidePanelContent>
     </SlidePanel>

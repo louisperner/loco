@@ -261,7 +261,7 @@ export const useGameStore = create<GameState & GameStateActions>()(
         gridVisible: true,
         floorPlaneVisible: true,
         backgroundVisible: true,
-        minimapVisible: true,
+        minimapVisible: false,
       },
 
       // Crosshair states
@@ -489,7 +489,7 @@ export const useGameStore = create<GameState & GameStateActions>()(
         gridVisible: true,
         floorPlaneVisible: true,
         backgroundVisible: true,
-        minimapVisible: true,
+        minimapVisible: false,
       },
         });
       },
