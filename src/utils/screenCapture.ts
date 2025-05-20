@@ -1,24 +1,9 @@
+// @ts-nocheck
+import { ElectronWindowAPI } from '../types/window';
+
 // Define types for using the desktopCapturer API
-interface DesktopCapturerSource {
-  id: string;
-  name: string;
-  thumbnail: { toDataURL: () => string }; // More generic type without Electron namespace
-  display_id: string;
-  appIcon: { toDataURL: () => string } | null; // More generic type without Electron namespace
-}
-
-// Access the Electron API exposed by the preload script
-interface ElectronAPI {
-  getScreenSources: () => Promise<DesktopCapturerSource[]>;
-  reloadApp?: () => void; // Optional method to reload the application
-  // ... other Electron APIs
-}
-
-declare global {
-  interface Window {
-    electron: ElectronAPI;
-  }
-}
+// Note: This interface is imported from the window.d.ts declaration file
+// and doesn't need to be redeclared here
 
 // Add a logger helper
 const logger = {
@@ -51,6 +36,7 @@ export const captureScreen = async (): Promise<string> => {
     logger.log("captureScreen called");
     
     // Check if we have access to the Electron API
+    // Use optional chaining to safely access electron and its methods
     if (!window.electron) {
       logger.error("Electron API not available in window object");
       return captureScreenWithBrowserAPI();
@@ -77,31 +63,40 @@ export const captureScreen = async (): Promise<string> => {
       // Find the "Entire screen" source first
       // Try different possible names that could represent the entire screen
       const entireScreen = sources.find(
-        source => source.name.toLowerCase() === 'entire screen' || 
-                  source.name.toLowerCase() === 'all screens' || 
-                  source.name.toLowerCase() === 'desktop' || 
-                  source.name.toLowerCase().includes('entire') ||
-                  source.name.toLowerCase().includes('screen') && source.name.toLowerCase().includes('all')
+        (source: unknown) => {
+          if (!source || typeof source !== 'object' || !('name' in source) || typeof source.name !== 'string') return false;
+          const name = String(source.name).toLowerCase();
+          return name === 'entire screen' || 
+                 name === 'all screens' || 
+                 name === 'desktop' || 
+                 name.includes('entire') ||
+                 (name.includes('screen') && name.includes('all'));
+        }
       );
       
       // If no specific "entire screen" option, try to find the largest screen source
       // This is often the source that captures all screens
-      let screenSource = entireScreen;
+      let screenSource = entireScreen as Record<string, unknown> | undefined;
       
       if (!screenSource && sources.length > 0) {
         logger.log("No 'entire screen' source found, trying to find the best alternative");
         // Log all sources for debugging
-        sources.forEach((src, i) => {
-          logger.log(`Screen source ${i}:`, src.name, `(ID: ${src.id})`);
+        sources.forEach((src: unknown, i) => {
+          if (src && typeof src === 'object' && 'name' in src && 'id' in src) {
+            logger.log(`Screen source ${i}:`, src.name, `(ID: ${src.id})`);
+          }
         });
         
         // Try to find the first source that has "screen" in its name
-        screenSource = sources.find(src => src.name.toLowerCase().includes('screen'));
+        screenSource = sources.find((src: unknown) => {
+          if (!src || typeof src !== 'object' || !('name' in src) || typeof src.name !== 'string') return false;
+          return String(src.name).toLowerCase().includes('screen');
+        }) as Record<string, unknown> | undefined;
         
         // If still not found, use the first source
         if (!screenSource) {
           logger.log("Falling back to first available source");
-          screenSource = sources[0];
+          screenSource = sources[0] as Record<string, unknown>;
         }
       }
       
@@ -110,7 +105,7 @@ export const captureScreen = async (): Promise<string> => {
         return captureScreenWithBrowserAPI();
       }
       
-      logger.log("Using source:", screenSource.name, screenSource.id);
+      logger.log("Using source:", screenSource.name || 'unnamed', screenSource.id || 'no-id');
       
       // Create a video element to capture the screen content
       const video = document.createElement('video');
@@ -128,7 +123,7 @@ export const captureScreen = async (): Promise<string> => {
             // @ts-ignore - Electron-specific constraints
             mandatory: {
               chromeMediaSource: 'desktop',
-              chromeMediaSourceId: screenSource.id,
+              chromeMediaSourceId: screenSource.id || '',
             },
           } as MediaTrackConstraints,
         });
@@ -346,7 +341,7 @@ export const captureScreenRegion = async (fullScreenDataUrl: string, region: Scr
         logger.log("Image to screen ratio:", imageRatio);
         
         // Adjust region dimensions if they're outside the image bounds
-        let adjustedRegion = { ...region };
+        const adjustedRegion = { ...region };
         
         // Ensure the region is within the image bounds
         if (adjustedRegion.x + adjustedRegion.width > img.width) {

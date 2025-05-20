@@ -1,7 +1,6 @@
 import { InventoryItem } from '../utils/inventoryUtils';
 import { ImageDataType, ModelDataType, VideoDataType } from '../components/Models/types';
 import * as THREE from 'three';
-import { ElectronAPI } from './electron';
 
 // =====================================================
 // GLOBAL TYPE DECLARATIONS - MODULE AUGMENTATION
@@ -24,28 +23,4 @@ interface PrimitiveModelData {
 }
 
 // Extend the Window interface
-export {};
-
-declare global {
-  // Define Window interface once
-  interface Window {
-    // Electron API
-    electron: ElectronAPI;
-    
-    // Global caches
-    _modelFileCache?: Record<string, File>;
-    _blobUrlCache?: Record<string, boolean>;
-    _imageBlobCache?: Record<string, string>;
-    _videoBlobCache?: Record<string, string>;
-    
-    // Scene/Camera related properties
-    mainCamera?: THREE.Camera;
-    addImageToScene?: (imageData: ImageDataType) => string;
-    addModelToScene?: (modelData: ModelDataType) => string;
-    addVideoToScene?: (videoData: VideoDataType) => string;
-    addPrimitiveToScene?: (primitiveData: PrimitiveModelData) => string;
-    
-    // Message system
-    addMessage?: (text: string, position?: [number, number, number]) => void;
-  }
-} 
+export {}; 

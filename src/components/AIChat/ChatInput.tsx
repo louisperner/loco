@@ -92,7 +92,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           value={message}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="Plan, search, build anything"
+          placeholder={`Plan, search, build anything or press "/" for commands`}
           className={`w-full resize-none bg-[#1A1A1A] rounded-xl px-10 py-2.5 text-sm text-white/90 
                     focus:outline-none focus:ring-1 focus:ring-[#444444] min-h-[42px] max-h-[150px] 
                     border ${ollamaEnabled ? 'border-blue-900/70' : 'border-[#333333]'} 

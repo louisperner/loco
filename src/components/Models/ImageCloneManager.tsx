@@ -501,9 +501,9 @@ const ImageCloneManager: React.FC<ImageCloneManagerProps> = ({ onSelect }) => {
     // Ensure camera is globally available
     window.mainCamera = camera;
     
-    window.addImageToScene = (imageData: ImageDataType): string => {
+    window.addImageToScene = (imageData: unknown): string => {
       // console.log('Calling addImageToScene via global window', imageData);
-      return addImage({ ...imageData, camera });
+      return addImage({ ...(imageData as ImageDataType), camera });
     };
 
     return () => {

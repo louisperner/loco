@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useInterviewAssistantStore } from "../../store/interviewAssistantStore";
 import { useOpenRouterStore } from "../../store/useOpenRouterStore";
 import { useOllamaStore } from "../../store/useOllamaStore";
@@ -72,6 +72,162 @@ const InterviewAssistant: React.FC = () => {
   
   const [ollamaConnectionError, setOllamaConnectionError] = useState<string | null>(null);
   
+  // Function to toggle problem text editing mode
+  const toggleProblemEditing = useCallback(() => {
+    if (isEditingProblem) {
+      // Save the edited text
+      setProblemText(editedProblemText);
+      
+      // Auto-detect language if we have problem text but no screenshots
+      if (editedProblemText && editedProblemText.trim() !== "" && screenshots.length === 0) {
+        // Try to auto-detect language from the problem text
+        const detectedLanguage = detectLanguageFromText(editedProblemText);
+        if (detectedLanguage) {
+          setSelectedLanguage(detectedLanguage);
+        }
+      }
+    } else {
+      // Enter editing mode
+      setEditedProblemText(problemText);
+    }
+    setIsEditingProblem(!isEditingProblem);
+  }, [isEditingProblem, editedProblemText, problemText, screenshots.length, setProblemText, setSelectedLanguage, setEditedProblemText, setIsEditingProblem]);
+  
+  // Function to start region selection
+  const startRegionSelection = useCallback(async () => {
+    await startRegionCapture(
+      setSelectingRegion,
+      setVisible,
+      isVisible,
+      addScreenshot,
+      setProblemText
+    );
+  }, [isVisible, setSelectingRegion, setVisible, addScreenshot, setProblemText]);
+  
+  // Function to capture screenshot
+  const captureScreenshot = useCallback(async () => {
+    await captureFullScreenshot(
+      setCapturing,
+      setVisible,
+      addScreenshot,
+      setProblemText,
+      isVisible
+    );
+  }, [isVisible, setCapturing, setVisible, addScreenshot, setProblemText]);
+  
+  // Function to generate solution
+  const handleGenerateSolution = useCallback(async () => {
+    await generateAiSolution(
+        problemText,
+        selectedLanguage,
+        selectedModel,
+      isCode,
+      setGenerating,
+      setSolution as (solution: Solution | null) => void,
+      ollamaEnabled,
+      setOllamaModel,
+      setOpenRouterModel
+    );
+  }, [problemText, selectedLanguage, selectedModel, isCode, setGenerating, setSolution, ollamaEnabled, setOllamaModel, setOpenRouterModel]);
+  
+  // Function to move window with arrow keys
+  const moveWindow = useCallback((direction: string) => {
+    const step = 20;
+    switch (direction) {
+      case "ArrowUp":
+        setPosition({ ...position, y: position.y - step });
+        break;
+      case "ArrowDown":
+        setPosition({ ...position, y: position.y + step });
+        break;
+      case "ArrowLeft":
+        setPosition({ ...position, x: position.x - step });
+        break;
+      case "ArrowRight":
+        setPosition({ ...position, x: position.x + step });
+        break;
+    }
+  }, [position, setPosition]);
+  
+  // Function to cancel region selection
+  const cancelRegionSelection = useCallback(() => {
+    const wasVisible = isVisible;
+    setSelectingRegion(false);
+    
+    // Small delay before restoring visibility
+    setTimeout(() => {
+      setVisible(wasVisible);
+    }, 100);
+  }, [isVisible, setSelectingRegion, setVisible]);
+  
+  // Load dynamic Ollama models from API
+  const loadOllamaModels = useCallback(async () => {
+    if (!ollamaEnabled) return;
+    
+    // Clear any previous models and set loading state
+    setCustomOllamaModels([]);
+    setIsLoadingModels(true);
+    
+    try {
+      // Ensure the endpoint is normalized
+      const normalizedEndpoint = normalizeEndpoint(ollamaEndpoint);
+      
+      // Check if the current endpoint in store is normalized, if not update it
+      if (normalizedEndpoint !== ollamaEndpoint) {
+        setOllamaEndpoint(normalizedEndpoint);
+      }
+      
+      const response = await ollamaApi.getModels(normalizedEndpoint);
+      
+      // Extract models from the response, which may have either models or tags array
+      let modelsList: Model[] = [];
+      
+      if (response.models && response.models.length > 0) {
+        // Handle response with models field
+        modelsList = response.models.map(model => ({
+          id: model.name,
+          name: model.name
+        }));
+      } else if (response.tags && response.tags.length > 0) {
+        // Handle response with tags field
+        modelsList = response.tags.map(tag => ({
+          id: tag.name,
+          name: tag.name
+        }));
+      }
+      
+      if (modelsList.length > 0) {
+        setCustomOllamaModels(modelsList);
+        
+        // Store models in localStorage for other components to use
+        try {
+          localStorage.setItem('ollamaModels', JSON.stringify(modelsList));
+        } catch (error) {
+          console.error('Error storing Ollama models in localStorage:', error);
+        }
+        
+        // If current model is not in the list, select first available
+        if (!modelsList.some(model => model.id === ollamaModel)) {
+          setOllamaModel(modelsList[0].id);
+        }
+        
+        // Clear any connection error if we successfully loaded models
+        setOllamaConnectionError(null);
+      } else {
+        // Fall back to default models if none found
+        setCustomOllamaModels(DEFAULT_OLLAMA_MODELS);
+        setOllamaConnectionError("No models found. You may need to pull models with 'ollama pull gemma3:4b'");
+      }
+    } catch (error) {
+      console.error("Error loading Ollama models:", error);
+      // Fall back to defaults on error
+      setCustomOllamaModels(DEFAULT_OLLAMA_MODELS);
+      setOllamaConnectionError(`Error loading models: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  }, [ollamaEnabled, ollamaEndpoint, ollamaModel, setOllamaEndpoint, setOllamaModel, setCustomOllamaModels, setIsLoadingModels, setOllamaConnectionError]);
+  
   // Initialize edited problem text when problem text changes
   useEffect(() => {
     setEditedProblemText(problemText);
@@ -88,7 +244,7 @@ const InterviewAssistant: React.FC = () => {
     return () => {
       window.removeEventListener('interview-assistant-generate', handleGenerateEvent);
     };
-  }, [selectedLanguage, selectedModel, problemText, isCode]); // Dependencies that affect the generation
+  }, [selectedLanguage, selectedModel, problemText, isCode, handleGenerateSolution]);
   
   // Focus the textarea when editing mode is enabled
   useEffect(() => {
@@ -192,65 +348,33 @@ const InterviewAssistant: React.FC = () => {
     
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isVisible, isEditingProblem, isSelectingRegion, isGenerating, resetAll]);
+  }, [isVisible, isEditingProblem, isSelectingRegion, isGenerating, resetAll, captureScreenshot, startRegionSelection, handleGenerateSolution, moveWindow, setVisible, toggleProblemEditing, cancelRegionSelection]);
   
-  // Function to toggle problem text editing mode
-  const toggleProblemEditing = () => {
-    if (isEditingProblem) {
-      // Save the edited text
-      setProblemText(editedProblemText);
-      
-      // Auto-detect language if we have problem text but no screenshots
-      if (editedProblemText && editedProblemText.trim() !== "" && screenshots.length === 0) {
-        // Try to auto-detect language from the problem text
-        const detectedLanguage = detectLanguageFromText(editedProblemText);
-        if (detectedLanguage) {
-          setSelectedLanguage(detectedLanguage);
+  // Update selected model when provider changes and test connection if using Ollama
+  useEffect(() => {
+    setSelectedModel(ollamaEnabled ? ollamaModel : openRouterModel);
+    
+    // Load Ollama models if needed and test connection
+    if (ollamaEnabled) {
+      testOllamaConnection(ollamaEndpoint).then(isConnected => {
+        if (isConnected) {
+          setOllamaConnectionError(null);
+          loadOllamaModels();
+        } else {
+          setOllamaConnectionError(`Could not connect to Ollama at ${ollamaEndpoint}. Make sure Ollama is running.`);
         }
-      }
+      });
     } else {
-      // Enter editing mode
-      setEditedProblemText(problemText);
+      setOllamaConnectionError(null);
     }
-    setIsEditingProblem(!isEditingProblem);
-  };
+  }, [ollamaEnabled, ollamaModel, openRouterModel, ollamaEndpoint, loadOllamaModels]);
   
-  // Function to start region selection
-  const startRegionSelection = async () => {
-    await startRegionCapture(
-      setSelectingRegion,
-      setVisible,
-      isVisible,
-      addScreenshot,
-      setProblemText
-    );
-  };
-  
-  // Function to capture screenshot
-  const captureScreenshot = async () => {
-    await captureFullScreenshot(
-      setCapturing,
-      setVisible,
-      addScreenshot,
-      setProblemText,
-      isVisible
-    );
-  };
-  
-  // Function to generate solution
-  const handleGenerateSolution = async () => {
-    await generateAiSolution(
-        problemText,
-        selectedLanguage,
-        selectedModel,
-      isCode,
-      setGenerating,
-      setSolution as (solution: Solution | null) => void,
-      ollamaEnabled,
-      setOllamaModel,
-      setOpenRouterModel
-    );
-  };
+  // Load Ollama models on initial render if Ollama is enabled
+  useEffect(() => {
+    if (ollamaEnabled) {
+      loadOllamaModels();
+    }
+  }, [ollamaEnabled, loadOllamaModels]);
   
   // Function to add the current screenshots to the 3D scene
   const addScreenshotToScene = (
@@ -312,9 +436,6 @@ const InterviewAssistant: React.FC = () => {
         
         // Hide the Interview Assistant after adding to scene
         setVisible(false);
-        
-        // Optional: Show a notification or feedback
-        console.log('Screenshot added to 3D scene');
       };
       
       // Start loading the image
@@ -336,25 +457,6 @@ const InterviewAssistant: React.FC = () => {
         .catch(err => {
           logger.error('Failed to copy: ', err);
         });
-    }
-  };
-  
-  // Function to move window with arrow keys
-  const moveWindow = (direction: string) => {
-    const step = 20;
-    switch (direction) {
-      case "ArrowUp":
-        setPosition({ ...position, y: position.y - step });
-        break;
-      case "ArrowDown":
-        setPosition({ ...position, y: position.y + step });
-        break;
-      case "ArrowLeft":
-        setPosition({ ...position, x: position.x - step });
-        break;
-      case "ArrowRight":
-        setPosition({ ...position, x: position.x + step });
-        break;
     }
   };
   
@@ -382,93 +484,6 @@ const InterviewAssistant: React.FC = () => {
     setIsDragging(false);
   };
   
-  // Update selected model when provider changes and test connection if using Ollama
-  useEffect(() => {
-    setSelectedModel(ollamaEnabled ? ollamaModel : openRouterModel);
-    
-    // Load Ollama models if needed and test connection
-    if (ollamaEnabled) {
-      testOllamaConnection(ollamaEndpoint).then(isConnected => {
-        if (isConnected) {
-          setOllamaConnectionError(null);
-          loadOllamaModels();
-        } else {
-          setOllamaConnectionError(`Could not connect to Ollama at ${ollamaEndpoint}. Make sure Ollama is running.`);
-        }
-      });
-    } else {
-      setOllamaConnectionError(null);
-    }
-  }, [ollamaEnabled, ollamaModel, openRouterModel, ollamaEndpoint]);
-  
-  // Load dynamic Ollama models from API
-  const loadOllamaModels = async () => {
-    if (!ollamaEnabled) return;
-    
-    // Clear any previous models and set loading state
-    setCustomOllamaModels([]);
-    setIsLoadingModels(true);
-    
-    try {
-      // Ensure the endpoint is normalized
-      const normalizedEndpoint = normalizeEndpoint(ollamaEndpoint);
-      
-      // Check if the current endpoint in store is normalized, if not update it
-      if (normalizedEndpoint !== ollamaEndpoint) {
-        setOllamaEndpoint(normalizedEndpoint);
-      }
-      
-      const response = await ollamaApi.getModels(normalizedEndpoint);
-      
-      // Extract models from the response, which may have either models or tags array
-      let modelsList: Model[] = [];
-      
-      if (response.models && response.models.length > 0) {
-        // Handle response with models field
-        modelsList = response.models.map(model => ({
-          id: model.name,
-          name: model.name
-        }));
-      } else if (response.tags && response.tags.length > 0) {
-        // Handle response with tags field
-        modelsList = response.tags.map(tag => ({
-          id: tag.name,
-          name: tag.name
-        }));
-      }
-      
-      if (modelsList.length > 0) {
-        setCustomOllamaModels(modelsList);
-        
-        // Store models in localStorage for other components to use
-        try {
-          localStorage.setItem('ollamaModels', JSON.stringify(modelsList));
-        } catch (error) {
-          console.error('Error storing Ollama models in localStorage:', error);
-        }
-        
-        // If current model is not in the list, select first available
-        if (!modelsList.some(model => model.id === ollamaModel)) {
-          setOllamaModel(modelsList[0].id);
-        }
-        
-        // Clear any connection error if we successfully loaded models
-        setOllamaConnectionError(null);
-      } else {
-        // Fall back to default models if none found
-        setCustomOllamaModels(DEFAULT_OLLAMA_MODELS);
-        setOllamaConnectionError("No models found. You may need to pull models with 'ollama pull gemma3:4b'");
-      }
-    } catch (error) {
-      console.error("Error loading Ollama models:", error);
-      // Fall back to defaults on error
-      setCustomOllamaModels(DEFAULT_OLLAMA_MODELS);
-      setOllamaConnectionError(`Error loading models: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setIsLoadingModels(false);
-    }
-  };
-
   // Get the available models list based on the active provider
   const getModelsForCurrentProvider = () => {
     if (ollamaEnabled) {
@@ -500,17 +515,6 @@ const InterviewAssistant: React.FC = () => {
     if (!ollamaEnabled) {
       loadOllamaModels();
     }
-  };
-  
-  // Function to cancel region selection
-  const cancelRegionSelection = () => {
-    const wasVisible = isVisible;
-    setSelectingRegion(false);
-    
-    // Small delay before restoring visibility
-    setTimeout(() => {
-      setVisible(wasVisible);
-    }, 100);
   };
   
   // If not visible, render nothing
