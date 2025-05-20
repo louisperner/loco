@@ -59,7 +59,7 @@ export function SettingsPanel({
   tabs,
   isOpen,
   onClose,
-  activeTab = 'cores',
+  activeTab = 'colors',
   onTabChange,
   onColorChange,
   onResetColors,
@@ -474,7 +474,7 @@ export function SettingsPanel({
 
           {/* Settings Modal Content */}
           <div className='absolute inset-0 z-[9999] w-screen h-screen flex items-center justify-center pointer-events-none rounded-md'>
-            <div className='relative w-screen h-screen lg:max-h-[570px] lg:max-w-[800px] rounded-md shadow-2xl flex flex-col overflow-hidden text-white pointer-events-auto shadow-black/50 bg-[#1a1a1a]'>
+            <div className='relative w-screen h-screen lg:max-h-[70vh] lg:max-w-[800px] rounded-md shadow-2xl flex flex-col overflow-hidden text-white pointer-events-auto shadow-black/50 bg-[#1a1a1a]'>
               {/* Header */}
               <div className='p-3 bg-[#2C2C2C] border-b-4 border-[#222222] flex justify-between items-center'>
                 <h2 className='text-xl font-bold pl-2'>Settings</h2>

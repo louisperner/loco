@@ -59,10 +59,8 @@ const logger = {
     console.error(...args);
   }
 };
-let tray = null;
 electron.app.whenReady().then(() => {
   ensureDirectoriesExist();
-  createTrayIcon();
   electron.protocol.registerFileProtocol("app-file", (request, callback) => {
     const url = request.url.substring(10);
     try {
@@ -363,67 +361,6 @@ electron.app.whenReady().then(() => {
     win.webContents.send("global-shortcut", "generate-solution");
   });
 });
-function createTrayIcon() {
-  const iconPath = path.join(process.cwd(), "loco-icon.png");
-  let trayIcon;
-  try {
-    trayIcon = electron.nativeImage.createFromPath(iconPath);
-    if (trayIcon.isEmpty()) {
-      logger.log("Tray icon not found, using fallback");
-      trayIcon = electron.nativeImage.createEmpty();
-      const size = 16;
-      trayIcon = electron.nativeImage.createFromBuffer(Buffer.from(
-        `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="${size}" height="${size}" rx="${size / 4}" fill="#FF5A5A"/>
-          <text x="${size / 2}" y="${size * 0.75}" font-family="Arial" font-size="${size * 0.7}" text-anchor="middle" fill="white">L</text>
-        </svg>`
-      ));
-    }
-  } catch (error) {
-    logger.error("Error creating tray icon:", error);
-    trayIcon = electron.nativeImage.createEmpty();
-  }
-  trayIcon = trayIcon.resize({ width: 16, height: 16 });
-  tray = new electron.Tray(trayIcon);
-  tray.setToolTip("Loco App");
-  const contextMenu = electron.Menu.buildFromTemplate([
-    { label: "Show App", click: () => {
-      electron.BrowserWindow.getAllWindows()[0].show();
-    } },
-    {
-      label: "Always on Top",
-      type: "checkbox",
-      checked: true,
-      click: (menuItem) => {
-        const win = electron.BrowserWindow.getAllWindows()[0];
-        win.setAlwaysOnTop(menuItem.checked, "floating", 1);
-      }
-    },
-    { type: "separator" },
-    { label: "Global Shortcuts:", enabled: false },
-    { label: "Cmd+Shift+Space: Show/Hide App", enabled: false },
-    { label: "Cmd+B: Toggle Interview Assistant", enabled: false },
-    { label: "Cmd+H: Capture Screenshot", enabled: false },
-    { label: "Cmd+Enter: Generate Solution", enabled: false },
-    { type: "separator" },
-    {
-      label: "Quit",
-      click: () => {
-        electron.app.quit();
-      }
-    }
-  ]);
-  tray.setContextMenu(contextMenu);
-  tray.on("click", () => {
-    const win = electron.BrowserWindow.getAllWindows()[0];
-    if (win.isVisible()) {
-      win.hide();
-    } else {
-      win.show();
-      win.setAlwaysOnTop(true, "screen-saver");
-    }
-  });
-}
 function registerGlobalShortcuts(win) {
   electron.globalShortcut.unregisterAll();
   electron.globalShortcut.register("CommandOrControl+Shift+Space", () => {

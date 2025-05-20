@@ -45,7 +45,7 @@ app.whenReady().then(() => {
   ensureDirectoriesExist();
   
   // Create the tray icon
-  createTrayIcon();
+  // createTrayIcon();
 
   // Configurar protocolo de arquivo personalizado
   protocol.registerFileProtocol('app-file', (request, callback) => {

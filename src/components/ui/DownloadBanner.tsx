@@ -39,7 +39,7 @@ const DownloadBanner = () => {
         </a>
         {isMac && (
           <a 
-            href="https://github.com/louisperner/loco/releases/download/v0.0.1-alpha/loco-darwin-arm64-0.0.1.zip" 
+            href="https://github.com/louisperner/loco/releases/download/v0.0.2-alpha/loco-darwin-arm64-0.0.2.zip" 
             target="_blank" 
             rel="noopener noreferrer"
             className="bg-white text-indigo-600 px-3 py-1 rounded-md font-medium hover:bg-indigo-100 transition-colors"

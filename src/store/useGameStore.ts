@@ -245,7 +245,7 @@ export const useGameStore = create<GameState & GameStateActions>()(
       confirmedRotation: null,
 
       // Settings states
-      activeTab: 'cores',
+      activeTab: 'colors',
       isResetAnimating: false,
       colorChanged: null,
       canvasInteractive: true,
