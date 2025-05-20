@@ -223,6 +223,21 @@ contextBridge.exposeInMainWorld('electron', {
   // Reload the application
   reloadApp: () => {
     ipcRenderer.invoke('reload-app');
+  },
+  
+  // Global shortcuts handler
+  onGlobalShortcut: (callback) => {
+    const handler = (_event, command) => {
+      callback(command);
+    };
+    
+    // Add the event listener
+    ipcRenderer.on('global-shortcut', handler);
+    
+    // Return a function to remove the event listener
+    return () => {
+      ipcRenderer.removeListener('global-shortcut', handler);
+    };
   }
 });
 

@@ -13,6 +13,7 @@ import { Cloud } from 'lucide-react';
 import { InterviewAssistant } from './components/InterviewAssistant';
 import AIChat from './components/AIChat';
 import { useAIChatStore } from './store/useAIChatStore';
+import { useInterviewAssistantStore } from './store/interviewAssistantStore';
 
 // Global sync state context
 export const SyncContext = React.createContext({
@@ -48,6 +49,70 @@ const AppContent: React.FC = () => {
   const { currentUser, authModalOpen } = useAuthStore();
   const [isSyncing, setSyncing] = useState<boolean>(false);
   const { isVisible, toggleVisibility } = useAIChatStore();
+  const interviewAssistant = useInterviewAssistantStore();
+
+  useEffect(() => {
+    // Initialize global shortcut handling for Electron
+    if (window.electron) {
+      const unsubscribe = window.electron.onGlobalShortcut((command: string) => {
+        console.log('Global shortcut received:', command);
+        
+        switch (command) {
+          case 'toggle-interview-assistant':
+            interviewAssistant.setVisible(!interviewAssistant.isVisible);
+            break;
+          case 'capture-screenshot':
+            // Only trigger if the interview assistant is visible
+            if (interviewAssistant.isVisible) {
+              const captureScreenshot = async () => {
+                if (interviewAssistant.isCapturing) return;
+                
+                const screenshots = interviewAssistant.screenshots;
+                const wasVisible = interviewAssistant.isVisible;
+                
+                interviewAssistant.setCapturing(true);
+                interviewAssistant.setVisible(false);
+                
+                // Add small delay to ensure UI is hidden
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                try {
+                  // Use captureScreen from utils
+                  const { captureScreen } = await import('./utils/screenCapture');
+                  const dataUrl = await captureScreen();
+                  
+                  if (dataUrl) {
+                    interviewAssistant.addScreenshot({
+                      id: Date.now().toString(),
+                      dataUrl,
+                      timestamp: Date.now()
+                    });
+                  }
+                } catch (error) {
+                  console.error('Error capturing screenshot:', error);
+                } finally {
+                  interviewAssistant.setCapturing(false);
+                  interviewAssistant.setVisible(wasVisible);
+                }
+              };
+              
+              captureScreenshot();
+            }
+            break;
+          case 'generate-solution':
+            // Only trigger if the interview assistant is visible
+            if (interviewAssistant.isVisible && !interviewAssistant.isGenerating) {
+              // We need to trigger generate solution here - but since it depends on component state
+              // we'll just toggle a flag that the component can watch for
+              window.dispatchEvent(new CustomEvent('interview-assistant-generate'));
+            }
+            break;
+        }
+      });
+      
+      return unsubscribe;
+    }
+  }, [interviewAssistant]);
 
   useEffect(() => {
     const initializeApp = async (): Promise<(() => void) | void> => {

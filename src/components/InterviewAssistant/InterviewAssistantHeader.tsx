@@ -1,5 +1,6 @@
 import React from "react";
 import { FiEyeOff, FiCamera, FiRefreshCw, FiMove, FiCrop } from "react-icons/fi";
+import { FaCube } from "react-icons/fa";
 
 interface HeaderProps {
   isCapturing: boolean;
@@ -8,6 +9,8 @@ interface HeaderProps {
   startRegionSelection: () => void;
   resetAll: () => void;
   setVisible: (visible: boolean) => void;
+  addToScene?: () => void;
+  hasScreenshots?: boolean;
 }
 
 export const InterviewAssistantHeader: React.FC<HeaderProps> = ({
@@ -16,7 +19,9 @@ export const InterviewAssistantHeader: React.FC<HeaderProps> = ({
   captureScreenshot,
   startRegionSelection,
   resetAll,
-  setVisible
+  setVisible,
+  addToScene,
+  hasScreenshots = false
 }) => {
   return (
     <div className="flex items-center justify-between p-2 bg-[#2C2C2C] border-b-4 border-[#222222] font-minecraft">
@@ -24,6 +29,15 @@ export const InterviewAssistantHeader: React.FC<HeaderProps> = ({
         <FiMove className="cursor-move text-white/60 hover:text-white" />
       </div>
       <div className="flex items-center space-x-2">
+        {hasScreenshots && (
+          <button
+            className="text-white/60 hover:text-white transition-colors duration-200"
+            onClick={addToScene}
+            title="Add to 3D Scene"
+          >
+            <FaCube size={16} />
+          </button>
+        )}
         <button
           className="text-white/60 hover:text-white transition-colors duration-200"
           onClick={() => setVisible(false)}

@@ -59,8 +59,10 @@ const logger = {
     console.error(...args);
   }
 };
+let tray = null;
 electron.app.whenReady().then(() => {
   ensureDirectoriesExist();
+  createTrayIcon();
   electron.protocol.registerFileProtocol("app-file", (request, callback) => {
     const url = request.url.substring(10);
     try {
@@ -94,8 +96,11 @@ electron.app.whenReady().then(() => {
     center: true,
     hasShadow: false,
     movable: true,
-    alwaysOnTop: false,
+    alwaysOnTop: true,
     focusable: true,
+    skipTaskbar: true,
+    // Hide from taskbar
+    titleBarStyle: "hidden",
     // simpleFullscreen: true
     icon: path.join(process.cwd(), "loco-icon.icns"),
     webPreferences: {
@@ -108,6 +113,7 @@ electron.app.whenReady().then(() => {
       // Permite carregar arquivos locais (use com cuidado em produção)
     }
   });
+  win.setAlwaysOnTop(true, "floating", 1);
   win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     if (details.url.startsWith("blob:")) {
       callback({
@@ -195,11 +201,34 @@ electron.app.whenReady().then(() => {
   win.maximize();
   win.show();
   win.setFocusable(true);
+  win.setAlwaysOnTop(true, "floating", 1);
+  registerGlobalShortcuts(win);
   if (process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
     win.loadFile("dist/index.html");
   }
+  setInterval(() => {
+    const point = electron.screen.getCursorScreenPoint();
+    const [x, y] = win.getPosition();
+    const [w, h] = win.getSize();
+    if (point.x > x && point.x < x + w && point.y > y && point.y < y + h) {
+      updateIgnoreMouseEvents(point.x - x, point.y - y);
+    }
+  }, 300);
+  const updateIgnoreMouseEvents = async (x, y) => {
+    const image = await win.webContents.capturePage({
+      x,
+      y,
+      width: 1,
+      height: 1
+    });
+    const buffer = image.getBitmap();
+    win.setIgnoreMouseEvents(!buffer[3]);
+  };
+  setInterval(() => {
+    win.setAlwaysOnTop(true, "floating", 1);
+  }, 1e3);
   electron.ipcMain.handle("save-model-file", async (event, fileBuffer, fileName) => {
     try {
       const uniqueFileName = `${v4()}-${fileName}`;
@@ -316,4 +345,109 @@ electron.app.whenReady().then(() => {
     electron.app.relaunch();
     electron.app.exit(0);
   });
+  electron.ipcMain.handle("toggle-always-on-top", (event, shouldBeOnTop) => {
+    logger.log(`Setting always-on-top: ${shouldBeOnTop}`);
+    win.setAlwaysOnTop(shouldBeOnTop, "floating", 1);
+    return win.isAlwaysOnTop();
+  });
+  electron.app.on("will-quit", () => {
+    electron.globalShortcut.unregisterAll();
+  });
+  electron.ipcMain.on("toggle-interview-assistant", () => {
+    win.webContents.send("global-shortcut", "toggle-interview-assistant");
+  });
+  electron.ipcMain.on("capture-screenshot", () => {
+    win.webContents.send("global-shortcut", "capture-screenshot");
+  });
+  electron.ipcMain.on("generate-solution", () => {
+    win.webContents.send("global-shortcut", "generate-solution");
+  });
 });
+function createTrayIcon() {
+  const iconPath = path.join(process.cwd(), "loco-icon.png");
+  let trayIcon;
+  try {
+    trayIcon = electron.nativeImage.createFromPath(iconPath);
+    if (trayIcon.isEmpty()) {
+      logger.log("Tray icon not found, using fallback");
+      trayIcon = electron.nativeImage.createEmpty();
+      const size = 16;
+      trayIcon = electron.nativeImage.createFromBuffer(Buffer.from(
+        `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="${size}" height="${size}" rx="${size / 4}" fill="#FF5A5A"/>
+          <text x="${size / 2}" y="${size * 0.75}" font-family="Arial" font-size="${size * 0.7}" text-anchor="middle" fill="white">L</text>
+        </svg>`
+      ));
+    }
+  } catch (error) {
+    logger.error("Error creating tray icon:", error);
+    trayIcon = electron.nativeImage.createEmpty();
+  }
+  trayIcon = trayIcon.resize({ width: 16, height: 16 });
+  tray = new electron.Tray(trayIcon);
+  tray.setToolTip("Loco App");
+  const contextMenu = electron.Menu.buildFromTemplate([
+    { label: "Show App", click: () => {
+      electron.BrowserWindow.getAllWindows()[0].show();
+    } },
+    {
+      label: "Always on Top",
+      type: "checkbox",
+      checked: true,
+      click: (menuItem) => {
+        const win = electron.BrowserWindow.getAllWindows()[0];
+        win.setAlwaysOnTop(menuItem.checked, "floating", 1);
+      }
+    },
+    { type: "separator" },
+    { label: "Global Shortcuts:", enabled: false },
+    { label: "Cmd+Shift+Space: Show/Hide App", enabled: false },
+    { label: "Cmd+B: Toggle Interview Assistant", enabled: false },
+    { label: "Cmd+H: Capture Screenshot", enabled: false },
+    { label: "Cmd+Enter: Generate Solution", enabled: false },
+    { type: "separator" },
+    {
+      label: "Quit",
+      click: () => {
+        electron.app.quit();
+      }
+    }
+  ]);
+  tray.setContextMenu(contextMenu);
+  tray.on("click", () => {
+    const win = electron.BrowserWindow.getAllWindows()[0];
+    if (win.isVisible()) {
+      win.hide();
+    } else {
+      win.show();
+      win.setAlwaysOnTop(true, "screen-saver");
+    }
+  });
+}
+function registerGlobalShortcuts(win) {
+  electron.globalShortcut.unregisterAll();
+  electron.globalShortcut.register("CommandOrControl+Shift+Space", () => {
+    logger.log("Global shortcut triggered: CommandOrControl+Shift+Space");
+    if (win.isVisible()) {
+      win.hide();
+    } else {
+      win.show();
+      win.setAlwaysOnTop(true, "floating", 1);
+    }
+  });
+  electron.globalShortcut.register("CommandOrControl+B", () => {
+    logger.log("Global shortcut triggered: CommandOrControl+B");
+    win.webContents.send("global-shortcut", "toggle-interview-assistant");
+  });
+  electron.globalShortcut.register("CommandOrControl+H", () => {
+    logger.log("Global shortcut triggered: CommandOrControl+H");
+    win.webContents.send("global-shortcut", "capture-screenshot");
+  });
+  electron.globalShortcut.register("CommandOrControl+Return", () => {
+    logger.log("Global shortcut triggered: CommandOrControl+Return");
+    win.webContents.send("global-shortcut", "generate-solution");
+  });
+  if (!electron.globalShortcut.isRegistered("CommandOrControl+Shift+Space") || !electron.globalShortcut.isRegistered("CommandOrControl+B") || !electron.globalShortcut.isRegistered("CommandOrControl+H") || !electron.globalShortcut.isRegistered("CommandOrControl+Return")) {
+    logger.error("Global shortcut registration failed");
+  }
+}

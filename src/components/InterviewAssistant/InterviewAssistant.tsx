@@ -5,7 +5,7 @@ import { useOllamaStore } from "../../store/useOllamaStore";
 import { DEFAULT_OLLAMA_MODELS, testOllamaConnection, normalizeEndpoint } from "../../lib/ollama-constants";
 import { OPENROUTER_MODELS } from "../../lib/openrouter-constants";
 import { ollamaApi } from "../../lib/ollama";
-import { Model, Solution } from "./InterviewAssistantTypes";
+import { Model, Solution, Screenshot } from "./InterviewAssistantTypes";
 import { logger } from "./InterviewAssistantLogger";
 import { detectLanguageFromText } from "./InterviewAssistantUtils";
 import { InterviewAssistantHeader } from "./InterviewAssistantHeader";
@@ -17,6 +17,8 @@ import { InterviewAssistantFooter } from "./InterviewAssistantFooter";
 import { InterviewAssistantRegionSelector } from "./InterviewAssistantRegionSelector";
 import { captureFullScreenshot, startRegionCapture } from "./InterviewAssistantCapture";
 import { generateSolution as generateAiSolution } from "./InterviewAssistantAI";
+import { useImageStore } from "../../store/useImageStore";
+import * as THREE from "three";
 
 const InterviewAssistant: React.FC = () => {
   // Get state and actions from the store
@@ -74,6 +76,19 @@ const InterviewAssistant: React.FC = () => {
   useEffect(() => {
     setEditedProblemText(problemText);
   }, [problemText]);
+  
+  // Add event listener for the global shortcut trigger
+  useEffect(() => {
+    const handleGenerateEvent = () => {
+      handleGenerateSolution();
+    };
+    
+    window.addEventListener('interview-assistant-generate', handleGenerateEvent);
+    
+    return () => {
+      window.removeEventListener('interview-assistant-generate', handleGenerateEvent);
+    };
+  }, [selectedLanguage, selectedModel, problemText, isCode]); // Dependencies that affect the generation
   
   // Focus the textarea when editing mode is enabled
   useEffect(() => {
@@ -235,6 +250,79 @@ const InterviewAssistant: React.FC = () => {
       setOllamaModel,
       setOpenRouterModel
     );
+  };
+  
+  // Function to add the current screenshots to the 3D scene
+  const addScreenshotToScene = (
+    screenshots: Screenshot[], 
+    setVisible: (visible: boolean) => void
+  ) => {
+    if (!screenshots || screenshots.length === 0) return;
+
+    // Get the most recent screenshot
+    const screenshot = screenshots[screenshots.length - 1];
+    const { addImage } = useImageStore.getState();
+    
+    try {
+      // Create a unique filename
+      const fileName = `screenshot-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+      
+      // Use the blob URL directly
+      const imageUrl = screenshot.dataUrl;
+      
+      // Create a temp image to get dimensions
+      const img = new Image();
+      img.onload = () => {
+        // This is the format used in HotbarTopNav.tsx
+        const scale = 1;
+        
+        // Get camera position from window.mainCamera if available
+        let position: [number, number, number] = [0, 1.5, -3]; // Default position
+        let rotation: [number, number, number] = [0, 0, 0];   // Default rotation
+        
+        if (window.mainCamera) {
+          const camera = window.mainCamera;
+          // Get camera direction vector
+          const direction = new THREE.Vector3(0, 0, -1);
+          direction.applyQuaternion(camera.quaternion);
+          
+          // Set position in front of camera
+          const pos = new THREE.Vector3();
+          pos.copy(camera.position);
+          direction.multiplyScalar(3); // 3 units in front of camera
+          pos.add(direction);
+          
+          // Update position and rotation
+          position = [pos.x, pos.y, pos.z];
+          rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
+        }
+        
+        // Add image to the 3D scene
+        addImage({
+          id: `screenshot-${Date.now()}`,
+          src: imageUrl,
+          fileName,
+          width: img.width,
+          height: img.height,
+          position,
+          rotation,
+          scale,
+          isInScene: true
+        });
+        
+        // Hide the Interview Assistant after adding to scene
+        setVisible(false);
+        
+        // Optional: Show a notification or feedback
+        console.log('Screenshot added to 3D scene');
+      };
+      
+      // Start loading the image
+      img.src = imageUrl;
+      
+    } catch (error) {
+      console.error('Error adding screenshot to scene:', error);
+    }
   };
   
   // Function to copy code to clipboard
@@ -461,6 +549,8 @@ const InterviewAssistant: React.FC = () => {
         startRegionSelection={startRegionSelection}
         resetAll={resetAll}
         setVisible={setVisible}
+        addToScene={() => addScreenshotToScene(screenshots, setVisible)}
+        hasScreenshots={screenshots.length > 0}
       />
       
       {/* Screenshots section */}

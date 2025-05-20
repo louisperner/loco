@@ -1,4 +1,4 @@
-import { app, screen, BrowserWindow, ipcMain, dialog, protocol, session, desktopCapturer } from 'electron';
+import { app, screen, BrowserWindow, ipcMain, dialog, protocol, session, desktopCapturer, Tray, Menu, nativeImage, globalShortcut } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -37,9 +37,15 @@ const logger = {
   }
 };
 
+// Add at the top level, after the logger declaration
+let tray: Tray | null = null;
+
 app.whenReady().then(() => {
   // Garante que os diretórios existam
   ensureDirectoriesExist();
+  
+  // Create the tray icon
+  createTrayIcon();
 
   // Configurar protocolo de arquivo personalizado
   protocol.registerFileProtocol('app-file', (request, callback) => {
@@ -85,8 +91,10 @@ app.whenReady().then(() => {
     center: true,
     hasShadow: false,
     movable: true,
-    alwaysOnTop: false,
+    alwaysOnTop: true,
     focusable: true,
+    skipTaskbar: true,   // Hide from taskbar
+    titleBarStyle: 'hidden',
     // simpleFullscreen: true
     icon: path.join(process.cwd(), 'loco-icon.icns'),
     webPreferences: {
@@ -98,6 +106,9 @@ app.whenReady().then(() => {
       webSecurity: true, // Permite carregar arquivos locais (use com cuidado em produção)
     },
   });
+
+  // Ensure window stays on top even when focus changes - using floating level (highest)
+  win.setAlwaysOnTop(true, 'floating', 1);
 
   // Configurar Content Security Policy para permitir carregar recursos locais
   win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
@@ -234,8 +245,14 @@ app.whenReady().then(() => {
   win.maximize();
   win.show();
   win.setFocusable(true);
+  
+  // Reapply always on top setting after show with highest level
+  win.setAlwaysOnTop(true, 'floating', 1);
 
   // win.getFocusedWindow();
+
+  // Register global shortcuts that work even when app is not focused
+  registerGlobalShortcuts(win);
 
   // pointer none
   // win.setIgnoreMouseEvents(true);
@@ -251,33 +268,38 @@ app.whenReady().then(() => {
   // const win = BrowserWindow.getFocusedWindow();
   // let win = BrowserWindow.getAllWindows()[0];
 
-  // setInterval(() => {
-  //   const point = screen.getCursorScreenPoint();
-  //   const [x, y] = win.getPosition();
-  //   const [w, h] = win.getSize();
+  setInterval(() => {
+    const point = screen.getCursorScreenPoint();
+    const [x, y] = win.getPosition();
+    const [w, h] = win.getSize();
 
-  //   if (point.x > x && point.x < x + w && point.y > y && point.y < y + h) {
-  //     updateIgnoreMouseEvents(point.x - x, point.y - y);
-  //   }
-  // }, 300);
+    if (point.x > x && point.x < x + w && point.y > y && point.y < y + h) {
+      updateIgnoreMouseEvents(point.x - x, point.y - y);
+    }
+  }, 300);
 
-  // const updateIgnoreMouseEvents = async (x, y) => {
-  //   // // console.log('updateIgnoreMouseEvents');
+  const updateIgnoreMouseEvents = async (x, y) => {
+    // // console.log('updateIgnoreMouseEvents');
 
-  //   // capture 1x1 image of mouse position.
-  //   const image = await win.webContents.capturePage({
-  //     x,
-  //     y,
-  //     width: 1,
-  //     height: 1,
-  //   });
+    // capture 1x1 image of mouse position.
+    const image = await win.webContents.capturePage({
+      x,
+      y,
+      width: 1,
+      height: 1,
+    });
 
-  //   var buffer = image.getBitmap();
+    const buffer = image.getBitmap();
 
-  //   // set ignore mouse events by alpha.
-  //   win.setIgnoreMouseEvents(!buffer[3]);
-  //   // // console.log('setIgnoreMouseEvents', !buffer[3]);
-  // };
+    // set ignore mouse events by alpha.
+    win.setIgnoreMouseEvents(!buffer[3]);
+    // // console.log('setIgnoreMouseEvents', !buffer[3]);
+  };
+
+  // Ensure window stays on top periodically with highest level
+  setInterval(() => {
+    win.setAlwaysOnTop(true, 'floating', 1);
+  }, 1000);
 
   // Handle IPC calls for saving files
   ipcMain.handle('save-model-file', async (event, fileBuffer, fileName) => {
@@ -439,4 +461,149 @@ app.whenReady().then(() => {
     app.relaunch();
     app.exit(0);
   });
+
+  // Add handler for toggling always-on-top state
+  ipcMain.handle('toggle-always-on-top', (event, shouldBeOnTop) => {
+    logger.log(`Setting always-on-top: ${shouldBeOnTop}`);
+    win.setAlwaysOnTop(shouldBeOnTop, 'floating', 1);
+    return win.isAlwaysOnTop();
+  });
+
+  // Clean up when app is about to quit
+  app.on('will-quit', () => {
+    // Unregister all shortcuts
+    globalShortcut.unregisterAll();
+  });
+
+  // Listen for IPC messages for toggling visibility and functions
+  ipcMain.on('toggle-interview-assistant', () => {
+    // Send a message to the renderer process
+    win.webContents.send('global-shortcut', 'toggle-interview-assistant');
+  });
+
+  ipcMain.on('capture-screenshot', () => {
+    win.webContents.send('global-shortcut', 'capture-screenshot');
+  });
+
+  ipcMain.on('generate-solution', () => {
+    win.webContents.send('global-shortcut', 'generate-solution');
+  });
 });
+
+// Add this function at the end of the file, before the last closing bracket
+function createTrayIcon() {
+  // Create tray icon
+  const iconPath = path.join(process.cwd(), 'loco-icon.png'); // Update with your icon path
+  let trayIcon;
+  
+  try {
+    // Try to load the icon
+    trayIcon = nativeImage.createFromPath(iconPath);
+    if (trayIcon.isEmpty()) {
+      // If icon not found or empty, create a simple one
+      logger.log('Tray icon not found, using fallback');
+      trayIcon = nativeImage.createEmpty();
+      const size = 16;
+      trayIcon = nativeImage.createFromBuffer(Buffer.from(
+        `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="${size}" height="${size}" rx="${size/4}" fill="#FF5A5A"/>
+          <text x="${size/2}" y="${size*0.75}" font-family="Arial" font-size="${size*0.7}" text-anchor="middle" fill="white">L</text>
+        </svg>`
+      ));
+    }
+  } catch (error) {
+    logger.error('Error creating tray icon:', error);
+    trayIcon = nativeImage.createEmpty();
+  }
+  
+  // Set the icon size appropriate for macOS menu bar
+  trayIcon = trayIcon.resize({ width: 16, height: 16 });
+  
+  // Create the tray
+  tray = new Tray(trayIcon);
+  tray.setToolTip('Loco App');
+  
+  // Create the context menu for the tray
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Show App', click: () => { BrowserWindow.getAllWindows()[0].show(); } },
+    { 
+      label: 'Always on Top', 
+      type: 'checkbox', 
+      checked: true,
+      click: (menuItem) => {
+        const win = BrowserWindow.getAllWindows()[0];
+        win.setAlwaysOnTop(menuItem.checked, 'floating', 1);
+      }
+    },
+    { type: 'separator' },
+    { label: 'Global Shortcuts:', enabled: false },
+    { label: 'Cmd+Shift+Space: Show/Hide App', enabled: false },
+    { label: 'Cmd+B: Toggle Interview Assistant', enabled: false },
+    { label: 'Cmd+H: Capture Screenshot', enabled: false },
+    { label: 'Cmd+Enter: Generate Solution', enabled: false },
+    { type: 'separator' },
+    { 
+      label: 'Quit', 
+      click: () => { 
+        app.quit(); 
+      } 
+    }
+  ]);
+  
+  // Apply the context menu
+  tray.setContextMenu(contextMenu);
+  
+  // Optional: Make single click on the tray icon show/hide the app
+  tray.on('click', () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win.isVisible()) {
+      win.hide();
+    } else {
+      win.show();
+      win.setAlwaysOnTop(true, 'screen-saver');
+    }
+  });
+}
+
+// Add this function at the end of the file
+function registerGlobalShortcuts(win: BrowserWindow) {
+  // Unregister any existing shortcuts
+  globalShortcut.unregisterAll();
+
+  // Command+Space to show/hide app
+  globalShortcut.register('CommandOrControl+Shift+Space', () => {
+    logger.log('Global shortcut triggered: CommandOrControl+Shift+Space');
+    if (win.isVisible()) {
+      win.hide();
+    } else {
+      win.show();
+      win.setAlwaysOnTop(true, 'floating', 1);
+    }
+  });
+
+  // Command+B to toggle interview assistant
+  globalShortcut.register('CommandOrControl+B', () => {
+    logger.log('Global shortcut triggered: CommandOrControl+B');
+    win.webContents.send('global-shortcut', 'toggle-interview-assistant');
+  });
+
+  // Command+H to capture screenshot in interview assistant
+  globalShortcut.register('CommandOrControl+H', () => {
+    logger.log('Global shortcut triggered: CommandOrControl+H');
+    win.webContents.send('global-shortcut', 'capture-screenshot');
+  });
+
+  // Command+Enter to generate solution in interview assistant
+  globalShortcut.register('CommandOrControl+Return', () => {
+    logger.log('Global shortcut triggered: CommandOrControl+Return');
+    win.webContents.send('global-shortcut', 'generate-solution');
+  });
+
+  // Log if registration fails
+  if (!globalShortcut.isRegistered('CommandOrControl+Shift+Space') ||
+      !globalShortcut.isRegistered('CommandOrControl+B') ||
+      !globalShortcut.isRegistered('CommandOrControl+H') ||
+      !globalShortcut.isRegistered('CommandOrControl+Return')) {
+    logger.error('Global shortcut registration failed');
+  }
+}

@@ -166,6 +166,16 @@ electron.contextBridge.exposeInMainWorld("electron", {
   // Reload the application
   reloadApp: () => {
     electron.ipcRenderer.invoke("reload-app");
+  },
+  // Global shortcuts handler
+  onGlobalShortcut: (callback) => {
+    const handler = (_event, command) => {
+      callback(command);
+    };
+    electron.ipcRenderer.on("global-shortcut", handler);
+    return () => {
+      electron.ipcRenderer.removeListener("global-shortcut", handler);
+    };
   }
 });
 function withPrototype(obj) {
