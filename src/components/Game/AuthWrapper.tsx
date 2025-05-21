@@ -3,7 +3,7 @@ import Login from './Login';
 import SignUp from './SignUp';
 import { X } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
-
+import logo from '@/assets/imgs/loco-logo.png';
 interface AuthWrapperProps {
   initialView?: 'login' | 'signup';
 }
@@ -27,7 +27,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ initialView = 'login' }) => {
         </button>
       
         <div className="mb-8 flex justify-center">
-          <img className="h-20 w-auto" src="/loco-logo.png" alt="Loco" />
+          <img className="h-20 w-auto" src={logo} alt="Loco" />
         </div>
         
         {currentView === 'login' ? (
@@ -56,7 +56,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ initialView = 'login' }) => {
           </>
         )}
       </div>
-      <div className="hidden md:block md:w-1/2 bg-[url('/loco-bg.jpg')] bg-cover bg-center"></div>
+      <div className="hidden md:block md:w-1/2 bg-[url('/loco-bg-2.png')] bg-cover bg-center"></div>
     </div>
   );
 };

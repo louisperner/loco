@@ -1,1 +1,194 @@
-"use strict";const n=require("electron");n.contextBridge.exposeInMainWorld("ipcRenderer",l(n.ipcRenderer));n.contextBridge.exposeInMainWorld("electron",{saveModelFile:async(e,r)=>new Promise((o,s)=>{const t=new FileReader;t.onload=async i=>{try{if(!i.target||!i.target.result){s(new Error("Failed to read file"));return}const c=i.target.result,a=await n.ipcRenderer.invoke("save-model-file",c,r);o(a)}catch(c){s(c)}},t.onerror=i=>s(i),t.readAsArrayBuffer(e)}),saveImageFile:async(e,r)=>new Promise((o,s)=>{const t=new FileReader;t.onload=async i=>{try{if(!i.target||!i.target.result){s(new Error("Failed to read file"));return}const c=i.target.result,a=await n.ipcRenderer.invoke("save-image-file",c,r);o(a)}catch(c){s(c)}},t.onerror=i=>s(i),t.readAsArrayBuffer(e)}),testFileAccess:async e=>{try{let r=e;return r.startsWith("file://")?r=r.substring(7):r.startsWith("app-file://")&&(r=r.substring(11)),{success:!0,exists:await n.ipcRenderer.invoke("test-file-access",r)}}catch(r){return{success:!1,error:r.message}}},loadFileAsBlob:async e=>{try{let r=e;r.startsWith("file://")?r=r.substring(7):r.startsWith("app-file://")&&(r=r.substring(11));const o=await n.ipcRenderer.invoke("read-file-as-buffer",r),s=new Blob([o]);return{success:!0,blobUrl:URL.createObjectURL(s)}}catch(r){return{success:!1,error:r.message}}},loadImageFromAppFile:async e=>{try{if(e.startsWith("blob:"))return{success:!0,url:e};if(e.startsWith("app-file://")){const r=e.substring(11),o=await n.ipcRenderer.invoke("read-file-as-buffer",decodeURI(r)),s=r.split(".").pop().toLowerCase();let t="application/octet-stream";s==="jpg"||s==="jpeg"?t="image/jpeg":s==="png"?t="image/png":s==="gif"?t="image/gif":s==="webp"?t="image/webp":s==="svg"&&(t="image/svg+xml");const i=new Blob([o],{type:t}),c=URL.createObjectURL(i);return window._imageBlobCache=window._imageBlobCache||{},window._imageBlobCache[e]=c,{success:!0,url:c}}return{success:!0,url:e}}catch(r){return console.error("Error loading image from app-file:",r),{success:!1,error:r.message,url:e}}},loadVideoFromAppFile:async e=>{try{if(e.startsWith("blob:"))return{success:!0,url:e};if(e.startsWith("app-file://")||e.startsWith("file://")){const r=e.startsWith("app-file://")?"app-file://":"file://",o=e.substring(r.length),s=await n.ipcRenderer.invoke("read-file-as-buffer",decodeURI(o)),t=o.split(".").pop().toLowerCase();let i="application/octet-stream";t==="mp4"?i="video/mp4":t==="webm"?i="video/webm":t==="mov"?i="video/quicktime":t==="avi"?i="video/x-msvideo":t==="mkv"&&(i="video/x-matroska");const c=new Blob([s],{type:i}),a=URL.createObjectURL(c);return window._videoBlobCache=window._videoBlobCache||{},window._videoBlobCache[e]=a,{success:!0,url:a}}return{success:!0,url:e}}catch(r){return console.error("Error loading video from app-file:",r),{success:!1,error:r.message,url:e}}},saveVideoFile:async(e,r)=>{try{const s=await new Blob([e]).arrayBuffer();return await n.ipcRenderer.invoke("save-video-file",new Uint8Array(s),r)}catch(o){throw console.error("Error saving video file:",o),o}},listVideosFromDisk:async()=>{try{return await n.ipcRenderer.invoke("list-videos-from-disk")}catch(e){return console.error("Error listing videos from disk:",e),{success:!1,videos:[],error:e.message}}},getScreenSources:async()=>{try{return await n.ipcRenderer.invoke("get-screen-sources")}catch(e){throw console.error("Error getting screen sources:",e),e}},reloadApp:()=>{n.ipcRenderer.invoke("reload-app")},onGlobalShortcut:e=>{const r=(o,s)=>{e(s)};return n.ipcRenderer.on("global-shortcut",r),()=>{n.ipcRenderer.removeListener("global-shortcut",r)}}});function l(e){const r=Object.getPrototypeOf(e);for(const[o,s]of Object.entries(r))Object.prototype.hasOwnProperty.call(e,o)||(typeof s=="function"?e[o]=function(...t){return s.call(e,...t)}:e[o]=s);return e}
+"use strict";
+const electron = require("electron");
+electron.contextBridge.exposeInMainWorld("ipcRenderer", withPrototype(electron.ipcRenderer));
+electron.contextBridge.exposeInMainWorld("electron", {
+  // File saving operations
+  saveModelFile: async (file, fileName) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          if (!event.target || !event.target.result) {
+            reject(new Error("Failed to read file"));
+            return;
+          }
+          const buffer = event.target.result;
+          const result = await electron.ipcRenderer.invoke("save-model-file", buffer, fileName);
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = (error) => reject(error);
+      reader.readAsArrayBuffer(file);
+    });
+  },
+  saveImageFile: async (file, fileName) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          if (!event.target || !event.target.result) {
+            reject(new Error("Failed to read file"));
+            return;
+          }
+          const buffer = event.target.result;
+          const result = await electron.ipcRenderer.invoke("save-image-file", buffer, fileName);
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = (error) => reject(error);
+      reader.readAsArrayBuffer(file);
+    });
+  },
+  // Função para testar o acesso a um arquivo
+  testFileAccess: async (filePath) => {
+    try {
+      let path = filePath;
+      if (path.startsWith("file://")) {
+        path = path.substring(7);
+      } else if (path.startsWith("app-file://")) {
+        path = path.substring(11);
+      }
+      const exists = await electron.ipcRenderer.invoke("test-file-access", path);
+      return { success: true, exists };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+  // Função para carregar um arquivo e convertê-lo em Blob URL
+  loadFileAsBlob: async (filePath) => {
+    try {
+      let path = filePath;
+      if (path.startsWith("file://")) {
+        path = path.substring(7);
+      } else if (path.startsWith("app-file://")) {
+        path = path.substring(11);
+      }
+      const fileBuffer = await electron.ipcRenderer.invoke("read-file-as-buffer", path);
+      const blob = new Blob([fileBuffer]);
+      const blobUrl = URL.createObjectURL(blob);
+      return { success: true, blobUrl };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+  // Helper function to load images from app-file URLs
+  loadImageFromAppFile: async (appFilePath) => {
+    try {
+      if (appFilePath.startsWith("blob:")) {
+        return { success: true, url: appFilePath };
+      }
+      if (appFilePath.startsWith("app-file://")) {
+        const path = appFilePath.substring(11);
+        const fileBuffer = await electron.ipcRenderer.invoke("read-file-as-buffer", decodeURI(path));
+        const ext = path.split(".").pop().toLowerCase();
+        let mimeType = "application/octet-stream";
+        if (ext === "jpg" || ext === "jpeg") mimeType = "image/jpeg";
+        else if (ext === "png") mimeType = "image/png";
+        else if (ext === "gif") mimeType = "image/gif";
+        else if (ext === "webp") mimeType = "image/webp";
+        else if (ext === "svg") mimeType = "image/svg+xml";
+        const blob = new Blob([fileBuffer], { type: mimeType });
+        const blobUrl = URL.createObjectURL(blob);
+        window._imageBlobCache = window._imageBlobCache || {};
+        window._imageBlobCache[appFilePath] = blobUrl;
+        return { success: true, url: blobUrl };
+      }
+      return { success: true, url: appFilePath };
+    } catch (error) {
+      console.error("Error loading image from app-file:", error);
+      return { success: false, error: error.message, url: appFilePath };
+    }
+  },
+  // Helper function to load videos from app-file URLs
+  loadVideoFromAppFile: async (appFilePath) => {
+    try {
+      if (appFilePath.startsWith("blob:")) {
+        return { success: true, url: appFilePath };
+      }
+      if (appFilePath.startsWith("app-file://") || appFilePath.startsWith("file://")) {
+        const prefix = appFilePath.startsWith("app-file://") ? "app-file://" : "file://";
+        const path = appFilePath.substring(prefix.length);
+        const fileBuffer = await electron.ipcRenderer.invoke("read-file-as-buffer", decodeURI(path));
+        const ext = path.split(".").pop().toLowerCase();
+        let mimeType = "application/octet-stream";
+        if (ext === "mp4") mimeType = "video/mp4";
+        else if (ext === "webm") mimeType = "video/webm";
+        else if (ext === "mov") mimeType = "video/quicktime";
+        else if (ext === "avi") mimeType = "video/x-msvideo";
+        else if (ext === "mkv") mimeType = "video/x-matroska";
+        const blob = new Blob([fileBuffer], { type: mimeType });
+        const blobUrl = URL.createObjectURL(blob);
+        window._videoBlobCache = window._videoBlobCache || {};
+        window._videoBlobCache[appFilePath] = blobUrl;
+        return { success: true, url: blobUrl };
+      }
+      return { success: true, url: appFilePath };
+    } catch (error) {
+      console.error("Error loading video from app-file:", error);
+      return { success: false, error: error.message, url: appFilePath };
+    }
+  },
+  // Save a video file to disk
+  saveVideoFile: async (fileData, fileName) => {
+    try {
+      const fileBlob = new Blob([fileData]);
+      const buffer = await fileBlob.arrayBuffer();
+      const result = await electron.ipcRenderer.invoke("save-video-file", new Uint8Array(buffer), fileName);
+      return result;
+    } catch (error) {
+      console.error("Error saving video file:", error);
+      throw error;
+    }
+  },
+  // List all videos from disk
+  listVideosFromDisk: async () => {
+    try {
+      const result = await electron.ipcRenderer.invoke("list-videos-from-disk");
+      return result;
+    } catch (error) {
+      console.error("Error listing videos from disk:", error);
+      return { success: false, videos: [], error: error.message };
+    }
+  },
+  // Screen capture functionality
+  getScreenSources: async () => {
+    try {
+      return await electron.ipcRenderer.invoke("get-screen-sources");
+    } catch (error) {
+      console.error("Error getting screen sources:", error);
+      throw error;
+    }
+  },
+  // Reload the application
+  reloadApp: () => {
+    electron.ipcRenderer.invoke("reload-app");
+  },
+  // Global shortcuts handler
+  onGlobalShortcut: (callback) => {
+    const handler = (_event, command) => {
+      callback(command);
+    };
+    electron.ipcRenderer.on("global-shortcut", handler);
+    return () => {
+      electron.ipcRenderer.removeListener("global-shortcut", handler);
+    };
+  }
+});
+function withPrototype(obj) {
+  const protos = Object.getPrototypeOf(obj);
+  for (const [key, value] of Object.entries(protos)) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) continue;
+    if (typeof value === "function") {
+      obj[key] = function(...args) {
+        return value.call(obj, ...args);
+      };
+    } else {
+      obj[key] = value;
+    }
+  }
+  return obj;
+}
