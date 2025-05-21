@@ -68,7 +68,7 @@ const Login: React.FC = () => {
         </div>
       )}
 
-      <div>
+     <div>
         <button
           onClick={handleSignIn}
           type="submit"
@@ -77,7 +77,7 @@ const Login: React.FC = () => {
           Sign in
         </button>
       </div>
-
+ {/* 
       <div className="relative flex py-2">
         <div className="flex-grow border-t border-gray-700"></div>
         <span className="flex-shrink mx-4 text-gray-400">or</span>
@@ -92,7 +92,7 @@ const Login: React.FC = () => {
         >
           <FcGoogle className="mr-2 text-xl"/> Sign in with Google
         </button>
-      </div>
+      </div> */}
     </div>
   );
 };
