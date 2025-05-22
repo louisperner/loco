@@ -61,7 +61,7 @@ const defaultTheme: Theme = {
   isGroundInfinite: false,
   
   // Sky settings
-  skyVisible: true,
+  skyVisible: false,
   skyDistance: 450000,
   skySunPosition: [0, 1, 0],
   skyInclination: 0,

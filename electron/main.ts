@@ -44,9 +44,6 @@ app.whenReady().then(() => {
   // Garante que os diretórios existam
   ensureDirectoriesExist();
   
-  // Create the tray icon
-  // createTrayIcon();
-
   // Configurar protocolo de arquivo personalizado
   protocol.registerFileProtocol('app-file', (request, callback) => {
     const url = request.url.substring(10); // Remove 'app-file://'
@@ -81,7 +78,8 @@ app.whenReady().then(() => {
       return callback({ error: -2 });
     }
   });
-
+  
+  // Create the window first, then create the tray icon after the window is ready
   const win = new BrowserWindow({
     show: true,
     transparent: true,
@@ -105,6 +103,12 @@ app.whenReady().then(() => {
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: true, // Permite carregar arquivos locais (use com cuidado em produção)
     },
+  });
+  
+  // Move the tray icon creation to after the window is fully loaded
+  win.webContents.on('did-finish-load', () => {
+    // Create the tray icon after the window is ready
+    createTrayIcon(win);
   });
 
   // Ensure window stays on top even when focus changes - using floating level (highest)
@@ -189,7 +193,7 @@ app.whenReady().then(() => {
       }
     });
   });
-  
+
   // Set permissions for media
   persistentSession.setPermissionRequestHandler((webContents, permission, callback) => {
     const url = webContents.getURL();
@@ -246,7 +250,7 @@ app.whenReady().then(() => {
   win.show();
   win.setFocusable(true);
   
-  // Reapply always on top setting after show with highest level
+  // Initial always-on-top setting - will be controlled by user preference after this
   win.setAlwaysOnTop(true, 'floating', 1);
 
   // win.getFocusedWindow();
@@ -295,11 +299,6 @@ app.whenReady().then(() => {
     win.setIgnoreMouseEvents(!buffer[3]);
     // // console.log('setIgnoreMouseEvents', !buffer[3]);
   };
-
-  // Ensure window stays on top periodically with highest level
-  setInterval(() => {
-    win.setAlwaysOnTop(true, 'floating', 1);
-  }, 1000);
 
   // Handle IPC calls for saving files
   ipcMain.handle('save-model-file', async (event, fileBuffer, fileName) => {
@@ -488,10 +487,32 @@ app.whenReady().then(() => {
   ipcMain.on('generate-solution', () => {
     win.webContents.send('global-shortcut', 'generate-solution');
   });
+
+  // IPC handler for setting always-on-top state
+  ipcMain.on('set-always-on-top', (event, enabled) => {
+    if (enabled) {
+      win.setAlwaysOnTop(true, 'floating', 1);
+    } else {
+      win.setAlwaysOnTop(false);
+    }
+    // Return the current state
+    event.returnValue = win.isAlwaysOnTop();
+  });
+
+  // Return current always-on-top state
+  ipcMain.handle('get-always-on-top', () => {
+    return win.isAlwaysOnTop();
+  });
 });
 
-// Add this function at the end of the file, before the last closing bracket
-function createTrayIcon() {
+// Modify the createTrayIcon function to accept the window as a parameter
+function createTrayIcon(mainWindow) {
+  // Check if mainWindow is valid
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    logger.error('Cannot create tray icon: window is not available');
+    return;
+  }
+
   // Create tray icon
   const iconPath = path.join(process.cwd(), 'loco-icon.png'); // Update with your icon path
   let trayIcon;
@@ -525,14 +546,13 @@ function createTrayIcon() {
   
   // Create the context menu for the tray
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Show App', click: () => { BrowserWindow.getAllWindows()[0].show(); } },
+    { label: 'Show App', click: () => { mainWindow.show(); } },
     { 
       label: 'Always on Top', 
       type: 'checkbox', 
-      checked: true,
+      checked: mainWindow.isAlwaysOnTop(),
       click: (menuItem) => {
-        const win = BrowserWindow.getAllWindows()[0];
-        win.setAlwaysOnTop(menuItem.checked, 'floating', 1);
+        mainWindow.setAlwaysOnTop(menuItem.checked, 'floating', 1);
       }
     },
     { type: 'separator' },
@@ -555,12 +575,11 @@ function createTrayIcon() {
   
   // Optional: Make single click on the tray icon show/hide the app
   tray.on('click', () => {
-    const win = BrowserWindow.getAllWindows()[0];
-    if (win.isVisible()) {
-      win.hide();
+    if (mainWindow.isVisible()) {
+      mainWindow.hide();
     } else {
-      win.show();
-      win.setAlwaysOnTop(true, 'screen-saver');
+      mainWindow.show();
+      // Don't change the always-on-top state here
     }
   });
 }
@@ -577,7 +596,7 @@ function registerGlobalShortcuts(win: BrowserWindow) {
       win.hide();
     } else {
       win.show();
-      win.setAlwaysOnTop(true, 'floating', 1);
+      // Don't change the always-on-top state here
     }
   });
 

@@ -102,6 +102,8 @@ export function SettingsPanel({
   onGravityToggle,
   showCoordinates = true,
   onCoordinatesToggle,
+  alwaysOnTop = false,
+  onAlwaysOnTopToggle,
   environmentSettings = {
     skyVisible: false,
     skyDistance: 450000,
@@ -217,18 +219,25 @@ export function SettingsPanel({
   );
 
   // Gravity toggle handler with parent notification
-  const handleGravityToggle = useCallback(() => {
+  const handleGravityToggle = useCallback((enabled: boolean) => {
     if (onGravityToggle) {
-      onGravityToggle(true);
+      onGravityToggle(enabled);
     }
   }, [onGravityToggle]);
 
   // Coordinates display toggle with parent notification
-  const handleCoordinatesToggle = useCallback(() => {
+  const handleCoordinatesToggle = useCallback((show: boolean) => {
     if (onCoordinatesToggle) {
-      onCoordinatesToggle(true);
+      onCoordinatesToggle(show);
     }
   }, [onCoordinatesToggle]);
+
+  // Always on top toggle with parent notification
+  const handleAlwaysOnTopToggle = useCallback((enabled: boolean) => {
+    if (onAlwaysOnTopToggle) {
+      onAlwaysOnTopToggle(enabled);
+    }
+  }, [onAlwaysOnTopToggle]);
 
   // Cloud sync handlers
   const handleSaveToCloud = useCallback(async () => {
@@ -398,7 +407,14 @@ export function SettingsPanel({
       id: 'interface',
       label: 'Interface',
       icon: <FaDesktop size='14' />,
-      content: <InterfaceSettings showCoordinates={showCoordinates} onCoordinatesToggle={handleCoordinatesToggle} />,
+      content: (
+        <InterfaceSettings 
+          showCoordinates={showCoordinates} 
+          onCoordinatesToggle={handleCoordinatesToggle}
+          alwaysOnTop={alwaysOnTop}
+          onAlwaysOnTopToggle={handleAlwaysOnTopToggle}
+        />
+      ),
     },
     {
       id: 'openrouter',

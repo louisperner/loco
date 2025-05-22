@@ -116,6 +116,9 @@ interface GameState {
   // Show coordinates
   showCoordinates: boolean;
 
+  // Always on top
+  alwaysOnTop: boolean;
+
   // Actions
   setUiVisible: (visible: boolean) => void;
   setShowCatalog: (show: boolean) => void;
@@ -170,6 +173,9 @@ interface GameState {
   // Show coordinates
   setShowCoordinates: (show: boolean) => void;
 
+  // Always on top
+  setAlwaysOnTop: (enabled: boolean) => void;
+
   // Drawing overlay actions
   setShowDrawingOverlay: (show: boolean) => void;
 }
@@ -214,6 +220,7 @@ type GameStateActions = Pick<
   | 'handleSpotlightVisibility'
   | 'resetCrosshairAndVisibilitySettings'
   | 'setShowCoordinates'
+  | 'setAlwaysOnTop'
   | 'setShowDrawingOverlay'
 >;
 
@@ -298,6 +305,9 @@ export const useGameStore = create<GameState & GameStateActions>()(
 
       // Show coordinates
       showCoordinates: true,
+
+      // Always on top
+      alwaysOnTop: false,
 
       // Actions
       setUiVisible: (visible: boolean) => set({ uiVisible: visible }),
@@ -496,6 +506,9 @@ export const useGameStore = create<GameState & GameStateActions>()(
 
       // Show coordinates
       setShowCoordinates: (show: boolean) => set({ showCoordinates: show }),
+
+      // Always on top
+      setAlwaysOnTop: (enabled: boolean) => set({ alwaysOnTop: enabled }),
 
       // Drawing overlay actions
       setShowDrawingOverlay: (show: boolean) =>

@@ -77,6 +77,8 @@ const Player: React.FC = () => {
   const setUiVisible = useGameStore((state) => state.setUiVisible);
 
   const showCoordinates = useGameStore((state) => state.showCoordinates);
+  const alwaysOnTop = useGameStore((state) => state.alwaysOnTop);
+  const setAlwaysOnTop = useGameStore((state) => state.setAlwaysOnTop);
 
   const showCatalog = useGameStore((state) => state.showCatalog);
   const setShowCatalog = useGameStore((state) => state.setShowCatalog);
@@ -277,11 +279,16 @@ const Player: React.FC = () => {
     [setShowSettings, setCanvasInteractive, setShowColorPicker, simulateCanvasClick],
   );
 
-  // Modify the keyboard event handler to use the new function
+  // Register keyboard and focus event listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
-      // Skip if the target is an input field
-      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+      // Skip if any UI element is focused
+      if (
+        document.activeElement instanceof HTMLInputElement ||
+        document.activeElement instanceof HTMLTextAreaElement ||
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA'
+      ) {
         return;
       }
 
@@ -290,18 +297,33 @@ const Player: React.FC = () => {
         if (!movementKeys.current.has(e.key.toLowerCase())) {
           movementKeys.current.add(e.key.toLowerCase());
           if (!isMoving) {
-             setIsMoving(true);
+            setIsMoving(true);
           }
         }
       }
 
+      // Toggle UI visibility with Tab key
       if (e.key === 'Tab') {
         e.preventDefault();
         setUiVisible(!uiVisible);
       }
 
+      // Handle escape key for various UI states
       if (e.key === 'Escape') {
-        handleCancel();
+        e.preventDefault();
+        
+        // Handle different escape sequences based on UI state
+        if (pendingWebsiteUrl) {
+          handleCancel();
+        } else if (showCatalog) {
+          setShowCatalog(false);
+        } else if (showInventory) {
+          handleInventoryToggle(false);
+        } else if (showHelp) {
+          handleToggleHelp();
+        } else if (currentMode === 'build') {
+          handleModeChange('live');
+        }
       }
 
       // Handle inventory toggle with E key
@@ -312,13 +334,14 @@ const Player: React.FC = () => {
         handleInventoryToggle(!isInventoryOpen);
       }
 
-      // // Handle settings toggle with S key
-      // if ((e.key === 's' || e.key === 'S') && !pendingWebsiteUrl && !showCatalog && !isSpotlightOpen && !showInventory) {
-      //   e.preventDefault();
-      //   // Access the current state directly from the store
-      //   const isSettingsOpen = useGameStore.getState().showSettings;
-      //   handleSettingsToggle(!isSettingsOpen);
-      // }
+      // Always on top shortcuts (Cmd+Up, Cmd+Down)
+      if (e.metaKey && e.key === 'ArrowUp') {
+        e.preventDefault();
+        setAlwaysOnTop(true);
+      } else if (e.metaKey && e.key === 'ArrowDown') {
+        e.preventDefault();
+        setAlwaysOnTop(false);
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent): void => {
@@ -331,33 +354,6 @@ const Player: React.FC = () => {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp); // Add keyup listener
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp); // Remove keyup listener
-    }
-  }, [
-    showCatalog,
-    showHelp,
-    currentMode,
-    pendingWebsiteUrl,
-    isSpotlightOpen,
-    uiVisible,
-    showInventory,
-    setShowCatalog,
-    setUiVisible,
-    handleCancel,
-    handleModeChange,
-    handleToggleHelp,
-    handleInventoryToggle,
-    handleSettingsToggle,
-    isMoving // Add isMoving to dependency array if it's used in calculations triggered by other dependencies
-  ]);
-
-  // Add an effect to handle window focus/blur events
-  useEffect(() => {
     const handleFocus = () => {
       // Force a re-render and restart the animation loop when window regains focus
       setIsMoving(true);
@@ -368,13 +364,57 @@ const Player: React.FC = () => {
         }
       }, 300);
     };
-    
+
+    // Register event listeners
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('focus', handleFocus);
-    
+
     return () => {
+      // Remove event listeners
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('focus', handleFocus);
     };
-  }, []);
+  }, [
+    pendingWebsiteUrl,
+    showCatalog,
+    showInventory,
+    showHelp,
+    currentMode,
+    isSpotlightOpen,
+    uiVisible,
+    isMoving,
+    handleCancel,
+    setShowCatalog,
+    handleInventoryToggle,
+    handleToggleHelp,
+    handleModeChange,
+    setIsMoving,
+    setUiVisible,
+    setAlwaysOnTop,
+    movementKeys
+  ]);
+
+  // Sync alwaysOnTop state with window property
+  useEffect(() => {
+    // Check if we're in Electron environment
+    if (window.electron && typeof window.electron.setAlwaysOnTop === 'function') {
+      // Set the window's always-on-top property
+      window.electron.setAlwaysOnTop(alwaysOnTop);
+    }
+  }, [alwaysOnTop]);
+
+  // Initialize alwaysOnTop from window property
+  useEffect(() => {
+    // Check if we're in Electron environment
+    if (window.electron && typeof window.electron.getAlwaysOnTop === 'function') {
+      // Get current window state
+      window.electron.getAlwaysOnTop().then((isAlwaysOnTop: boolean) => {
+        setAlwaysOnTop(isAlwaysOnTop);
+      });
+    }
+  }, [setAlwaysOnTop]);
 
   const onRemoveObject = useCallback((dataOrId?: { type: string; id: string } | string): void => {
     // If no parameter is provided, exit early
@@ -727,6 +767,8 @@ const Player: React.FC = () => {
                 }}
                 showCoordinates={showCoordinates}
                 onCoordinatesToggle={useGameStore.getState().setShowCoordinates}
+                alwaysOnTop={alwaysOnTop}
+                onAlwaysOnTopToggle={useGameStore.getState().setAlwaysOnTop}
                 environmentSettings={environmentSettings}
                 onEnvironmentSettingChange={(setting: string, value: unknown) =>
                   setEnvironmentSetting(

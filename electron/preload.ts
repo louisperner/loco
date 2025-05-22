@@ -220,6 +220,15 @@ contextBridge.exposeInMainWorld('electron', {
     }
   },
   
+  // Always on top functionality
+  setAlwaysOnTop: (enabled) => {
+    return ipcRenderer.sendSync('set-always-on-top', enabled);
+  },
+  
+  getAlwaysOnTop: async () => {
+    return await ipcRenderer.invoke('get-always-on-top');
+  },
+  
   // Reload the application
   reloadApp: () => {
     ipcRenderer.invoke('reload-app');

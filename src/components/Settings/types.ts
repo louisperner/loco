@@ -137,6 +137,8 @@ export interface SettingsPanelProps {
   onEnvironmentSettingChange?: (setting: string, value: SettingValue) => void;
   showCoordinates?: boolean;
   onCoordinatesToggle?: (show: boolean) => void;
+  alwaysOnTop?: boolean;
+  onAlwaysOnTopToggle?: (enabled: boolean) => void;
 }
 
 export interface ColorPickerControlProps {

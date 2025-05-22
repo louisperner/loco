@@ -27,6 +27,8 @@ interface ElectronWindowAPI {
   getScreenSources: () => Promise<unknown[]>;
   reloadApp: () => void;
   onGlobalShortcut: (callback: (command: string) => void) => () => void;
+  setAlwaysOnTop: (enabled: boolean) => boolean;
+  getAlwaysOnTop: () => Promise<boolean>;
   shortcuts?: {
     register: (shortcutKey: string, actionId: string) => Promise<{ success: boolean; error?: string }>;
     unregister: (shortcutKey: string) => Promise<{ success: boolean; error?: string }>;
