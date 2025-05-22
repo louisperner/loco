@@ -237,6 +237,52 @@ VITE_FIREBASE_APP_ID=your-app-id
 
 Replace the placeholder values with your Firebase project's configuration, which you can find in your Firebase project settings.
 
+## Application Signing (macOS)
+
+If you're encountering a "damaged and can't be opened" error on macOS after downloading the built application, you need to sign the application with a valid Apple Developer ID.
+
+### Requirements
+
+1. An Apple Developer account
+2. A valid Developer ID Application certificate
+
+### Signing Process
+
+1. Build the application first:
+   ```
+   npm run make
+   ```
+
+2. Run the signing script:
+   ```
+   ./sign-app.sh
+   ```
+
+   The script will:
+   - List available signing identities
+   - Ask you to input your Developer ID
+   - Sign the application with the specified identity
+   - Create a signed DMG
+   - Verify the signature
+
+3. Alternatively, you can configure automatic signing in `forge.config.js`:
+   - Update the `osxSign.identity` with your Developer ID
+   - If you want to notarize your app, uncomment and configure the `osxNotarize` section
+
+### Manual Signing
+
+If you prefer to sign manually, use:
+```bash
+codesign --force --options runtime --entitlements "./entitlements.plist" --sign "YOUR_DEVELOPER_ID" "./out/loco-darwin-x64/loco.app" --deep --verbose
+```
+
+### Troubleshooting
+
+If you still encounter issues:
+1. Make sure you have a valid Developer ID
+2. Try removing any quarantine attributes: `xattr -d com.apple.quarantine /path/to/your/app`
+3. Check Apple's documentation on notarization for distribution: [Apple Documentation](https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution)
+
 ---
 
 ## Contributing
