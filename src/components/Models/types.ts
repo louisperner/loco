@@ -26,6 +26,8 @@ export interface PrimitiveModelData extends Omit<BaseModelData, 'url' | 'fileNam
   textureType?: TextureType;
   url?: string;
   fileName?: string;
+  customCube?: boolean;
+  cubeFaces?: Record<string, CubeFace>;
 }
 
 export interface LoadedModelData extends BaseModelData {
@@ -166,11 +168,19 @@ export interface InternalVideoProps {
   onError?: (error: ErrorEvent) => void;
 }
 
+export interface CubeFace {
+  id: string;
+  name: string;
+  texture?: string;
+  color: string;
+}
+
 export interface PrimitiveModelProps {
   type: PrimitiveType;
   scale: number;
   color?: string;
   texture?: THREE.Texture | THREE.VideoTexture;
+  cubeFaces?: Record<string, CubeFace>;
 }
 
 export interface StoreImageData {

@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { useRef } from 'react';
 import { generateVideoThumbnail } from '../Models/utils';
 import TextureSelector from './TextureSelector';
+import CubeCrafter from '../CubeCrafter/CubeCrafter';
 import * as THREE from 'three';
 
 const HotbarTopNav: React.FC = () => {
@@ -15,6 +16,7 @@ const HotbarTopNav: React.FC = () => {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const modelInputRef = useRef<HTMLInputElement>(null);
   const [showTextureSelector, setShowTextureSelector] = useState(false);
+  const [showCubeCrafter, setShowCubeCrafter] = useState(false);
   const addImage = useImageStore((state) => state.addImage);
   const updateImage = useImageStore((state) => state.updateImage);
   const addVideo = useVideoStore((state) => state.addVideo);
@@ -439,6 +441,9 @@ const HotbarTopNav: React.FC = () => {
       case 'texture':
         setShowTextureSelector(true);
         break;
+      case 'cube-crafter':
+        setShowCubeCrafter(true);
+        break;
       default:
         break;
     }
@@ -648,6 +653,16 @@ const HotbarTopNav: React.FC = () => {
         </svg>
       ),
     },
+    {
+      id: 'cube-crafter',
+      icon: (
+        <svg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'>
+          <path d='M10 1L2 5V15L10 19L18 15V5L10 1Z' stroke='currentColor' strokeWidth='2' fill='none' />
+          <path d='M2 5L10 9L18 5M10 9V19' stroke='currentColor' strokeWidth='2' />
+          <circle cx='10' cy='9' r='2' fill='currentColor' />
+        </svg>
+      ),
+    },
   ];
 
   return (
@@ -698,6 +713,11 @@ const HotbarTopNav: React.FC = () => {
       <TextureSelector 
         isOpen={showTextureSelector} 
         onClose={() => setShowTextureSelector(false)} 
+      />
+      
+      <CubeCrafter 
+        isOpen={showCubeCrafter} 
+        onClose={() => setShowCubeCrafter(false)} 
       />
     </>
   );

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Image as ImageIcon, Video, Maximize, Box, Square, Circle, Slash, Code } from 'lucide-react';
+import React, { useState } from 'react';
+import { Image as ImageIcon, Video, Maximize, Box, Square, Circle, Slash, Code, Wrench } from 'lucide-react';
 // import { useImageStore } from '@/store/useImageStore';
 // import { useVideoStore } from '@/store/videoStore';
 import { useCodeStore } from '@/store/useCodeStore';
@@ -7,6 +7,7 @@ import { useGameStore } from '@/store/useGameStore';
 //import { useModelStore } from '@/store/useModelStore';
 import { getCameraPosition, getCameraRotation } from './utils/aiChatUtils';
 import { createPrimitive } from './utils/primitiveHandlers';
+import CubeCrafter from '../CubeCrafter/CubeCrafter';
 
 type CommandOption = {
   id: string;
@@ -40,6 +41,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   const { addCodeBlock } = useCodeStore();
   const { setShowDrawingOverlay } = useGameStore();
   // const { addModel } = useModelStore();
+  const [showCubeCrafter, setShowCubeCrafter] = useState(false);
 
   // Handle primitive shapes (cube, sphere, plane)
   const handlePrimitiveSelect = (type: 'cube' | 'sphere' | 'plane') => {
@@ -142,6 +144,7 @@ render(<Counter />);`;
     { id: 'cube', label: 'Cube', icon: Square, command: 'create cube', action: () => handlePrimitiveSelect('cube') },
     { id: 'sphere', label: 'Sphere', icon: Circle, command: 'create sphere', action: () => handlePrimitiveSelect('sphere') },
     { id: 'plane', label: 'Plane', icon: Square, command: 'create plane', action: () => handlePrimitiveSelect('plane') },
+    { id: 'cube-crafter', label: 'Cube Crafter', icon: Wrench, command: 'cube crafter', action: () => { setShowCubeCrafter(true); setShowCommandPalette(false); } },
     { id: 'draw', label: 'Draw', icon: Slash, command: 'draw', action: () => setShowDrawingOverlay(true) },
     { id: 'code', label: 'Code', icon: Code, command: 'add code', action: () => handleCodeAdd() },
   ];
@@ -203,6 +206,11 @@ render(<Counter />);`;
           No commands match &apos;{inputValue}&apos;
         </div>
       )}
+      
+      <CubeCrafter 
+        isOpen={showCubeCrafter} 
+        onClose={() => setShowCubeCrafter(false)} 
+      />
     </div>
   );
 };

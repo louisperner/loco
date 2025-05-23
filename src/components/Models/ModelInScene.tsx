@@ -13,7 +13,8 @@ import {
   PrimitiveModelProps,
   PrimitiveModelData,
   StoreImageData,
-  StoreVideoData
+  StoreVideoData,
+  CubeFace
 } from './types';
 import ErrorBoundary from './ErrorBoundary';
 import { processFileUrl, controlButtonStyle } from './utils';
@@ -113,8 +114,28 @@ const ModelFallback: React.FC<ModelFallbackProps> = ({ fileName, scale, errorDet
 };
 
 // Add PrimitiveModel component with color and texture support
-const PrimitiveModel: React.FC<PrimitiveModelProps> = ({ type, scale, color = '#4ade80', texture }) => {
-  const material = useMemo(() => {
+const PrimitiveModel: React.FC<PrimitiveModelProps> = ({ type, scale, color = '#4ade80', texture, cubeFaces }) => {
+  const materials = useMemo(() => {
+    if (type === 'cube' && cubeFaces) {
+      // Create materials for each face of the cube
+      const faceOrder = ['right', 'left', 'top', 'bottom', 'front', 'back'];
+      return faceOrder.map(faceId => {
+        const face = cubeFaces[faceId];
+        if (face?.texture) {
+          const img = new Image();
+          img.src = face.texture;
+          const textureMap = new THREE.Texture(img);
+          textureMap.needsUpdate = true;
+          img.onload = () => {
+            textureMap.needsUpdate = true;
+          };
+          return new THREE.MeshStandardMaterial({ map: textureMap });
+        }
+        return new THREE.MeshStandardMaterial({ color: face?.color || color });
+      });
+    }
+    
+    // Single material for non-cube primitives or cubes without custom faces
     if (texture) {
       return new THREE.MeshStandardMaterial({ 
         map: texture,
@@ -125,14 +146,13 @@ const PrimitiveModel: React.FC<PrimitiveModelProps> = ({ type, scale, color = '#
       color,
       side: type === 'plane' ? THREE.DoubleSide : THREE.FrontSide
     });
-  }, [color, texture, type]);
+  }, [color, texture, type, cubeFaces]);
 
   switch (type) {
     case 'cube':
       return (
-        <mesh scale={scale}>
+        <mesh scale={scale} material={materials}>
           <boxGeometry args={[1, 1, 1]} />
-          <primitive object={material} />
           {/* Add grid lines to make it look more like a Minecraft block */}
           <lineSegments>
             <edgesGeometry args={[new THREE.BoxGeometry(1.001, 1.001, 1.001)]} />
@@ -144,14 +164,14 @@ const PrimitiveModel: React.FC<PrimitiveModelProps> = ({ type, scale, color = '#
       return (
         <mesh scale={scale}>
           <sphereGeometry args={[0.5, 32, 32]} />
-          <primitive object={material} />
+          <primitive object={materials} />
         </mesh>
       );
     case 'plane':
       return (
         <mesh scale={scale} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[1, 1]} />
-          <primitive object={material} />
+          <primitive object={materials} />
         </mesh>
       );
     default:
@@ -675,6 +695,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
             scale={scale}
             color={primitiveData.color || '#4ade80'}
             texture={texture}
+            cubeFaces={primitiveData.cubeFaces}
           />
         ) : (
           url?.startsWith('primitive://') ? (
