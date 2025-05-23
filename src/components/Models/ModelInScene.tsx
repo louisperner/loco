@@ -326,7 +326,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
           // Snap cube position to grid
           finalPosition = [
             Math.round(position.x),
-            Math.max(0, Math.round(position.y)), // Ensure y is not below ground
+            Math.round(position.y), // Allow placement below y=0
             Math.round(position.z)
           ];
           // Keep cubes axis-aligned
@@ -359,7 +359,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         if (isPrimitive && primitiveData?.primitiveType === 'cube') {
           const snappedPosition: [number, number, number] = [
             Math.round(initialPosition[0]),
-            Math.max(0, Math.round(initialPosition[1])),
+            Math.round(initialPosition[1]),
             Math.round(initialPosition[2])
           ];
           

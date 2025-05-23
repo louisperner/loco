@@ -483,7 +483,7 @@ const Player: React.FC = () => {
         // ALWAYS snap cube positions to grid for consistency
         const snappedPosition: [number, number, number] = [
           Math.round(position[0]),
-          Math.max(0, Math.round(position[1])), // Ensure y is not below ground
+          Math.round(position[1]), // Allow placement below y=0
           Math.round(position[2])
         ];
         

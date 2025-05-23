@@ -42,7 +42,7 @@ export const createPrimitiveAtCamera = (type: 'cube' | 'sphere' | 'plane', count
   if (type === 'cube') {
     position = [
       Math.round(position[0]),
-      Math.max(0, Math.round(position[1])),
+      Math.round(position[1]), // Allow placement below y=0
       Math.round(position[2])
     ];
   }

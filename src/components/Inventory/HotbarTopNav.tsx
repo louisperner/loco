@@ -331,7 +331,7 @@ const HotbarTopNav: React.FC = () => {
       if (type === 'cube') {
         position = [
           Math.round(position[0]), 
-          Math.max(0, Math.round(position[1])), // Ensure y is not below ground
+          Math.round(position[1]), // Allow placement below y=0
           Math.round(position[2])
         ];
       }
@@ -350,7 +350,7 @@ const HotbarTopNav: React.FC = () => {
         // Round to nearest integer for grid alignment
         position = [
           Math.round(pos.x), 
-          Math.max(0, Math.round(pos.y)), // Ensure y is not below ground
+          Math.round(pos.y), // Allow placement below y=0
           Math.round(pos.z)
         ];
         // Keep cubes axis-aligned (no rotation)
