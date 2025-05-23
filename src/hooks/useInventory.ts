@@ -563,11 +563,19 @@ export const useInventory = (
         if (hotbarItems[slotIndex]) {
           // eslint-disable-next-line no-console
           // console.log(`Found item in slot ${slotIndex}:`, hotbarItems[slotIndex]?.fileName);
-          setSelectedItem(hotbarItems[slotIndex]!);
+          const item = hotbarItems[slotIndex]!;
+          setSelectedItem(item);
+          
+          // Update the global store with the selected hotbar item
+          useGameStore.getState().setSelectedHotbarItem({
+            ...item,
+            name: item.fileName,
+          });
         } else {
           // eslint-disable-next-line no-console
           // console.log(`No item in slot ${slotIndex}, clearing item selection`);
           setSelectedItem(null);
+          useGameStore.getState().setSelectedHotbarItem(null);
         }
       }
     };
@@ -641,21 +649,23 @@ export const useInventory = (
       // Check if we're clicking on the canvas
       if (e.target === canvas || canvas.contains(e.target as Node)) {
         // Left click and we have a selected hotbar slot with an item
+        // BUT only handle this if FPSControls didn't already handle it via addObject event
         if (e.button === 0 && selectedHotbarSlot !== null && hotbarItems[selectedHotbarSlot]) {
-          // Add the selected item to the canvas
-          handleAddToCanvas(hotbarItems[selectedHotbarSlot]!);
+          // Check if a cube is selected - if so, let FPSControls handle it
+          const selectedItem = hotbarItems[selectedHotbarSlot]!;
+          const isCubeSelected = selectedItem && 
+                                ((selectedItem.url as string)?.includes('primitive://cube') || 
+                                 (selectedItem.fileName as string)?.toLowerCase().includes('cube'));
+          
+          // Only handle non-cube items here, let FPSControls handle cubes
+          if (!isCubeSelected) {
+            handleAddToCanvas(selectedItem);
+          }
         }
         // Right click and we have a remove handler
         else if (e.button === 2 && typeof onRemoveObject === 'function') {
           // console.log('Right click on canvas, removing object');
           onRemoveObject();
-        } else {
-          // eslint-disable-next-line no-console
-          // console.log('Click on canvas but no action taken', {
-          //   button: e.button,
-          //   selectedHotbarSlot,
-          //   hasItem: selectedHotbarSlot !== null ? !!hotbarItems[selectedHotbarSlot] : false
-          // });
         }
       }
     };
@@ -712,9 +722,15 @@ export const useInventory = (
     const item = hotbarItems[index];
     setSelectedHotbarSlot(index);
 
+    // Update the global store with the selected hotbar item
     if (item) {
+      useGameStore.getState().setSelectedHotbarItem({
+        ...item,
+        name: item.fileName,
+      });
       handleItemSelect(item);
     } else {
+      useGameStore.getState().setSelectedHotbarItem(null);
       setSelectedItem(null);
     }
   };

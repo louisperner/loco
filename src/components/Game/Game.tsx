@@ -463,6 +463,85 @@ const Player: React.FC = () => {
     }
   }, []);
 
+  // Listen for addObject events from FPSControls
+  useEffect(() => {
+    const handleAddObject = (event: CustomEvent) => {
+      const { position, type, snapToFace } = event.detail;
+      console.log('Game: Received addObject event', { position, type, snapToFace });
+      
+      // Check if a cube is selected in hotbar
+      const selectedHotbarItem = useGameStore.getState().selectedHotbarItem;
+      const isCubeSelected = selectedHotbarItem && 
+                            ((selectedHotbarItem.url as string)?.includes('primitive://cube') || 
+                             (selectedHotbarItem.fileName as string)?.toLowerCase().includes('cube'));
+      
+      console.log('Game: Cube selected?', isCubeSelected, selectedHotbarItem);
+      
+      if (isCubeSelected || type === 'cube') {
+        console.log('Game: Adding cube at position', position);
+        // Add a cube primitive at the specified position
+        const { addModel } = useModelStore.getState();
+        addModel({
+          url: 'primitive://cube',
+          fileName: 'cube.gltf',
+          position: position,
+          rotation: [0, 0, 0], // Always keep cubes axis-aligned
+          scale: 1,
+          isInScene: true,
+          isPrimitive: true,
+          primitiveType: 'cube',
+          color: '#4ade80',
+          thumbnailUrl: `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4ade80"><path d="M12 2l9 4.5v11L12 22l-9-4.5v-11L12 2z"/></svg>')}`,
+        });
+      } else if (selectedHotbarItem) {
+        // Add the selected item from hotbar
+                 if (selectedHotbarItem.type === 'model') {
+           const { addModel } = useModelStore.getState();
+           addModel({
+             url: selectedHotbarItem.url as string,
+             fileName: selectedHotbarItem.fileName as string,
+             position: position,
+             rotation: [0, 0, 0],
+             scale: 1,
+             isInScene: true,
+             inventoryId: selectedHotbarItem.id as string,
+           });
+         } else if (selectedHotbarItem.type === 'image') {
+           const { addImage } = useImageStore.getState();
+           addImage({
+             src: selectedHotbarItem.url as string,
+             fileName: selectedHotbarItem.fileName as string,
+             position: position,
+             rotation: [0, 0, 0],
+             scale: 1,
+             isInScene: true,
+             inventoryId: selectedHotbarItem.id as string,
+           });
+         } else if (selectedHotbarItem.type === 'video') {
+           const { addVideo } = useVideoStore.getState();
+           addVideo({
+             src: selectedHotbarItem.url as string,
+             fileName: selectedHotbarItem.fileName as string,
+             position: position,
+             rotation: [0, 0, 0],
+             scale: 3,
+             isPlaying: true,
+             volume: 0.5,
+             loop: true,
+             isInScene: true,
+             inventoryId: selectedHotbarItem.id as string,
+           });
+         }
+      }
+    };
+
+    window.addEventListener('addObject', handleAddObject as EventListener);
+    
+    return () => {
+      window.removeEventListener('addObject', handleAddObject as EventListener);
+    };
+  }, []);
+
   // Touch controls
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [touchState, setTouchState] = useState<TouchState>({
@@ -906,11 +985,17 @@ const Player: React.FC = () => {
 
                 // Always create a new model instance (clone) to add to the scene
                 const { addModel } = useModelStore.getState();
+                
+                // For cube primitives, remove rotations to keep them axis-aligned
+                const isCubePrimitive = model.url?.includes('primitive://cube') || 
+                                       model.fileName?.toLowerCase().includes('cube');
+                const finalRotation = isCubePrimitive ? [0, 0, 0] as [number, number, number] : rotation;
+                
                 addModel({
                   url: model.url,
                   fileName: model.fileName,
                   position: [position.x, position.y, position.z],
-                  rotation,
+                  rotation: finalRotation,
                   scale: 1,
                   isInScene: true,
                   // Keep track of the original inventory item ID for reference

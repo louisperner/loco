@@ -334,7 +334,7 @@ const HotbarTopNav: React.FC = () => {
       direction.multiplyScalar(3); // Place 3 units in front of camera
       pos.add(direction);
       
-      // For cubes, snap to grid (Minecraft-like behavior)
+      // For cubes, snap to grid (Minecraft-like behavior) and keep axis-aligned
       if (type === 'cube') {
         // Round to nearest integer for grid alignment
         position = [
@@ -342,11 +342,12 @@ const HotbarTopNav: React.FC = () => {
           Math.max(0, Math.round(pos.y)), // Ensure y is not below ground
           Math.round(pos.z)
         ];
+        // Keep cubes axis-aligned (no rotation)
+        rotation = [0, 0, 0];
       } else {
         position = [pos.x, pos.y, pos.z];
+        rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
       }
-      
-      rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
     }
 
     // Create a unique ID for the primitive

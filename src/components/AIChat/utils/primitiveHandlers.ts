@@ -26,7 +26,7 @@ export const createPrimitive = (type: 'cube' | 'sphere' | 'plane', position: [nu
     url: `primitive://${type}`,
     fileName: `${type}.${type === 'plane' ? 'glb' : 'gltf'}`,
     position,
-    rotation: [0, 0, 0],
+    rotation: [0, 0, 0], // Always keep primitives axis-aligned
     scale: 1,
     isInScene: true,
     isPrimitive: true,

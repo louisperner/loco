@@ -307,15 +307,22 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         
         groupRef.current.position.copy(position);
         
-        // Make the model face the camera
-        groupRef.current.lookAt(camera.position);
-        
-        // Save the initial position and rotation
-        const currentRotation: [number, number, number] = [
-          groupRef.current.rotation.x,
-          groupRef.current.rotation.y,
-          groupRef.current.rotation.z
-        ];
+        // For cube primitives, keep them axis-aligned (no rotation)
+        // For other models, make them face the camera
+        let currentRotation: [number, number, number];
+        if (isPrimitive && primitiveData?.primitiveType === 'cube') {
+          // Keep cubes axis-aligned
+          groupRef.current.rotation.set(0, 0, 0);
+          currentRotation = [0, 0, 0];
+        } else {
+          // Make other models face the camera
+          groupRef.current.lookAt(camera.position);
+          currentRotation = [
+            groupRef.current.rotation.x,
+            groupRef.current.rotation.y,
+            groupRef.current.rotation.z
+          ];
+        }
 
         onUpdate({
           ...modelData,
@@ -323,12 +330,12 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
           rotation: currentRotation
         } as ModelDataType);
       } else {
-        // For existing models, set the saved position and make it look at camera
+        // For existing models, set the saved position and rotation
         groupRef.current.position.set(...initialPosition);
         groupRef.current.rotation.set(...initialRotation);
       }
     }
-  }, [camera, initialPosition, initialRotation, modelData, onUpdate]); // Include all dependencies
+  }, [camera, initialPosition, initialRotation, modelData, onUpdate, isPrimitive, primitiveData]); // Include all dependencies
 
   // Update position and rotation when they change
   useEffect(() => {
@@ -453,12 +460,18 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
       const position = groupRef.current.position;
       const rotation = groupRef.current.rotation;
       
-      // For cube primitives, implement grid snapping (Minecraft-like)
+      // For cube primitives, implement grid snapping and keep axis-aligned
       if (isPrimitive && primitiveData?.primitiveType === 'cube') {
         // Snap to grid by rounding to nearest integer
         position.x = Math.round(position.x);
         position.y = Math.round(position.y);
         position.z = Math.round(position.z);
+        
+        // Keep cubes axis-aligned (no rotation)
+        rotation.x = 0;
+        rotation.y = 0;
+        rotation.z = 0;
+        groupRef.current.rotation.set(0, 0, 0);
       }
       
       onUpdate({
