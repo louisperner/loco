@@ -8,6 +8,7 @@ interface PrimitiveModelData {
   primitiveType: 'cube' | 'sphere' | 'plane';
   color?: string;
   textureUrl?: string;
+  textureType?: 'image' | 'video';
   position?: [number, number, number];
   rotation?: [number, number, number];
   scale?: number;

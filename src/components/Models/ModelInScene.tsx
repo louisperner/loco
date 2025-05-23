@@ -268,14 +268,26 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
 
   // Load texture if textureUrl exists
   useEffect(() => {
+    console.log('ModelInScene: Texture loading effect triggered', {
+      isPrimitive,
+      textureUrl: primitiveData?.textureUrl,
+      textureType: primitiveData?.textureType,
+      primitiveData
+    });
+    
     if (isPrimitive && primitiveData?.textureUrl) {
+      console.log('ModelInScene: Loading texture for primitive', primitiveData.textureType);
       if (primitiveData.textureType === 'image') {
         const img = new Image();
         img.src = primitiveData.textureUrl;
         img.onload = () => {
+          console.log('ModelInScene: Image texture loaded successfully');
           const newTexture = new THREE.Texture(img);
           newTexture.needsUpdate = true;
           setTexture(newTexture);
+        };
+        img.onerror = (error) => {
+          console.error('ModelInScene: Failed to load image texture', error);
         };
       } else if (primitiveData.textureType === 'video') {
         const video = document.createElement('video');
@@ -288,6 +300,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         setTexture(videoTexture);
       }
     } else {
+      console.log('ModelInScene: No texture to load, clearing texture');
       setTexture(undefined);
     }
   }, [isPrimitive, primitiveData?.textureUrl, primitiveData?.textureType]);
@@ -305,16 +318,25 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         const position = new THREE.Vector3();
         position.copy(camera.position).add(cameraDirection.multiplyScalar(distance));
         
-        groupRef.current.position.copy(position);
-        
-        // For cube primitives, keep them axis-aligned (no rotation)
-        // For other models, make them face the camera
+        // For cube primitives, ALWAYS snap to grid and keep axis-aligned
+        let finalPosition: [number, number, number];
         let currentRotation: [number, number, number];
+        
         if (isPrimitive && primitiveData?.primitiveType === 'cube') {
+          // Snap cube position to grid
+          finalPosition = [
+            Math.round(position.x),
+            Math.max(0, Math.round(position.y)), // Ensure y is not below ground
+            Math.round(position.z)
+          ];
           // Keep cubes axis-aligned
           groupRef.current.rotation.set(0, 0, 0);
           currentRotation = [0, 0, 0];
+          
+          console.log('ModelInScene: Snapping cube to grid position', finalPosition);
         } else {
+          // For other models, use exact camera-based position
+          finalPosition = [position.x, position.y, position.z];
           // Make other models face the camera
           groupRef.current.lookAt(camera.position);
           currentRotation = [
@@ -323,16 +345,43 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
             groupRef.current.rotation.z
           ];
         }
+        
+        groupRef.current.position.set(...finalPosition);
 
         onUpdate({
           ...modelData,
-          position: [position.x, position.y, position.z],
+          position: finalPosition,
           rotation: currentRotation
         } as ModelDataType);
       } else {
         // For existing models, set the saved position and rotation
-        groupRef.current.position.set(...initialPosition);
-        groupRef.current.rotation.set(...initialRotation);
+        // But still ensure cubes are grid-snapped if they somehow got off-grid
+        if (isPrimitive && primitiveData?.primitiveType === 'cube') {
+          const snappedPosition: [number, number, number] = [
+            Math.round(initialPosition[0]),
+            Math.max(0, Math.round(initialPosition[1])),
+            Math.round(initialPosition[2])
+          ];
+          
+          // Only update if position changed due to snapping
+          if (snappedPosition[0] !== initialPosition[0] || 
+              snappedPosition[1] !== initialPosition[1] || 
+              snappedPosition[2] !== initialPosition[2]) {
+            console.log('ModelInScene: Correcting off-grid cube position', initialPosition, '->', snappedPosition);
+            groupRef.current.position.set(...snappedPosition);
+            onUpdate({
+              ...modelData,
+              position: snappedPosition,
+              rotation: [0, 0, 0] // Ensure cubes stay axis-aligned
+            } as ModelDataType);
+          } else {
+            groupRef.current.position.set(...initialPosition);
+            groupRef.current.rotation.set(0, 0, 0); // Ensure cubes stay axis-aligned
+          }
+        } else {
+          groupRef.current.position.set(...initialPosition);
+          groupRef.current.rotation.set(...initialRotation);
+        }
       }
     }
   }, [camera, initialPosition, initialRotation, modelData, onUpdate, isPrimitive, primitiveData]); // Include all dependencies

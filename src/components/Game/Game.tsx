@@ -479,20 +479,41 @@ const Player: React.FC = () => {
       
       if (isCubeSelected || type === 'cube') {
         console.log('Game: Adding cube at position', position);
-        // Add a cube primitive at the specified position
-        const { addModel } = useModelStore.getState();
-        addModel({
+        
+        // ALWAYS snap cube positions to grid for consistency
+        const snappedPosition: [number, number, number] = [
+          Math.round(position[0]),
+          Math.max(0, Math.round(position[1])), // Ensure y is not below ground
+          Math.round(position[2])
+        ];
+        
+        console.log('Game: Snapped cube position from', position, 'to', snappedPosition);
+        
+        // Check if an image is selected for texture
+        const selectedImageTexture = useGameStore.getState().selectedImageTexture;
+        console.log('Game: Selected texture for cube', selectedImageTexture);
+        
+        const cubeData = {
           url: 'primitive://cube',
           fileName: 'cube.gltf',
-          position: position,
-          rotation: [0, 0, 0], // Always keep cubes axis-aligned
+          position: snappedPosition,
+          rotation: [0, 0, 0] as [number, number, number], // Always keep cubes axis-aligned
           scale: 1,
           isInScene: true,
           isPrimitive: true,
-          primitiveType: 'cube',
-          color: '#4ade80',
-          thumbnailUrl: `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4ade80"><path d="M12 2l9 4.5v11L12 22l-9-4.5v-11L12 2z"/></svg>')}`,
-        });
+          primitiveType: 'cube' as const,
+          color: selectedImageTexture ? '#ffffff' : '#4ade80', // White when textured, green when not
+          textureUrl: selectedImageTexture?.url || undefined,
+          textureType: selectedImageTexture ? 'image' as const : undefined,
+          textureName: selectedImageTexture?.fileName || undefined,
+          thumbnailUrl: selectedImageTexture?.url || `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4ade80"><path d="M12 2l9 4.5v11L12 22l-9-4.5v-11L12 2z"/></svg>')}`,
+        };
+        
+        console.log('Game: Creating cube with data', cubeData);
+        
+        // Add a cube primitive at the specified position
+        const { addModel } = useModelStore.getState();
+        addModel(cubeData);
       } else if (selectedHotbarItem) {
         // Add the selected item from hotbar
                  if (selectedHotbarItem.type === 'model') {

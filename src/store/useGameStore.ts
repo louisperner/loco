@@ -53,6 +53,12 @@ export interface HotbarItem {
   [key: string]: unknown;
 }
 
+export interface ImageTexture {
+  id: string;
+  url: string;
+  fileName: string;
+}
+
 export interface HotbarContextType {
   selectedHotbarItem: HotbarItem | null;
   setSelectedHotbarItem: (item: HotbarItem | null) => void;
@@ -99,6 +105,7 @@ interface GameState {
 
   // Hotbar states
   selectedHotbarItem: HotbarItem | null;
+  selectedImageTexture: ImageTexture | null;
 
   // Visibility states
   visibilitySettings: VisibilitySettings;
@@ -150,6 +157,7 @@ interface GameState {
   setSelectedTheme: (theme: string | null) => void;
 
   setSelectedHotbarItem: (item: HotbarItem | null) => void;
+  setSelectedImageTexture: (texture: ImageTexture | null) => void;
 
   setVisibilitySetting: (setting: keyof VisibilitySettings, value: boolean) => void;
 
@@ -208,6 +216,7 @@ type GameStateActions = Pick<
   | 'setShowColorPicker'
   | 'setSelectedTheme'
   | 'setSelectedHotbarItem'
+  | 'setSelectedImageTexture'
   | 'setVisibilitySetting'
   | 'setCrosshairSetting'
   | 'setGravityEnabled'
@@ -261,6 +270,7 @@ export const useGameStore = create<GameState & GameStateActions>()(
 
       // Hotbar states
       selectedHotbarItem: null,
+      selectedImageTexture: null,
 
       // Visibility states
       visibilitySettings: {
@@ -385,6 +395,7 @@ export const useGameStore = create<GameState & GameStateActions>()(
       setSelectedTheme: (theme: string | null) => set({ selectedTheme: theme }),
 
       setSelectedHotbarItem: (item: HotbarItem | null) => set({ selectedHotbarItem: item }),
+      setSelectedImageTexture: (texture: ImageTexture | null) => set({ selectedImageTexture: texture }),
 
       setVisibilitySetting: (setting: keyof VisibilitySettings, value: boolean) =>
         set((state) => ({

@@ -4,15 +4,17 @@ import { useModelStore } from '@/store/useModelStore';
 import { useVideoStore } from '@/store/videoStore';
 import { useCodeStore } from '@/store/useCodeStore';
 import { saveModelThumbnail } from '@/utils/modelThumbnailGenerator';
-import React from 'react';
+import React, { useState } from 'react';
 import { useRef } from 'react';
 import { generateVideoThumbnail } from '../Models/utils';
+import TextureSelector from './TextureSelector';
 import * as THREE from 'three';
 
 const HotbarTopNav: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const modelInputRef = useRef<HTMLInputElement>(null);
+  const [showTextureSelector, setShowTextureSelector] = useState(false);
   const addImage = useImageStore((state) => state.addImage);
   const updateImage = useImageStore((state) => state.updateImage);
   const addVideo = useVideoStore((state) => state.addVideo);
@@ -20,6 +22,7 @@ const HotbarTopNav: React.FC = () => {
   const addCodeBlock = useCodeStore((state) => state.addCodeBlock);
   const updateModel = useModelStore((state) => state.updateModel);
   const setShowDrawingOverlay = useGameStore((state) => state.setShowDrawingOverlay);
+  const { selectedImageTexture } = useGameStore();
 
   let position: [number, number, number] = [0, 1, 0];
   let rotation: [number, number, number] = [0, 0, 0];
@@ -324,6 +327,14 @@ const HotbarTopNav: React.FC = () => {
 
     if (specificPosition) {
       position = specificPosition;
+      // Always snap cubes to grid, even when position is specified
+      if (type === 'cube') {
+        position = [
+          Math.round(position[0]), 
+          Math.max(0, Math.round(position[1])), // Ensure y is not below ground
+          Math.round(position[2])
+        ];
+      }
     } else if (window.mainCamera) {
       const camera = window.mainCamera;
       const direction = new THREE.Vector3(0, 0, -1);
@@ -334,7 +345,7 @@ const HotbarTopNav: React.FC = () => {
       direction.multiplyScalar(3); // Place 3 units in front of camera
       pos.add(direction);
       
-      // For cubes, snap to grid (Minecraft-like behavior) and keep axis-aligned
+      // For cubes, ALWAYS snap to grid (Minecraft-like behavior) and keep axis-aligned
       if (type === 'cube') {
         // Round to nearest integer for grid alignment
         position = [
@@ -348,7 +359,14 @@ const HotbarTopNav: React.FC = () => {
         position = [pos.x, pos.y, pos.z];
         rotation = [camera.rotation.x, camera.rotation.y, camera.rotation.z];
       }
+    } else {
+      // Default fallback position - ensure cubes are grid-aligned
+      if (type === 'cube') {
+        position = [0, 1, 0]; // Already grid-aligned
+      }
     }
+    
+    console.log('HotbarTopNav: Final cube position after grid snap', position);
 
     // Create a unique ID for the primitive
     const id = `${type}-${Date.now()}`;
@@ -367,8 +385,9 @@ const HotbarTopNav: React.FC = () => {
         </svg>
       `;
 
-    // Add primitive to the model store
-    addModel({
+    console.log('HotbarTopNav: Selected texture for primitive', selectedImageTexture);
+    
+    const primitiveData = {
       id,
       url: `primitive://${type}`,
       fileName: `${type}.${type === 'plane' ? 'glb' : 'gltf'}`,
@@ -378,9 +397,17 @@ const HotbarTopNav: React.FC = () => {
       isInScene: true,
       isPrimitive: true,
       primitiveType: type,
-      color: '#4ade80',
-      thumbnailUrl: `data:image/svg+xml;base64,${btoa(svgString)}`,
-    });
+      color: selectedImageTexture ? '#ffffff' : '#4ade80', // White when textured, green when not
+      textureUrl: selectedImageTexture?.url || undefined,
+      textureType: selectedImageTexture ? 'image' : undefined,
+      textureName: selectedImageTexture?.fileName || undefined,
+      thumbnailUrl: selectedImageTexture?.url || `data:image/svg+xml;base64,${btoa(svgString)}`,
+    };
+    
+    console.log('HotbarTopNav: Creating primitive with data', primitiveData);
+    
+    // Add primitive to the model store
+    addModel(primitiveData);
   };
 
   const handleButtonClick = (type: string) => {
@@ -408,6 +435,9 @@ const HotbarTopNav: React.FC = () => {
         break;
       case 'code':
         handleCodeAdd();
+        break;
+      case 'texture':
+        setShowTextureSelector(true);
         break;
       default:
         break;
@@ -607,6 +637,17 @@ const HotbarTopNav: React.FC = () => {
         </svg>
       ),
     },
+    {
+      id: 'texture',
+      icon: (
+        <svg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'>
+          <path d='M2 2H18V18H2V2Z' stroke='currentColor' strokeWidth='2' />
+          <path d='M6 6H8V8H6V6ZM10 6H12V8H10V6ZM14 6H16V8H14V6Z' fill='currentColor' />
+          <path d='M6 10H8V12H6V10ZM10 10H12V12H10V10ZM14 10H16V12H14V10Z' fill='currentColor' />
+          <path d='M6 14H8V16H6V14ZM10 14H12V16H10V14ZM14 14H16V16H14V14Z' fill='currentColor' />
+        </svg>
+      ),
+    },
   ];
 
   return (
@@ -641,13 +682,23 @@ const HotbarTopNav: React.FC = () => {
             <button
               key={item.id}
               onClick={() => handleButtonClick(item.id)}
-              className='w-[35px] h-[35px] flex items-center justify-center text-white/90 hover:bg-[#3C3C3C] rounded transition-colors'
+              className={`w-[35px] h-[35px] flex items-center justify-center text-white/90 hover:bg-[#3C3C3C] rounded transition-colors relative ${
+                item.id === 'texture' && selectedImageTexture ? 'bg-green-600' : ''
+              }`}
             >
               {item.icon}
+              {item.id === 'texture' && selectedImageTexture && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-gray-800"></div>
+              )}
             </button>
           ))}
         </div>
       </div>
+      
+      <TextureSelector 
+        isOpen={showTextureSelector} 
+        onClose={() => setShowTextureSelector(false)} 
+      />
     </>
   );
 };
