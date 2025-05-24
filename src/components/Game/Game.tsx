@@ -1012,16 +1012,39 @@ const Player: React.FC = () => {
                                        model.fileName?.toLowerCase().includes('cube');
                 const finalRotation = isCubePrimitive ? [0, 0, 0] as [number, number, number] : rotation;
                 
-                addModel({
+                // Preserve all custom cube properties when cloning
+                const newModelData: any = {
                   url: model.url,
                   fileName: model.fileName,
-                  position: [position.x, position.y, position.z],
+                  position: [position.x, position.y, position.z] as [number, number, number],
                   rotation: finalRotation,
                   scale: 1,
                   isInScene: true,
                   // Keep track of the original inventory item ID for reference
                   inventoryId: model.id,
-                });
+                };
+                
+                // Preserve custom cube properties
+                if (model.customCube) {
+                  newModelData.customCube = model.customCube;
+                  newModelData.cubeFaces = model.cubeFaces;
+                  newModelData.isPrimitive = model.isPrimitive;
+                  newModelData.primitiveType = model.primitiveType;
+                  newModelData.color = model.color;
+                  newModelData.textureUrl = model.textureUrl;
+                  newModelData.textureType = model.textureType;
+                  newModelData.textureName = model.textureName;
+                }
+                // Preserve other primitive properties for regular cubes
+                else if (model.isPrimitive && !model.customCube) {
+                  newModelData.isPrimitive = model.isPrimitive;
+                  newModelData.primitiveType = model.primitiveType;
+                  newModelData.color = model.color;
+                  newModelData.textureUrl = model.textureUrl;
+                  newModelData.textureType = model.textureType;
+                }
+                
+                addModel(newModelData);
 
                 // Close the inventory
                 handleInventoryToggle(false);

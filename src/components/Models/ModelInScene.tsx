@@ -115,24 +115,65 @@ const ModelFallback: React.FC<ModelFallbackProps> = ({ fileName, scale, errorDet
 
 // Add PrimitiveModel component with color and texture support
 const PrimitiveModel: React.FC<PrimitiveModelProps> = ({ type, scale, color = '#4ade80', texture, cubeFaces }) => {
-  const materials = useMemo(() => {
+  const [faceMaterials, setFaceMaterials] = useState<THREE.Material[]>([]);
+  
+  // Handle custom cube face materials with proper async texture loading
+  useEffect(() => {
     if (type === 'cube' && cubeFaces) {
-      // Create materials for each face of the cube
       const faceOrder = ['right', 'left', 'top', 'bottom', 'front', 'back'];
-      return faceOrder.map(faceId => {
+      const materials: THREE.Material[] = new Array(faceOrder.length);
+      let loadedCount = 0;
+      const totalFaces = faceOrder.length;
+      
+      faceOrder.forEach((faceId, index) => {
         const face = cubeFaces[faceId];
+        
         if (face?.texture) {
           const img = new Image();
-          img.src = face.texture;
-          const textureMap = new THREE.Texture(img);
-          textureMap.needsUpdate = true;
+          img.crossOrigin = 'anonymous'; // Handle CORS if needed
           img.onload = () => {
+            const textureMap = new THREE.Texture(img);
             textureMap.needsUpdate = true;
+            textureMap.wrapS = THREE.RepeatWrapping;
+            textureMap.wrapT = THREE.RepeatWrapping;
+            materials[index] = new THREE.MeshStandardMaterial({ map: textureMap });
+            loadedCount++;
+            
+            // Update materials when all faces are processed
+            if (loadedCount === totalFaces) {
+              setFaceMaterials([...materials]);
+            }
           };
-          return new THREE.MeshStandardMaterial({ map: textureMap });
+          img.onerror = (error) => {
+            console.error(`PrimitiveModel: Failed to load texture for face ${faceId}:`, error);
+            // Fallback to color if texture fails to load
+            materials[index] = new THREE.MeshStandardMaterial({ color: face?.color || color });
+            loadedCount++;
+            
+            if (loadedCount === totalFaces) {
+              setFaceMaterials([...materials]);
+            }
+          };
+          img.src = face.texture;
+        } else {
+          materials[index] = new THREE.MeshStandardMaterial({ color: face?.color || color });
+          loadedCount++;
+          
+          if (loadedCount === totalFaces) {
+            setFaceMaterials([...materials]);
+          }
         }
-        return new THREE.MeshStandardMaterial({ color: face?.color || color });
       });
+    } else {
+      // Clear face materials if not a custom cube
+      setFaceMaterials([]);
+    }
+  }, [type, cubeFaces, color]);
+  
+  const materials = useMemo(() => {
+    // Use face materials for custom cubes if available
+    if (type === 'cube' && cubeFaces && faceMaterials.length > 0) {
+      return faceMaterials;
     }
     
     // Single material for non-cube primitives or cubes without custom faces
@@ -146,7 +187,7 @@ const PrimitiveModel: React.FC<PrimitiveModelProps> = ({ type, scale, color = '#
       color,
       side: type === 'plane' ? THREE.DoubleSide : THREE.FrontSide
     });
-  }, [color, texture, type, cubeFaces]);
+  }, [color, texture, type, cubeFaces, faceMaterials]);
 
   switch (type) {
     case 'cube':
@@ -236,6 +277,8 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
 }) => {
   const isPrimitive = isPrimitiveModel(modelData);
   const primitiveData = isPrimitive ? modelData : null;
+  
+
 
   // Debug log to check if images and videos are loaded in store
   const images = useStore((state) => state.images);
@@ -288,20 +331,11 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
 
   // Load texture if textureUrl exists
   useEffect(() => {
-    console.log('ModelInScene: Texture loading effect triggered', {
-      isPrimitive,
-      textureUrl: primitiveData?.textureUrl,
-      textureType: primitiveData?.textureType,
-      primitiveData
-    });
-    
     if (isPrimitive && primitiveData?.textureUrl) {
-      console.log('ModelInScene: Loading texture for primitive', primitiveData.textureType);
       if (primitiveData.textureType === 'image') {
         const img = new Image();
         img.src = primitiveData.textureUrl;
         img.onload = () => {
-          console.log('ModelInScene: Image texture loaded successfully');
           const newTexture = new THREE.Texture(img);
           newTexture.needsUpdate = true;
           setTexture(newTexture);
@@ -320,7 +354,6 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         setTexture(videoTexture);
       }
     } else {
-      console.log('ModelInScene: No texture to load, clearing texture');
       setTexture(undefined);
     }
   }, [isPrimitive, primitiveData?.textureUrl, primitiveData?.textureType]);
@@ -352,8 +385,6 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
           // Keep cubes axis-aligned
           groupRef.current.rotation.set(0, 0, 0);
           currentRotation = [0, 0, 0];
-          
-          console.log('ModelInScene: Snapping cube to grid position', finalPosition);
         } else {
           // For other models, use exact camera-based position
           finalPosition = [position.x, position.y, position.z];
