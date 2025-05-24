@@ -489,25 +489,51 @@ const Player: React.FC = () => {
         
         console.log('Game: Snapped cube position from', position, 'to', snappedPosition);
         
-        // Check if an image is selected for texture
-        const selectedImageTexture = useGameStore.getState().selectedImageTexture;
-        console.log('Game: Selected texture for cube', selectedImageTexture);
+        // Check if the selected hotbar item is a custom cube
+        const isCustomCube = selectedHotbarItem && (selectedHotbarItem as any).customCube;
         
-        const cubeData = {
-          url: 'primitive://cube',
-          fileName: 'cube.gltf',
-          position: snappedPosition,
-          rotation: [0, 0, 0] as [number, number, number], // Always keep cubes axis-aligned
-          scale: 1,
-          isInScene: true,
-          isPrimitive: true,
-          primitiveType: 'cube' as const,
-          color: selectedImageTexture ? '#ffffff' : '#4ade80', // White when textured, green when not
-          textureUrl: selectedImageTexture?.url || undefined,
-          textureType: selectedImageTexture ? 'image' as const : undefined,
-          textureName: selectedImageTexture?.fileName || undefined,
-          thumbnailUrl: selectedImageTexture?.url || `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4ade80"><path d="M12 2l9 4.5v11L12 22l-9-4.5v-11L12 2z"/></svg>')}`,
-        };
+        let cubeData;
+        
+        if (isCustomCube) {
+          // Use the custom cube data from the hotbar item
+          console.log('Game: Creating custom cube from hotbar item', selectedHotbarItem);
+          cubeData = {
+            url: 'primitive://cube',
+            fileName: (selectedHotbarItem.fileName as string) || 'Custom Cube',
+            position: snappedPosition,
+            rotation: [0, 0, 0] as [number, number, number], // Always keep cubes axis-aligned
+            scale: 1,
+            isInScene: true,
+            isPrimitive: true,
+            primitiveType: 'cube' as const,
+            customCube: true,
+            cubeFaces: (selectedHotbarItem as any).cubeFaces,
+            color: (selectedHotbarItem as any).color || '#4ade80',
+            textureUrl: (selectedHotbarItem as any).textureUrl,
+            textureType: (selectedHotbarItem as any).textureType,
+            thumbnailUrl: selectedHotbarItem.thumbnailUrl as string,
+          };
+        } else {
+          // Create a basic cube (fallback for when no custom cube is selected)
+          const selectedImageTexture = useGameStore.getState().selectedImageTexture;
+          console.log('Game: Selected texture for basic cube', selectedImageTexture);
+          
+          cubeData = {
+            url: 'primitive://cube',
+            fileName: 'cube.gltf',
+            position: snappedPosition,
+            rotation: [0, 0, 0] as [number, number, number], // Always keep cubes axis-aligned
+            scale: 1,
+            isInScene: true,
+            isPrimitive: true,
+            primitiveType: 'cube' as const,
+            color: selectedImageTexture ? '#ffffff' : '#4ade80', // White when textured, green when not
+            textureUrl: selectedImageTexture?.url || undefined,
+            textureType: selectedImageTexture ? 'image' as const : undefined,
+            textureName: selectedImageTexture?.fileName || undefined,
+            thumbnailUrl: selectedImageTexture?.url || `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4ade80"><path d="M12 2l9 4.5v11L12 22l-9-4.5v-11L12 2z"/></svg>')}`,
+          };
+        }
         
         console.log('Game: Creating cube with data', cubeData);
         
