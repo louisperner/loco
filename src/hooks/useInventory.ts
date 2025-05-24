@@ -446,16 +446,14 @@ export const useInventory = (
   // Update showFullInventory when isOpen prop changes
   useEffect(() => {
     // Only update showFullInventory if it's different from the isOpen prop
-    if ((isOpen || false) !== showFullInventory) {
-      setShowFullInventory(isOpen || false);
-    }
-  }, [isOpen, showFullInventory]);
+    setShowFullInventory(isOpen || false);
+  }, [isOpen]);
 
   // Load items when the component mounts or stores change
   useEffect(() => {
     loadItemsFromDisk();
-    // We depend on the function itself, and the underlying data it uses
-  }, [loadItemsFromDisk, storeImages, storeModels, storeVideos]);
+    // We depend on the underlying data, not the function itself to avoid infinite loops
+  }, [storeImages, storeModels, storeVideos]);
 
   // Save hotbar to localStorage whenever it changes
   useEffect(() => {
@@ -574,17 +572,11 @@ export const useInventory = (
 
         // Set selected item based on hotbar contents
         if (hotbarItems[slotIndex]) {
-          // eslint-disable-next-line no-console
-          // console.log(`Found item in slot ${slotIndex}:`, hotbarItems[slotIndex]?.fileName);
           const item = hotbarItems[slotIndex]!;
+
           setSelectedItem(item);
           
           // Update the global store with the selected hotbar item
-          console.log('Inventory: Selecting hotbar item:', item);
-          console.log('Inventory: Item ID:', item.id);
-          console.log('Inventory: Item fileName:', item.fileName);
-          console.log('Inventory: Item customCube:', (item as any).customCube);
-          console.log('Inventory: Item cubeFaces:', (item as any).cubeFaces);
           useGameStore.getState().setSelectedHotbarItem({
             ...item,
             name: item.fileName,
@@ -738,12 +730,10 @@ export const useInventory = (
 
   const handleHotbarSlotClick = (index: number, _e: MouseEvent): void => {
     const item = hotbarItems[index];
-    console.log('Inventory: Hotbar slot clicked:', index, 'Item:', item);
     setSelectedHotbarSlot(index);
 
     // Update the global store with the selected hotbar item
     if (item) {
-      console.log('Inventory: Setting selected hotbar item:', item.id, item.fileName);
       useGameStore.getState().setSelectedHotbarItem({
         ...item,
         name: item.fileName,
@@ -958,10 +948,41 @@ export const useInventory = (
         (img) => img.inventoryId === itemId || img.src === itemToDelete.url || img.src === itemToDelete.filePath,
       );
 
-      const canvasModels = modelStore.models.filter(
-        (model) =>
-          model.inventoryId === itemId || model.url === itemToDelete.url || model.url === itemToDelete.filePath,
-      );
+      // For custom cubes, use more specific matching to avoid removing all cubes
+      const isCustomCube = (itemToDelete as any).customCube;
+      console.log(`Removing item: ${itemToDelete.fileName}, isCustomCube: ${isCustomCube}, itemId: ${itemId}`);
+      
+      const canvasModels = modelStore.models.filter((model) => {
+        // First check for direct inventory ID match (for clones placed from inventory)
+        if (model.inventoryId === itemId) {
+          console.log(`Found model by inventoryId: ${model.id}`);
+          return true;
+        }
+        
+        // Check if this model IS the inventory item (for original models created by cube crafter)
+        if (model.id === itemId) {
+          console.log(`Found model by direct ID match: ${model.id}`);
+          return true;
+        }
+        
+        // For custom cubes, use fileName matching as additional safety
+        if (isCustomCube && (model as any).customCube) {
+          const matches = model.fileName === itemToDelete.fileName;
+          if (matches) {
+            console.log(`Found custom cube by fileName: ${model.id} (${model.fileName})`);
+          }
+          return matches;
+        }
+        
+        // For regular models, use URL/path matching
+        if (!isCustomCube && !(model as any).customCube) {
+          return model.url === itemToDelete.url || model.url === itemToDelete.filePath;
+        }
+        
+        return false;
+      });
+      
+      console.log(`Found ${canvasModels.length} models to remove for item ${itemToDelete.fileName}`);
 
       const canvasVideos = videoStore.videos.filter(
         (video) => video.id === itemId || video.src === itemToDelete.url || video.src === itemToDelete.filePath,
@@ -1017,7 +1038,14 @@ export const useInventory = (
       if (itemToDelete.type === 'image') {
         useImageStore.getState().removeImage(itemId);
       } else if (itemToDelete.type === 'model') {
-        useModelStore.getState().removeModel(itemId);
+        // The canvasModels filter above should have found all relevant models
+        // We don't need to remove from store again since they were already removed in the loop above
+        // But we should remove the original model if it exists and wasn't already removed
+        const modelStore = useModelStore.getState();
+        const originalModel = modelStore.models.find(model => model.id === itemId);
+        if (originalModel) {
+          modelStore.removeModel(itemId);
+        }
       } else if (itemToDelete.type === 'video') {
         useVideoStore.getState().removeVideo(itemId);
       }

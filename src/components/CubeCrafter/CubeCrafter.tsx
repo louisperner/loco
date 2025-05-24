@@ -240,10 +240,15 @@ const CubeCrafter: React.FC<CubeCrafterProps> = ({ isOpen, onClose }) => {
   };
 
   const finalizeCubeSave = (thumbnailUrl: string) => {
+    // Generate a more unique ID for the cube
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const uniqueFileName = `${cubeName.replace(/\s+/g, '-').toLowerCase()}-${timestamp}-${randomSuffix}.cube`;
+    
     // Create cube data that matches the Model interface
     const cubeData = {
       url: 'primitive://cube',
-      fileName: `${cubeName.replace(/\s+/g, '-').toLowerCase()}.cube`,
+      fileName: uniqueFileName,
       position: [0, 0, 0] as [number, number, number],
       rotation: [0, 0, 0] as [number, number, number],
       scale: 1,
@@ -256,7 +261,7 @@ const CubeCrafter: React.FC<CubeCrafterProps> = ({ isOpen, onClose }) => {
       textureName: cubeName,
       thumbnailUrl,
       customCube: true,
-      cubeFaces: cubeFaces, // Store all face data for future editing
+      cubeFaces: { ...cubeFaces }, // Deep copy to avoid reference issues
       isInScene: false // This will be in inventory, not scene
     };
 

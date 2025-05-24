@@ -58,6 +58,19 @@ const FPSControls: React.FC<FPSControlsProps> = ({
   // Get selected hotbar item to check if cube is selected
   const selectedHotbarItem = useGameStore((state) => state.selectedHotbarItem);
   const raycaster = useRef<THREE.Raycaster>(new THREE.Raycaster());
+  
+  // Configure raycaster for more precise object detection
+  useEffect(() => {
+    if (raycaster.current) {
+      // Set more precise parameters for object removal
+      raycaster.current.near = 0.1;  // Start detection very close to camera
+      raycaster.current.far = 15;    // Limit detection range to 15 units
+      // Set a smaller threshold for more precise intersection detection
+      raycaster.current.params.Points = { threshold: 0.1 };
+      raycaster.current.params.Line = { threshold: 0.1 };
+    }
+  }, []);
+
   // const rayHelper = useRef<RayHelper | null>(null);
   const moveForward = useRef<boolean>(false);
   const moveBackward = useRef<boolean>(false);
@@ -108,10 +121,11 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     const direction = new THREE.Vector3(0, 0, -1);
     direction.applyQuaternion(camera.quaternion);
 
-    // Update raycaster position and direction
+    // Update raycaster position and direction with precise settings
     raycaster.current.ray.origin.copy(camera.position);
     raycaster.current.ray.direction.copy(direction);
-    raycaster.current.far = 10; // Limit range for cube detection
+    raycaster.current.near = 0.1;
+    raycaster.current.far = 12; // Match the removal raycaster range for consistency
 
     // Only show highlighting if a cube primitive is selected in hotbar
     const isCubeSelected = selectedHotbarItem && 
@@ -120,83 +134,108 @@ const FPSControls: React.FC<FPSControlsProps> = ({
 
     // Check for intersections with cube objects only if cube is selected
     if (isCubeSelected) {
-      const intersects = raycaster.current.intersectObjects(scene.children, true);
+      // Get only cube objects for more precise detection
+      const cubeObjects: THREE.Object3D[] = [];
+      scene.traverse((object) => {
+        if ((object as THREE.Mesh).isMesh && 
+            object.visible &&
+            object.name !== 'raycasterHelper' && 
+            object.name !== 'highlight' &&
+            !object.name.includes('helper')) {
+          // Check if this could be a cube
+          const mesh = object as THREE.Mesh;
+          const isBoxGeometry = mesh.geometry && mesh.geometry.type === 'BoxGeometry';
+          const hasCubeUserData = object.userData?.primitiveType === 'cube' ||
+                                 (object.parent && object.parent.userData?.primitiveType === 'cube');
+          const hasCubeName = object.name.includes('cube') || 
+                             (object.parent && object.parent.name.includes('cube'));
+          
+          if (isBoxGeometry || hasCubeUserData || hasCubeName) {
+            cubeObjects.push(object);
+          }
+        }
+      });
+      
+      const intersects = raycaster.current.intersectObjects(cubeObjects, false);
       
       let foundCube = false;
       for (const intersect of intersects) {
-      const object = intersect.object;
-      
-      // Check if this is a cube primitive - support multiple ways cubes can be created
-      let cubeObject = null;
-      let isCube = false;
-      
-      // Method 1: Check if the object itself is a cube (direct cube mesh)
-      if ((object as THREE.Mesh).geometry && (object as THREE.Mesh).geometry.type === 'BoxGeometry') {
-        cubeObject = object;
-        isCube = true;
-      }
-      // Method 2: Check if parent has cube userData (hotbar/nav created cubes)
-      else if (object.parent && 
-               object.parent.userData?.type === 'model' && 
-               object.parent.userData?.primitiveType === 'cube') {
-        cubeObject = object.parent;
-        isCube = true;
-      }
-      // Method 3: Check if object has cube userData directly
-      else if (object.userData?.type === 'model' && 
-               object.userData?.primitiveType === 'cube') {
-        cubeObject = object;
-        isCube = true;
-      }
-      // Method 4: Check if object name indicates it's a cube
-      else if (object.name && object.name.includes('cube')) {
-        cubeObject = object;
-        isCube = true;
-      }
-      // Method 5: Check if parent name indicates it's a cube
-      else if (object.parent && object.parent.name && object.parent.name.includes('cube')) {
-        cubeObject = object.parent;
-        isCube = true;
-      }
-      
-      if (isCube && cubeObject) {
-        const worldPosition = intersect.point;
+        // Additional distance check for precision
+        if (intersect.distance > 12) continue;
         
-        // Calculate which face was hit based on intersection point relative to cube center
-        const cubePosition = new THREE.Vector3();
-        cubeObject.getWorldPosition(cubePosition);
+        const object = intersect.object;
         
-        // Get the relative position of the hit point
-        const relativePoint = worldPosition.clone().sub(cubePosition);
+        // Check if this is a cube primitive - support multiple ways cubes can be created
+        let cubeObject = null;
+        let isCube = false;
         
-        // Get cube's bounding box to determine size
-        const box = new THREE.Box3().setFromObject(cubeObject);
-        const size = new THREE.Vector3();
-        box.getSize(size);
-        
-        // Determine which face based on which axis has the largest absolute value
-        let face = 0;
-        const absX = Math.abs(relativePoint.x);
-        const absY = Math.abs(relativePoint.y);
-        const absZ = Math.abs(relativePoint.z);
-        
-        if (absX > absY && absX > absZ) {
-          // X-axis dominant
-          face = relativePoint.x > 0 ? 0 : 1; // Right or Left
-        } else if (absY > absZ) {
-          // Y-axis dominant
-          face = relativePoint.y > 0 ? 2 : 3; // Top or Bottom
-        } else {
-          // Z-axis dominant
-          face = relativePoint.z > 0 ? 4 : 5; // Front or Back
+        // Method 1: Check if the object itself is a cube (direct cube mesh)
+        if ((object as THREE.Mesh).geometry && (object as THREE.Mesh).geometry.type === 'BoxGeometry') {
+          cubeObject = object;
+          isCube = true;
+        }
+        // Method 2: Check if parent has cube userData (hotbar/nav created cubes)
+        else if (object.parent && 
+                 object.parent.userData?.type === 'model' && 
+                 object.parent.userData?.primitiveType === 'cube') {
+          cubeObject = object.parent;
+          isCube = true;
+        }
+        // Method 3: Check if object has cube userData directly
+        else if (object.userData?.type === 'model' && 
+                 object.userData?.primitiveType === 'cube') {
+          cubeObject = object;
+          isCube = true;
+        }
+        // Method 4: Check if object name indicates it's a cube
+        else if (object.name && object.name.includes('cube')) {
+          cubeObject = object;
+          isCube = true;
+        }
+        // Method 5: Check if parent name indicates it's a cube
+        else if (object.parent && object.parent.name && object.parent.name.includes('cube')) {
+          cubeObject = object.parent;
+          isCube = true;
         }
         
-        positionHighlightOnFace(cubeObject, face, worldPosition);
-        foundCube = true;
-        break;
+        if (isCube && cubeObject) {
+          const worldPosition = intersect.point;
+          
+          // Calculate which face was hit based on intersection point relative to cube center
+          const cubePosition = new THREE.Vector3();
+          cubeObject.getWorldPosition(cubePosition);
+          
+          // Get the relative position of the hit point
+          const relativePoint = worldPosition.clone().sub(cubePosition);
+          
+          // Get cube's bounding box to determine size
+          const box = new THREE.Box3().setFromObject(cubeObject);
+          const size = new THREE.Vector3();
+          box.getSize(size);
+          
+          // Determine which face based on which axis has the largest absolute value
+          let face = 0;
+          const absX = Math.abs(relativePoint.x);
+          const absY = Math.abs(relativePoint.y);
+          const absZ = Math.abs(relativePoint.z);
+          
+          if (absX > absY && absX > absZ) {
+            // X-axis dominant
+            face = relativePoint.x > 0 ? 0 : 1; // Right or Left
+          } else if (absY > absZ) {
+            // Y-axis dominant
+            face = relativePoint.y > 0 ? 2 : 3; // Top or Bottom
+          } else {
+            // Z-axis dominant
+            face = relativePoint.z > 0 ? 4 : 5; // Front or Back
+          }
+          
+          positionHighlightOnFace(cubeObject, face, worldPosition);
+          foundCube = true;
+          break;
+        }
       }
-    }
-    
+      
       // Hide highlight if no cube is being looked at
       if (!foundCube && highlightMesh.current) {
         highlightMesh.current.visible = false;
@@ -634,38 +673,82 @@ const FPSControls: React.FC<FPSControlsProps> = ({
           // Right click - DELETE objects (always allow removal regardless of selection)
           e.preventDefault();
 
-          if (intersects.length > 0) {
-            // Get the first intersected object
-            const intersectedObject = intersects[0].object;
+          // Create a more precise raycaster specifically for object removal
+          const removalRaycaster = new THREE.Raycaster();
+          
+          // Configure for high precision
+          removalRaycaster.near = 0.1;
+          removalRaycaster.far = 12; // Shorter range for more precise targeting
+          
+          // Create direction vector from camera center (more precise than using existing raycaster)
+          const direction = new THREE.Vector3(0, 0, -1);
+          direction.applyQuaternion(camera.quaternion);
+          
+          // Set raycaster from camera position
+          removalRaycaster.set(camera.position, direction);
 
-            // Find the parent with userData by traversing up
-            let parent: THREE.Object3D | null = intersectedObject;
-            let foundObject: THREE.Object3D | null = null;
-
-            // Traverse up the parent chain
-            while (parent) {
-              if (
-                parent.userData &&
-                (parent.userData.type === 'image' ||
-                  parent.userData.type === 'model' ||
-                  parent.userData.type === 'video') &&
-                parent.userData.id
-              ) {
-                foundObject = parent;
-                break;
-              }
-              parent = parent.parent;
+          // Get only objects that can be removed (filter out helpers, lights, etc.)
+          const removableObjects: THREE.Object3D[] = [];
+          scene.traverse((object) => {
+            if ((object as THREE.Mesh).isMesh && 
+                object.name !== 'raycasterHelper' && 
+                object.name !== 'highlight' &&
+                !object.name.includes('helper') &&
+                object.visible &&
+                // Only include objects with proper userData for removal
+                (object.userData?.type === 'image' || 
+                 object.userData?.type === 'model' || 
+                 object.userData?.type === 'video' ||
+                 // Or objects whose parent has proper userData
+                 (object.parent && (
+                   object.parent.userData?.type === 'image' ||
+                   object.parent.userData?.type === 'model' ||
+                   object.parent.userData?.type === 'video'
+                 )))) {
+              removableObjects.push(object);
             }
+          });
 
-            if (foundObject) {
-              // Dispatch remove event with object data
-              const removeEvent = new CustomEvent('removeObject', {
-                detail: {
-                  type: foundObject.userData.type,
-                  id: foundObject.userData.id
-                },
-              });
-              window.dispatchEvent(removeEvent);
+          // Use precise intersection with filtered objects
+          const intersects = removalRaycaster.intersectObjects(removableObjects, false);
+          
+          // Only proceed if we have a very close and precise hit
+          if (intersects.length > 0) {
+            const firstIntersect = intersects[0];
+            
+            // Additional precision check: ensure the hit is reasonably close and centered
+            if (firstIntersect.distance < 10) { // Maximum 10 units away
+              const intersectedObject = firstIntersect.object;
+
+              // Find the parent with userData by traversing up
+              let parent: THREE.Object3D | null = intersectedObject;
+              let foundObject: THREE.Object3D | null = null;
+
+              // Traverse up the parent chain
+              while (parent) {
+                if (
+                  parent.userData &&
+                  (parent.userData.type === 'image' ||
+                    parent.userData.type === 'model' ||
+                    parent.userData.type === 'video') &&
+                  parent.userData.id
+                ) {
+                  foundObject = parent;
+                  break;
+                }
+                parent = parent.parent;
+              }
+
+              if (foundObject) {
+                // Dispatch remove event with object data
+                const removeEvent = new CustomEvent('removeObject', {
+                  detail: {
+                    type: foundObject.userData.type,
+                    id: foundObject.userData.id
+                  },
+                });
+                window.dispatchEvent(removeEvent);
+              }
             }
           }
         } else if (e.button === 0) {
@@ -677,148 +760,222 @@ const FPSControls: React.FC<FPSControlsProps> = ({
                                 ((selectedHotbarItem.url as string)?.includes('primitive://cube') || 
                                  (selectedHotbarItem.fileName as string)?.toLowerCase().includes('cube'));
 
-          if (isCubeSelected && intersects.length > 0) {
-            // Use the SAME logic as the highlighting system to ensure consistency
-            let foundCube = false;
-            let targetCube = null;
-            let face = 0;
-            let worldPosition = null;
+          if (isCubeSelected) {
+            // Create a precise raycaster for cube placement (same as removal raycaster)
+            const placementRaycaster = new THREE.Raycaster();
+            placementRaycaster.near = 0.1;
+            placementRaycaster.far = 12;
             
-            for (const intersect of intersects) {
-              const object = intersect.object;
+            const direction = new THREE.Vector3(0, 0, -1);
+            direction.applyQuaternion(camera.quaternion);
+            placementRaycaster.set(camera.position, direction);
+
+            // Get only cube objects for precise detection
+            const cubeObjects: THREE.Object3D[] = [];
+            scene.traverse((object) => {
+              if ((object as THREE.Mesh).isMesh && 
+                  object.visible &&
+                  object.name !== 'raycasterHelper' && 
+                  object.name !== 'highlight' &&
+                  !object.name.includes('helper')) {
+                const mesh = object as THREE.Mesh;
+                const isBoxGeometry = mesh.geometry && mesh.geometry.type === 'BoxGeometry';
+                const hasCubeUserData = object.userData?.primitiveType === 'cube' ||
+                                       (object.parent && object.parent.userData?.primitiveType === 'cube');
+                const hasCubeName = object.name.includes('cube') || 
+                                   (object.parent && object.parent.name.includes('cube'));
+                
+                if (isBoxGeometry || hasCubeUserData || hasCubeName) {
+                  cubeObjects.push(object);
+                }
+              }
+            });
+
+            const intersects = placementRaycaster.intersectObjects(cubeObjects, false);
+            
+            if (intersects.length > 0 && intersects[0].distance < 12) {
+              // Use the SAME logic as the highlighting system to ensure consistency
+              let foundCube = false;
+              let targetCube = null;
+              let face = 0;
+              let worldPosition = null;
               
-              // Check if this is a cube primitive - support multiple ways cubes can be created
-              let cubeObject = null;
-              let isCube = false;
-              
-              // Method 1: Check if the object itself is a cube (direct cube mesh)
-              if ((object as THREE.Mesh).geometry && (object as THREE.Mesh).geometry.type === 'BoxGeometry') {
-                cubeObject = object;
-                isCube = true;
-              }
-              // Method 2: Check if parent has cube userData (hotbar/nav created cubes)
-              else if (object.parent && 
-                       object.parent.userData?.type === 'model' && 
-                       object.parent.userData?.primitiveType === 'cube') {
-                cubeObject = object.parent;
-                isCube = true;
-              }
-              // Method 3: Check if object has cube userData directly
-              else if (object.userData?.type === 'model' && 
-                       object.userData?.primitiveType === 'cube') {
-                cubeObject = object;
-                isCube = true;
-              }
-              // Method 4: Check if object name indicates it's a cube
-              else if (object.name && object.name.includes('cube')) {
-                cubeObject = object;
-                isCube = true;
-              }
-              // Method 5: Check if parent name indicates it's a cube
-              else if (object.parent && object.parent.name && object.parent.name.includes('cube')) {
-                cubeObject = object.parent;
-                isCube = true;
-              }
-              
-              if (isCube && cubeObject) {
-                targetCube = cubeObject;
-                worldPosition = intersect.point;
+              for (const intersect of intersects) {
+                if (intersect.distance > 12) continue; // Distance check
                 
-                // Calculate which face was hit based on intersection point relative to cube center
-                const cubePosition = new THREE.Vector3();
-                cubeObject.getWorldPosition(cubePosition);
+                const object = intersect.object;
                 
-                // Get the relative position of the hit point
-                const relativePoint = worldPosition.clone().sub(cubePosition);
+                // Check if this is a cube primitive - support multiple ways cubes can be created
+                let cubeObject = null;
+                let isCube = false;
                 
-                // Get cube's bounding box to determine size
-                const box = new THREE.Box3().setFromObject(cubeObject);
-                const size = new THREE.Vector3();
-                box.getSize(size);
-                
-                // Determine which face based on which axis has the largest absolute value
-                const absX = Math.abs(relativePoint.x);
-                const absY = Math.abs(relativePoint.y);
-                const absZ = Math.abs(relativePoint.z);
-                
-                if (absX > absY && absX > absZ) {
-                  // X-axis dominant
-                  face = relativePoint.x > 0 ? 0 : 1; // Right or Left
-                } else if (absY > absZ) {
-                  // Y-axis dominant
-                  face = relativePoint.y > 0 ? 2 : 3; // Top or Bottom
-                } else {
-                  // Z-axis dominant
-                  face = relativePoint.z > 0 ? 4 : 5; // Front or Back
+                // Method 1: Check if the object itself is a cube (direct cube mesh)
+                if ((object as THREE.Mesh).geometry && (object as THREE.Mesh).geometry.type === 'BoxGeometry') {
+                  cubeObject = object;
+                  isCube = true;
+                }
+                // Method 2: Check if parent has cube userData (hotbar/nav created cubes)
+                else if (object.parent && 
+                         object.parent.userData?.type === 'model' && 
+                         object.parent.userData?.primitiveType === 'cube') {
+                  cubeObject = object.parent;
+                  isCube = true;
+                }
+                // Method 3: Check if object has cube userData directly
+                else if (object.userData?.type === 'model' && 
+                         object.userData?.primitiveType === 'cube') {
+                  cubeObject = object;
+                  isCube = true;
+                }
+                // Method 4: Check if object name indicates it's a cube
+                else if (object.name && object.name.includes('cube')) {
+                  cubeObject = object;
+                  isCube = true;
+                }
+                // Method 5: Check if parent name indicates it's a cube
+                else if (object.parent && object.parent.name && object.parent.name.includes('cube')) {
+                  cubeObject = object.parent;
+                  isCube = true;
                 }
                 
-                foundCube = true;
-                break;
+                if (isCube && cubeObject) {
+                  targetCube = cubeObject;
+                  worldPosition = intersect.point;
+                  
+                  // Calculate which face was hit based on intersection point relative to cube center
+                  const cubePosition = new THREE.Vector3();
+                  cubeObject.getWorldPosition(cubePosition);
+                  
+                  // Get the relative position of the hit point
+                  const relativePoint = worldPosition.clone().sub(cubePosition);
+                  
+                  // Get cube's bounding box to determine size
+                  const box = new THREE.Box3().setFromObject(cubeObject);
+                  const size = new THREE.Vector3();
+                  box.getSize(size);
+                  
+                  // Determine which face based on which axis has the largest absolute value
+                  const absX = Math.abs(relativePoint.x);
+                  const absY = Math.abs(relativePoint.y);
+                  const absZ = Math.abs(relativePoint.z);
+                  
+                  if (absX > absY && absX > absZ) {
+                    // X-axis dominant
+                    face = relativePoint.x > 0 ? 0 : 1; // Right or Left
+                  } else if (absY > absZ) {
+                    // Y-axis dominant
+                    face = relativePoint.y > 0 ? 2 : 3; // Top or Bottom
+                  } else {
+                    // Z-axis dominant
+                    face = relativePoint.z > 0 ? 4 : 5; // Front or Back
+                  }
+                  
+                  foundCube = true;
+                  break;
+                }
               }
-            }
-            
-            if (foundCube && targetCube && worldPosition) {
-              // Calculate face normal and position based on face index (same as highlighting)
-              const faceNormals = [
-                new THREE.Vector3(1, 0, 0),   // Right face (+X)
-                new THREE.Vector3(-1, 0, 0),  // Left face (-X)
-                new THREE.Vector3(0, 1, 0),   // Top face (+Y)
-                new THREE.Vector3(0, -1, 0),  // Bottom face (-Y)
-                new THREE.Vector3(0, 0, 1),   // Front face (+Z)
-                new THREE.Vector3(0, 0, -1),  // Back face (-Z)
-              ];
+              
+              if (foundCube && targetCube && worldPosition) {
+                // Calculate face normal and position based on face index (same as highlighting)
+                const faceNormals = [
+                  new THREE.Vector3(1, 0, 0),   // Right face (+X)
+                  new THREE.Vector3(-1, 0, 0),  // Left face (-X)
+                  new THREE.Vector3(0, 1, 0),   // Top face (+Y)
+                  new THREE.Vector3(0, -1, 0),  // Bottom face (-Y)
+                  new THREE.Vector3(0, 0, 1),   // Front face (+Z)
+                  new THREE.Vector3(0, 0, -1),  // Back face (-Z)
+                ];
 
-              if (face >= 0 && face < faceNormals.length) {
-                const normal = faceNormals[face].clone();
-                
-                // Get cube position
-                const cubePosition = new THREE.Vector3();
-                targetCube.getWorldPosition(cubePosition);
-                
-                // Calculate the new cube position (1 unit away from the face)
-                const newPosition = cubePosition.clone().add(normal);
-                
-                // Round to grid for Minecraft-like snapping
-                newPosition.x = Math.round(newPosition.x);
-                newPosition.y = Math.round(newPosition.y);
-                newPosition.z = Math.round(newPosition.z);
-                
-                // Dispatch cube placement event
-                console.log('FPSControls: Dispatching addObject event for cube snap', {
-                  position: [newPosition.x, newPosition.y, newPosition.z],
-                  cubePosition: cubePosition.toArray(),
-                  face: face,
-                  normal: normal.toArray()
-                });
+                if (face >= 0 && face < faceNormals.length) {
+                  const normal = faceNormals[face].clone();
+                  
+                  // Get cube position
+                  const cubePosition = new THREE.Vector3();
+                  targetCube.getWorldPosition(cubePosition);
+                  
+                  // Calculate the new cube position (1 unit away from the face)
+                  const newPosition = cubePosition.clone().add(normal);
+                  
+                  // Round to grid for Minecraft-like snapping
+                  newPosition.x = Math.round(newPosition.x);
+                  newPosition.y = Math.round(newPosition.y);
+                  newPosition.z = Math.round(newPosition.z);
+                  
+                  // Dispatch cube placement event
+                  console.log('FPSControls: Dispatching addObject event for cube snap', {
+                    position: [newPosition.x, newPosition.y, newPosition.z],
+                    cubePosition: cubePosition.toArray(),
+                    face: face,
+                    normal: normal.toArray()
+                  });
+                  const addEvent = new CustomEvent('addObject', {
+                    detail: {
+                      position: [newPosition.x, newPosition.y, newPosition.z],
+                      type: 'cube',
+                      snapToFace: true,
+                    },
+                  });
+                  window.dispatchEvent(addEvent);
+                }
+              }
+            } else {
+              // Regular placement on any surface when no cube is found
+              // Use the same precise raycaster for general surface detection
+              const generalObjects: THREE.Object3D[] = [];
+              scene.traverse((object) => {
+                if ((object as THREE.Mesh).isMesh && 
+                    object.visible &&
+                    object.name !== 'raycasterHelper' && 
+                    object.name !== 'highlight' &&
+                    !object.name.includes('helper')) {
+                  generalObjects.push(object);
+                }
+              });
+              
+              const generalIntersects = placementRaycaster.intersectObjects(generalObjects, false);
+              if (generalIntersects.length > 0 && generalIntersects[0].distance < 12) {
+                const hitPoint = generalIntersects[0].point;
                 const addEvent = new CustomEvent('addObject', {
                   detail: {
-                    position: [newPosition.x, newPosition.y, newPosition.z],
+                    position: [Math.round(hitPoint.x), Math.round(hitPoint.y), Math.round(hitPoint.z)],
                     type: 'cube',
-                    snapToFace: true,
                   },
                 });
                 window.dispatchEvent(addEvent);
-                             }
-             } else {
-               // Regular placement on any surface when no cube is found
-               const hitPoint = intersects[0].point;
+              }
+            }
+          } else if (intersects.length > 0) {
+            // Regular object placement for non-cube items
+            // Create precise raycaster for general object placement
+            const generalRaycaster = new THREE.Raycaster();
+            generalRaycaster.near = 0.1;
+            generalRaycaster.far = 12;
+            
+            const direction = new THREE.Vector3(0, 0, -1);
+            direction.applyQuaternion(camera.quaternion);
+            generalRaycaster.set(camera.position, direction);
+            
+            const allObjects: THREE.Object3D[] = [];
+            scene.traverse((object) => {
+              if ((object as THREE.Mesh).isMesh && 
+                  object.visible &&
+                  object.name !== 'raycasterHelper' && 
+                  object.name !== 'highlight' &&
+                  !object.name.includes('helper')) {
+                allObjects.push(object);
+              }
+            });
+            
+            const generalIntersects = generalRaycaster.intersectObjects(allObjects, false);
+            if (generalIntersects.length > 0 && generalIntersects[0].distance < 12) {
+              const hitPoint = generalIntersects[0].point;
               const addEvent = new CustomEvent('addObject', {
                 detail: {
-                  position: [Math.round(hitPoint.x), Math.round(hitPoint.y), Math.round(hitPoint.z)],
-                  type: 'cube',
+                  position: [hitPoint.x, hitPoint.y, hitPoint.z],
                 },
               });
               window.dispatchEvent(addEvent);
             }
-          } else if (intersects.length > 0) {
-            // Regular object placement
-            const hitPoint = intersects[0].point;
-            const addEvent = new CustomEvent('addObject', {
-              detail: {
-                position: [hitPoint.x, hitPoint.y, hitPoint.z],
-              },
-            });
-            window.dispatchEvent(addEvent);
           } else {
             // No intersection - place at fixed distance
             const targetPosition = new THREE.Vector3();

@@ -90,7 +90,10 @@ export const useModelStore = create<ModelStore>((set, get) => ({
    * Adiciona um novo modelo 3D na cena
    */
   addModel: (modelData: ModelData): string => {
-    const id = Date.now().toString();
+    // Generate a more robust unique ID
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const id = `${timestamp}-${randomSuffix}`;
     
     // Calculate position in front of camera if not provided
     const position = modelData.position || [0, 0, -3] as [number, number, number];

@@ -475,7 +475,7 @@ const Player: React.FC = () => {
                             ((selectedHotbarItem.url as string)?.includes('primitive://cube') || 
                              (selectedHotbarItem.fileName as string)?.toLowerCase().includes('cube'));
       
-      console.log('Game: Cube selected?', isCubeSelected, selectedHotbarItem);
+
       
       if (isCubeSelected || type === 'cube') {
         console.log('Game: Adding cube at position', position);
@@ -496,10 +496,6 @@ const Player: React.FC = () => {
         
         if (isCustomCube) {
           // Use the custom cube data from the hotbar item
-          console.log('Game: Creating custom cube from hotbar item', selectedHotbarItem);
-          console.log('Game: Custom cube ID:', selectedHotbarItem.id);
-          console.log('Game: Custom cube fileName:', selectedHotbarItem.fileName);
-          console.log('Game: Custom cube cubeFaces:', (selectedHotbarItem as any).cubeFaces);
           cubeData = {
             url: 'primitive://cube',
             fileName: (selectedHotbarItem.fileName as string) || 'Custom Cube',
