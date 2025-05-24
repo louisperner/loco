@@ -168,42 +168,86 @@ const CubeCrafter: React.FC<CubeCrafterProps> = ({ isOpen, onClose }) => {
 
   // Generate cube texture and save to inventory
   const saveCube = async () => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    // Create a better thumbnail showing the cube net
+    const thumbnailCanvas = document.createElement('canvas');
+    const thumbnailCtx = thumbnailCanvas.getContext('2d');
+    if (!thumbnailCtx) return;
 
-    // Create a larger canvas for the final texture
-    canvas.width = 512;
-    canvas.height = 512;
+    // Create a 256x256 thumbnail
+    thumbnailCanvas.width = 256;
+    thumbnailCanvas.height = 256;
 
-    // For now, use the front face as the main texture
-    const frontFace = cubeFaces.front;
+    // Draw a simplified cube net as thumbnail
+    const faceSize = 64;
+    const padding = 1;
     
-    if (frontFace.texture) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, 512, 512);
-        finalizeCubeSave(canvas.toDataURL());
-      };
-      img.src = frontFace.texture;
-    } else {
-      ctx.fillStyle = frontFace.color;
-      ctx.fillRect(0, 0, 512, 512);
-      finalizeCubeSave(canvas.toDataURL());
-    }
+    // Define face positions for thumbnail (smaller layout)
+    const thumbnailFacePositions = {
+      top: { x: faceSize + padding, y: 0 },
+      left: { x: 0, y: faceSize + padding },
+      front: { x: faceSize + padding, y: faceSize + padding },
+      right: { x: (faceSize + padding) * 2, y: faceSize + padding },
+      back: { x: (faceSize + padding) * 3, y: faceSize + padding },
+      bottom: { x: faceSize + padding, y: (faceSize + padding) * 2 }
+    };
+
+    // Clear background
+    thumbnailCtx.fillStyle = '#1A1A1A';
+    thumbnailCtx.fillRect(0, 0, 256, 256);
+
+    // Draw each face
+    const drawPromises = Object.entries(thumbnailFacePositions).map(([faceId, pos]) => {
+      return new Promise<void>((resolve) => {
+        const face = cubeFaces[faceId];
+        
+        if (face.texture) {
+          const img = new Image();
+          img.onload = () => {
+            thumbnailCtx.drawImage(img, pos.x, pos.y, faceSize, faceSize);
+            // Add border
+            thumbnailCtx.strokeStyle = '#333333';
+            thumbnailCtx.lineWidth = 1;
+            thumbnailCtx.strokeRect(pos.x, pos.y, faceSize, faceSize);
+            resolve();
+          };
+          img.onerror = () => {
+            // Fallback to color if texture fails
+            thumbnailCtx.fillStyle = face.color;
+            thumbnailCtx.fillRect(pos.x, pos.y, faceSize, faceSize);
+            thumbnailCtx.strokeStyle = '#333333';
+            thumbnailCtx.lineWidth = 1;
+            thumbnailCtx.strokeRect(pos.x, pos.y, faceSize, faceSize);
+            resolve();
+          };
+          img.src = face.texture;
+        } else {
+          // Draw solid color
+          thumbnailCtx.fillStyle = face.color;
+          thumbnailCtx.fillRect(pos.x, pos.y, faceSize, faceSize);
+          thumbnailCtx.strokeStyle = '#333333';
+          thumbnailCtx.lineWidth = 1;
+          thumbnailCtx.strokeRect(pos.x, pos.y, faceSize, faceSize);
+          resolve();
+        }
+      });
+    });
+
+    // Wait for all faces to be drawn
+    await Promise.all(drawPromises);
+    
+    const thumbnailUrl = thumbnailCanvas.toDataURL();
+    finalizeCubeSave(thumbnailUrl);
   };
 
   const finalizeCubeSave = (thumbnailUrl: string) => {
-    // Create cube data
-    const cubeId = `custom-cube-${Date.now()}`;
+    // Create cube data that matches the Model interface
     const cubeData = {
-      id: cubeId,
       url: 'primitive://cube',
-      fileName: `${cubeName.replace(/\s+/g, '-').toLowerCase()}.gltf`,
+      fileName: `${cubeName.replace(/\s+/g, '-').toLowerCase()}.cube`,
       position: [0, 0, 0] as [number, number, number],
       rotation: [0, 0, 0] as [number, number, number],
       scale: 1,
-      isInScene: false, // Add to inventory, not scene
+      // Additional properties for custom cubes
       isPrimitive: true,
       primitiveType: 'cube' as const,
       color: cubeFaces.front.color,
@@ -212,11 +256,12 @@ const CubeCrafter: React.FC<CubeCrafterProps> = ({ isOpen, onClose }) => {
       textureName: cubeName,
       thumbnailUrl,
       customCube: true,
-      cubeFaces: cubeFaces // Store all face data for future editing
+      cubeFaces: cubeFaces, // Store all face data for future editing
+      isInScene: false // This will be in inventory, not scene
     };
 
     // Add to model store
-    addModel(cubeData);
+    const cubeId = addModel(cubeData);
 
     // Show success message
     const toast = document.createElement('div');

@@ -171,6 +171,8 @@ export const useInventory = (
   const storeImages = useImageStore((state) => state.images);
   const storeModels = useModelStore((state) => state.models);
   const storeVideos = useVideoStore((state) => state.videos);
+  
+
 
   const loadItemsFromDisk = useCallback(async (): Promise<void> => {
     try {
@@ -288,8 +290,9 @@ export const useInventory = (
       }));
       allItems = [...allItems, ...storeImageItems];
 
-      const storeModelItems = storeModels.map((model) => ({
-        id: model.id,
+      const storeModelItems = storeModels.map((model) => {
+        return {
+                  id: model.id,
         type: 'model' as const,
         fileName: model.fileName || 'Unknown',
         url: model.url,
@@ -297,7 +300,13 @@ export const useInventory = (
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString(),
         category: getModelCategory(model.fileName || 'Unknown'),
-      }));
+        // Preserve custom cube properties
+        customCube: (model as any).customCube,
+        cubeFaces: (model as any).cubeFaces,
+        isPrimitive: (model as any).isPrimitive,
+        primitiveType: (model as any).primitiveType,
+        };
+      });
       allItems = [...allItems, ...storeModelItems];
 
       const storeVideoItems = storeVideos.map((video) => {
@@ -346,8 +355,11 @@ export const useInventory = (
       allItems.forEach((item) => {
         if (seenIds.has(item.id)) return;
 
+        // Skip URL-based deduplication for custom cubes since they all share the same primitive URL
+        const isCustomCube = (item as any).customCube;
+        
         const normalizedUrl = item.url ? item.url.replace(/\\/g, '/').toLowerCase() : null;
-        if (normalizedUrl && seenUrls.has(normalizedUrl)) {
+        if (normalizedUrl && seenUrls.has(normalizedUrl) && !isCustomCube) {
           const existingItemIndex = seenUrls.get(normalizedUrl)!;
           if (!uniqueItems[existingItemIndex].thumbnailUrl && item.thumbnailUrl) {
             uniqueItems[existingItemIndex].thumbnailUrl = item.thumbnailUrl;
@@ -385,7 +397,8 @@ export const useInventory = (
         uniqueItems.push(item);
         seenIds.add(item.id);
 
-        if (normalizedUrl) seenUrls.set(normalizedUrl, itemIndex);
+        // Only track URLs for non-custom cubes to avoid deduplication issues
+        if (normalizedUrl && !isCustomCube) seenUrls.set(normalizedUrl, itemIndex);
         if (filePath) seenPaths.set(filePath, itemIndex);
       });
 
