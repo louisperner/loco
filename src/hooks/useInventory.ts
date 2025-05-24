@@ -580,6 +580,11 @@ export const useInventory = (
           setSelectedItem(item);
           
           // Update the global store with the selected hotbar item
+          console.log('Inventory: Selecting hotbar item:', item);
+          console.log('Inventory: Item ID:', item.id);
+          console.log('Inventory: Item fileName:', item.fileName);
+          console.log('Inventory: Item customCube:', (item as any).customCube);
+          console.log('Inventory: Item cubeFaces:', (item as any).cubeFaces);
           useGameStore.getState().setSelectedHotbarItem({
             ...item,
             name: item.fileName,
@@ -733,10 +738,12 @@ export const useInventory = (
 
   const handleHotbarSlotClick = (index: number, _e: MouseEvent): void => {
     const item = hotbarItems[index];
+    console.log('Inventory: Hotbar slot clicked:', index, 'Item:', item);
     setSelectedHotbarSlot(index);
 
     // Update the global store with the selected hotbar item
     if (item) {
+      console.log('Inventory: Setting selected hotbar item:', item.id, item.fileName);
       useGameStore.getState().setSelectedHotbarItem({
         ...item,
         name: item.fileName,

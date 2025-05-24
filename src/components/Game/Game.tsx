@@ -497,6 +497,9 @@ const Player: React.FC = () => {
         if (isCustomCube) {
           // Use the custom cube data from the hotbar item
           console.log('Game: Creating custom cube from hotbar item', selectedHotbarItem);
+          console.log('Game: Custom cube ID:', selectedHotbarItem.id);
+          console.log('Game: Custom cube fileName:', selectedHotbarItem.fileName);
+          console.log('Game: Custom cube cubeFaces:', (selectedHotbarItem as any).cubeFaces);
           cubeData = {
             url: 'primitive://cube',
             fileName: (selectedHotbarItem.fileName as string) || 'Custom Cube',
