@@ -341,7 +341,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
           setTexture(newTexture);
         };
         img.onerror = (error) => {
-          console.error('ModelInScene: Failed to load image texture', error);
+          // console.error('ModelInScene: Failed to load image texture', error);
         };
       } else if (primitiveData.textureType === 'video') {
         const video = document.createElement('video');

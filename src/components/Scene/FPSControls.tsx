@@ -59,12 +59,18 @@ const FPSControls: React.FC<FPSControlsProps> = ({
   const selectedHotbarItem = useGameStore((state) => state.selectedHotbarItem);
   const raycaster = useRef<THREE.Raycaster>(new THREE.Raycaster());
   
+  // Add refs for continuous mouse actions
+  const isMouseDown = useRef<boolean>(false);
+  const mouseButton = useRef<number>(-1);
+  const lastActionTime = useRef<number>(0);
+  const actionInterval = useRef<number | null>(null);
+  
   // Configure raycaster for more precise object detection
   useEffect(() => {
     if (raycaster.current) {
       // Set more precise parameters for object removal
       raycaster.current.near = 0.1;  // Start detection very close to camera
-      raycaster.current.far = 15;    // Limit detection range to 15 units
+      raycaster.current.far = Infinity;    // Set to infinite for better detection
       // Set a smaller threshold for more precise intersection detection
       raycaster.current.params.Points = { threshold: 0.1 };
       raycaster.current.params.Line = { threshold: 0.1 };
@@ -125,7 +131,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     raycaster.current.ray.origin.copy(camera.position);
     raycaster.current.ray.direction.copy(direction);
     raycaster.current.near = 0.1;
-    raycaster.current.far = 12; // Match the removal raycaster range for consistency
+    raycaster.current.far = Infinity; // Set to infinite for better detection
 
     // Only show highlighting if a cube primitive is selected in hotbar
     const isCubeSelected = selectedHotbarItem && 
@@ -645,15 +651,366 @@ const FPSControls: React.FC<FPSControlsProps> = ({
         }
       };
 
-      const handleClick = (e: MouseEvent): void => {
+      // Function to perform placement action
+      const performPlacementAction = () => {
+        // Check if a cube is selected in hotbar
+        const isCubeSelected = selectedHotbarItem && 
+                              ((selectedHotbarItem.url as string)?.includes('primitive://cube') || 
+                               (selectedHotbarItem.fileName as string)?.toLowerCase().includes('cube'));
+
+        if (isCubeSelected) {
+          // Create a precise raycaster for cube placement
+          const placementRaycaster = new THREE.Raycaster();
+          placementRaycaster.near = 0.1;
+          placementRaycaster.far = Infinity;
+          
+          const direction = new THREE.Vector3(0, 0, -1);
+          direction.applyQuaternion(camera.quaternion);
+          placementRaycaster.set(camera.position, direction);
+
+          // Get only cube objects for precise detection
+          const cubeObjects: THREE.Object3D[] = [];
+          scene.traverse((object) => {
+            if ((object as THREE.Mesh).isMesh && 
+                object.visible &&
+                object.name !== 'raycasterHelper' && 
+                object.name !== 'highlight' &&
+                !object.name.includes('helper')) {
+              const mesh = object as THREE.Mesh;
+              const isBoxGeometry = mesh.geometry && mesh.geometry.type === 'BoxGeometry';
+              const hasCubeUserData = object.userData?.primitiveType === 'cube' ||
+                                     (object.parent && object.parent.userData?.primitiveType === 'cube');
+              const hasCubeName = object.name.includes('cube') || 
+                                 (object.parent && object.parent.name.includes('cube'));
+              
+              if (isBoxGeometry || hasCubeUserData || hasCubeName) {
+                cubeObjects.push(object);
+              }
+            }
+          });
+
+          const intersects = placementRaycaster.intersectObjects(cubeObjects, false);
+          
+          if (intersects.length > 0) {
+            // Use the SAME logic as the highlighting system to ensure consistency
+            let foundCube = false;
+            let targetCube = null;
+            let face = 0;
+            let worldPosition = null;
+            
+            for (const intersect of intersects) {
+              const object = intersect.object;
+              
+              // Check if this is a cube primitive - support multiple ways cubes can be created
+              let cubeObject = null;
+              let isCube = false;
+              
+              // Method 1: Check if the object itself is a cube (direct cube mesh)
+              if ((object as THREE.Mesh).geometry && (object as THREE.Mesh).geometry.type === 'BoxGeometry') {
+                cubeObject = object;
+                isCube = true;
+              }
+              // Method 2: Check if parent has cube userData (hotbar/nav created cubes)
+              else if (object.parent && 
+                       object.parent.userData?.type === 'model' && 
+                       object.parent.userData?.primitiveType === 'cube') {
+                cubeObject = object.parent;
+                isCube = true;
+              }
+              // Method 3: Check if object has cube userData directly
+              else if (object.userData?.type === 'model' && 
+                       object.userData?.primitiveType === 'cube') {
+                cubeObject = object;
+                isCube = true;
+              }
+              // Method 4: Check if object name indicates it's a cube
+              else if (object.name && object.name.includes('cube')) {
+                cubeObject = object;
+                isCube = true;
+              }
+              // Method 5: Check if parent name indicates it's a cube
+              else if (object.parent && object.parent.name && object.parent.name.includes('cube')) {
+                cubeObject = object.parent;
+                isCube = true;
+              }
+
+              if (isCube && cubeObject) {
+                targetCube = cubeObject;
+                worldPosition = intersect.point.clone();
+                
+                // Calculate which face was hit
+                const cubePosition = new THREE.Vector3();
+                cubeObject.getWorldPosition(cubePosition);
+                
+                // Calculate relative position from cube center
+                const relativePoint = worldPosition.clone().sub(cubePosition);
+                
+                // Get cube's bounding box to determine size
+                const box = new THREE.Box3().setFromObject(cubeObject);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                
+                // Determine which face based on which axis has the largest absolute value
+                const absX = Math.abs(relativePoint.x);
+                const absY = Math.abs(relativePoint.y);
+                const absZ = Math.abs(relativePoint.z);
+                
+                if (absX > absY && absX > absZ) {
+                  // X-axis dominant
+                  face = relativePoint.x > 0 ? 0 : 1; // Right or Left
+                } else if (absY > absZ) {
+                  // Y-axis dominant
+                  face = relativePoint.y > 0 ? 2 : 3; // Top or Bottom
+                } else {
+                  // Z-axis dominant
+                  face = relativePoint.z > 0 ? 4 : 5; // Front or Back
+                }
+                
+                foundCube = true;
+                break;
+              }
+            }
+            
+            if (foundCube && targetCube && worldPosition) {
+              // Calculate face normal and position based on face index
+              const faceNormals = [
+                new THREE.Vector3(1, 0, 0),   // Right face (+X)
+                new THREE.Vector3(-1, 0, 0),  // Left face (-X)
+                new THREE.Vector3(0, 1, 0),   // Top face (+Y)
+                new THREE.Vector3(0, -1, 0),  // Bottom face (-Y)
+                new THREE.Vector3(0, 0, 1),   // Front face (+Z)
+                new THREE.Vector3(0, 0, -1),  // Back face (-Z)
+              ];
+
+              if (face >= 0 && face < faceNormals.length) {
+                const normal = faceNormals[face].clone();
+                
+                // Get cube position
+                const cubePosition = new THREE.Vector3();
+                targetCube.getWorldPosition(cubePosition);
+                
+                // Calculate the new cube position (1 unit away from the face)
+                const newPosition = cubePosition.clone().add(normal);
+                
+                // Round to grid for Minecraft-like snapping
+                newPosition.x = Math.round(newPosition.x);
+                newPosition.y = Math.round(newPosition.y);
+                newPosition.z = Math.round(newPosition.z);
+                
+                // Dispatch cube placement event
+                const addEvent = new CustomEvent('addObject', {
+                  detail: {
+                    position: [newPosition.x, newPosition.y, newPosition.z],
+                    type: 'cube',
+                    snapToFace: true,
+                  },
+                });
+                window.dispatchEvent(addEvent);
+              }
+            }
+          } else {
+            // No cube found - place at closer distance (3 units instead of 10)
+            const targetPosition = new THREE.Vector3();
+            targetPosition.copy(camera.position);
+            const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            targetPosition.addScaledVector(direction, 3); // Closer placement for cubes
+            
+            // Round to grid for cubes
+            targetPosition.x = Math.round(targetPosition.x);
+            targetPosition.y = Math.round(targetPosition.y);
+            targetPosition.z = Math.round(targetPosition.z);
+
+            const addEvent = new CustomEvent('addObject', {
+              detail: {
+                position: [targetPosition.x, targetPosition.y, targetPosition.z],
+                type: 'cube',
+              },
+            });
+            window.dispatchEvent(addEvent);
+          }
+        } else if (selectedHotbarItem) {
+          // Regular object placement for non-cube items
+          const generalRaycaster = new THREE.Raycaster();
+          generalRaycaster.near = 0.1;
+          generalRaycaster.far = Infinity;
+          
+          const direction = new THREE.Vector3(0, 0, -1);
+          direction.applyQuaternion(camera.quaternion);
+          generalRaycaster.set(camera.position, direction);
+          
+          const allObjects: THREE.Object3D[] = [];
+          scene.traverse((object) => {
+            if ((object as THREE.Mesh).isMesh && 
+                object.visible &&
+                object.name !== 'raycasterHelper' && 
+                object.name !== 'highlight' &&
+                !object.name.includes('helper')) {
+              allObjects.push(object);
+            }
+          });
+          
+          const generalIntersects = generalRaycaster.intersectObjects(allObjects, false);
+          if (generalIntersects.length > 0) {
+            const hitPoint = generalIntersects[0].point;
+            const addEvent = new CustomEvent('addObject', {
+              detail: {
+                position: [hitPoint.x, hitPoint.y, hitPoint.z],
+              },
+            });
+            window.dispatchEvent(addEvent);
+          } else {
+            // No intersection - place at fixed distance
+            const targetPosition = new THREE.Vector3();
+            targetPosition.copy(camera.position);
+            const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            targetPosition.addScaledVector(direction, 5); // Standard placement distance
+
+            const addEvent = new CustomEvent('addObject', {
+              detail: {
+                position: [targetPosition.x, targetPosition.y, targetPosition.z],
+              },
+            });
+            window.dispatchEvent(addEvent);
+          }
+        }
+      };
+
+      // Function to perform removal action
+      const performRemovalAction = () => {
+        // Create a more precise raycaster specifically for object removal
+        const removalRaycaster = new THREE.Raycaster();
+        
+        // Configure for high precision
+        removalRaycaster.near = 0.1;
+        removalRaycaster.far = Infinity; // Infinite range for better detection
+        
+        // Create direction vector from camera center
+        const direction = new THREE.Vector3(0, 0, -1);
+        direction.applyQuaternion(camera.quaternion);
+        
+        // Set raycaster from camera position
+        removalRaycaster.set(camera.position, direction);
+
+        // Get only objects that can be removed
+        const removableObjects: THREE.Object3D[] = [];
+        scene.traverse((object) => {
+          if ((object as THREE.Mesh).isMesh && 
+              object.name !== 'raycasterHelper' && 
+              object.name !== 'highlight' &&
+              !object.name.includes('helper') &&
+              object.visible &&
+              // Only include objects with proper userData for removal
+              (object.userData?.type === 'image' || 
+               object.userData?.type === 'model' || 
+               object.userData?.type === 'video' ||
+               // Or objects whose parent has proper userData
+               (object.parent && (
+                 object.parent.userData?.type === 'image' ||
+                 object.parent.userData?.type === 'model' ||
+                 object.parent.userData?.type === 'video'
+               )))) {
+            removableObjects.push(object);
+          }
+        });
+
+        // Use precise intersection with filtered objects
+        const intersects = removalRaycaster.intersectObjects(removableObjects, false);
+        
+        // Only proceed if we have a hit
+        if (intersects.length > 0) {
+          const firstIntersect = intersects[0];
+          const intersectedObject = firstIntersect.object;
+
+          // Find the parent with userData by traversing up
+          let parent: THREE.Object3D | null = intersectedObject;
+          let foundObject: THREE.Object3D | null = null;
+
+          // Traverse up the parent chain
+          while (parent) {
+            if (
+              parent.userData &&
+              (parent.userData.type === 'image' ||
+                parent.userData.type === 'model' ||
+                parent.userData.type === 'video') &&
+              parent.userData.id
+            ) {
+              foundObject = parent;
+              break;
+            }
+            parent = parent.parent;
+          }
+
+          if (foundObject && foundObject.userData) {
+            // Dispatch remove event with object data
+            const removeEvent = new CustomEvent('removeObject', {
+              detail: {
+                type: foundObject.userData.type,
+                id: foundObject.userData.id
+              },
+            });
+            window.dispatchEvent(removeEvent);
+          }
+        }
+      };
+
+      const handleMouseDown = (e: MouseEvent): void => {
         // Para cliques simulados de dispositivos móveis, não exija o pointer lock
         // @ts-ignore - acessando propriedade personalizada isSimulated
         const isMobileClick = e.isSimulated === true;
 
-        // Log para debug (pode remover após confirmar funcionamento)
-        // console.log('Mouse event:', e.type, e.button, 'isMobileClick:', isMobileClick, e);
-
         if (!enabled || (!isLocked && !isMobileClick)) return;
+
+        isMouseDown.current = true;
+        mouseButton.current = e.button;
+        lastActionTime.current = performance.now();
+
+        // Perform immediate action
+        if (e.button === 0) {
+          // Left click - placement
+          e.preventDefault();
+          performPlacementAction();
+        } else if (e.button === 2) {
+          // Right click - removal
+          e.preventDefault();
+          performRemovalAction();
+        }
+
+        // Start continuous action after initial delay
+        if (actionInterval.current) {
+          clearInterval(actionInterval.current);
+        }
+        
+        actionInterval.current = window.setInterval(() => {
+          if (isMouseDown.current) {
+            const now = performance.now();
+            // Throttle actions to prevent spam (150ms between actions)
+            if (now - lastActionTime.current >= 150) {
+              lastActionTime.current = now;
+              
+              if (mouseButton.current === 0) {
+                performPlacementAction();
+              } else if (mouseButton.current === 2) {
+                performRemovalAction();
+              }
+            }
+          }
+        }, 50); // Check every 50ms but throttle actual actions
+      };
+
+      const handleMouseUp = (e: MouseEvent): void => {
+        isMouseDown.current = false;
+        mouseButton.current = -1;
+        
+        if (actionInterval.current) {
+          clearInterval(actionInterval.current);
+          actionInterval.current = null;
+        }
+      };
+
+      const handleClick = (e: MouseEvent): void => {
+        // This is now handled by mousedown/mouseup for continuous actions
+        // Keep this function for compatibility but don't perform actions here
+        return;
 
         // We don't need to create a new direction vector or raycaster here
         // since we're using the same raycaster that's updated every frame
@@ -739,7 +1096,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
                 parent = parent.parent;
               }
 
-              if (foundObject) {
+              if (foundObject && foundObject.userData) {
                 // Dispatch remove event with object data
                 const removeEvent = new CustomEvent('removeObject', {
                   detail: {
@@ -994,13 +1351,21 @@ const FPSControls: React.FC<FPSControlsProps> = ({
       };
 
       document.addEventListener('contextmenu', handleContextMenu);
-      document.addEventListener('mousedown', handleClick);
+      document.addEventListener('mousedown', handleMouseDown);
+      document.addEventListener('mouseup', handleMouseUp);
       document.addEventListener('keydown', handleKeyPress);
 
       return () => {
         document.removeEventListener('contextmenu', handleContextMenu);
-        document.removeEventListener('mousedown', handleClick);
+        document.removeEventListener('mousedown', handleMouseDown);
+        document.removeEventListener('mouseup', handleMouseUp);
         document.removeEventListener('keydown', handleKeyPress);
+        
+        // Clean up any active intervals
+        if (actionInterval.current) {
+          clearInterval(actionInterval.current);
+          actionInterval.current = null;
+        }
       };
     }
 
