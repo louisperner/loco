@@ -28,6 +28,7 @@ import GamepadController from './GamepadController';
 // import { useAuth } from '@/contexts/AuthContext';
 import UserProfile from './UserProfile';
 import { User as UserIcon } from 'lucide-react';
+import PerformanceMonitor from '../ui/PerformanceMonitor';
 
 interface InventoryItem {
   id: string;
@@ -685,7 +686,8 @@ const Player: React.FC = () => {
           <Canvas
             camera={{ position: [0, 0, 0], fov: 65 }}
             className={`z-0 ${canvasInteractive ? '' : 'pointer-events-none'}`}
-            frameloop={isMoving ? 'always' : 'demand'} // Conditional frameloop
+            // frameloop={isMoving ? 'always' : 'demand'} // Conditional frameloop
+            frameloop={'always'} // Conditional frameloop
             onPointerMissed={() => setSelectedFrame(null)}
             gl={{
               // Preserve the WebGL context to prevent it from being killed
@@ -1130,6 +1132,9 @@ const Player: React.FC = () => {
 
           {/* Minimap */}
           {uiVisible && visibilitySettings.minimapVisible && <Minimap size={280} opacity={0.9} scale={25} />}
+
+          {/* Performance Monitor */}
+          {uiVisible && showCoordinates && <PerformanceMonitor visible={true} />}
 
           {/* FrameLoop Indicator */}
           <div

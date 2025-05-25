@@ -21,6 +21,77 @@ import { processFileUrl, controlButtonStyle } from './utils';
 import LoadingIndicator from '../Scene/LoadingIndicator';
 import { useStore } from '@/store/useStore';
 
+// Add shared geometries and materials at the top level to avoid recreating them
+const sharedGeometries = {
+  box: new THREE.BoxGeometry(1, 1, 1),
+  boxEdges: new THREE.EdgesGeometry(new THREE.BoxGeometry(1.001, 1.001, 1.001)),
+  sphere: new THREE.SphereGeometry(0.5, 32, 32),
+  plane: new THREE.PlaneGeometry(1, 1),
+  // Add LOD geometries for distant objects
+  boxLOD: new THREE.BoxGeometry(1, 1, 1), // Simplified geometry for distant cubes
+  sphereLOD: new THREE.SphereGeometry(0.5, 16, 16), // Lower poly sphere for distance
+};
+
+const sharedMaterials = {
+  edgeLines: new THREE.LineBasicMaterial({ color: "#000000", transparent: true, opacity: 0.3 }),
+  // Add simplified materials for distant objects
+  simpleCube: new THREE.MeshBasicMaterial({ color: "#4ade80" }), // Basic material for distant cubes
+};
+
+// Material cache to avoid creating duplicate materials
+const materialCache = new Map<string, THREE.Material>();
+
+const getCachedMaterial = (key: string, createMaterial: () => THREE.Material): THREE.Material => {
+  if (!materialCache.has(key)) {
+    // Clean up cache if it's getting too large
+    cleanupMaterialCache();
+    materialCache.set(key, createMaterial());
+  }
+  return materialCache.get(key)!;
+};
+
+// Performance monitoring
+let frameCount = 0;
+let lastFPSCheck = performance.now();
+let currentFPS = 60;
+
+const updateFPS = () => {
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFPSCheck >= 1000) {
+    currentFPS = Math.round((frameCount * 1000) / (now - lastFPSCheck));
+    frameCount = 0;
+    lastFPSCheck = now;
+  }
+};
+
+// Adaptive quality based on performance
+const getAdaptiveQuality = () => {
+  if (currentFPS < 30) return 'low';
+  if (currentFPS < 45) return 'medium';
+  return 'high';
+};
+
+// Performance stats for debugging
+export const getPerformanceStats = () => ({
+  fps: currentFPS,
+  quality: getAdaptiveQuality(),
+  materialCacheSize: materialCache.size,
+});
+
+// Clear material cache when it gets too large
+const cleanupMaterialCache = () => {
+  if (materialCache.size > 100) {
+    // Keep only the most recently used materials
+    const entries = Array.from(materialCache.entries());
+    materialCache.clear();
+    // Keep the last 50 materials
+    entries.slice(-50).forEach(([key, material]) => {
+      materialCache.set(key, material);
+    });
+  }
+};
+
 // Separate model component to use with Suspense and ErrorBoundary
 const Model: React.FC<ModelProps> = ({ url, scale }) => {
   const [error, setError] = useState<Error | null>(null);
@@ -114,7 +185,14 @@ const ModelFallback: React.FC<ModelFallbackProps> = ({ fileName, scale, errorDet
 };
 
 // Add PrimitiveModel component with color and texture support
-const PrimitiveModel: React.FC<PrimitiveModelProps> = ({ type, scale, color = '#4ade80', texture, cubeFaces }) => {
+const PrimitiveModel: React.FC<PrimitiveModelProps & { distanceToCamera?: number }> = ({ 
+  type, 
+  scale, 
+  color = '#4ade80', 
+  texture, 
+  cubeFaces, 
+  distanceToCamera = 0 
+}) => {
   const [faceMaterials, setFaceMaterials] = useState<THREE.Material[]>([]);
   
   // Handle custom cube face materials with proper async texture loading
@@ -171,47 +249,92 @@ const PrimitiveModel: React.FC<PrimitiveModelProps> = ({ type, scale, color = '#
   }, [type, cubeFaces, color]);
   
   const materials = useMemo(() => {
+    // Update FPS counter
+    updateFPS();
+    
     // Use face materials for custom cubes if available
     if (type === 'cube' && cubeFaces && faceMaterials.length > 0) {
       return faceMaterials;
     }
     
+    // Adaptive quality based on performance and distance
+    const quality = getAdaptiveQuality();
+    const isDistant = distanceToCamera > 15;
+    const useSimpleMaterial = quality === 'low' || (quality === 'medium' && isDistant);
+    
     // Single material for non-cube primitives or cubes without custom faces
-    if (texture) {
-      return new THREE.MeshStandardMaterial({ 
+    if (texture && !useSimpleMaterial) {
+      const textureKey = `texture-${texture.uuid}-${type}`;
+      return getCachedMaterial(textureKey, () => new THREE.MeshStandardMaterial({ 
         map: texture,
         side: type === 'plane' ? THREE.DoubleSide : THREE.FrontSide
-      });
+      }));
     }
-    return new THREE.MeshStandardMaterial({ 
-      color,
-      side: type === 'plane' ? THREE.DoubleSide : THREE.FrontSide
+    
+    // Use simplified materials for distant objects or when performance is low
+    if (useSimpleMaterial && type === 'cube') {
+      return sharedMaterials.simpleCube;
+    }
+    
+    const colorKey = `color-${color}-${type}-${useSimpleMaterial ? 'basic' : 'standard'}`;
+    return getCachedMaterial(colorKey, () => {
+      if (useSimpleMaterial) {
+        return new THREE.MeshBasicMaterial({ 
+          color,
+          side: type === 'plane' ? THREE.DoubleSide : THREE.FrontSide
+        });
+      }
+      return new THREE.MeshStandardMaterial({ 
+        color,
+        side: type === 'plane' ? THREE.DoubleSide : THREE.FrontSide
+      });
     });
-  }, [color, texture, type, cubeFaces, faceMaterials]);
+  }, [color, texture, type, cubeFaces, faceMaterials, distanceToCamera]);
+
+  // Advanced LOD and culling logic
+  const quality = getAdaptiveQuality();
+  const isVeryDistant = distanceToCamera > 50;
+  const isDistant = distanceToCamera > 15;
+  const isNearby = distanceToCamera < 10;
+  
+  // Don't render very distant objects when performance is low
+  if (quality === 'low' && isVeryDistant) {
+    return null;
+  }
 
   switch (type) {
     case 'cube':
       return (
-        <mesh scale={scale} material={materials}>
-          <boxGeometry args={[1, 1, 1]} />
-          {/* Add grid lines to make it look more like a Minecraft block */}
-          <lineSegments>
-            <edgesGeometry args={[new THREE.BoxGeometry(1.001, 1.001, 1.001)]} />
-            <lineBasicMaterial color="#000000" transparent opacity={0.3} />
-          </lineSegments>
+        <mesh 
+          scale={scale} 
+          material={materials} 
+          geometry={isDistant ? sharedGeometries.boxLOD : sharedGeometries.box}
+        >
+          {/* Advanced edge line rendering based on distance and performance */}
+          {isNearby && quality !== 'low' && (
+            <lineSegments 
+              geometry={sharedGeometries.boxEdges} 
+              material={sharedMaterials.edgeLines}
+            />
+          )}
         </mesh>
       );
     case 'sphere':
       return (
-        <mesh scale={scale}>
-          <sphereGeometry args={[0.5, 32, 32]} />
+        <mesh 
+          scale={scale} 
+          geometry={isDistant ? sharedGeometries.sphereLOD : sharedGeometries.sphere}
+        >
           <primitive object={materials} />
         </mesh>
       );
     case 'plane':
       return (
-        <mesh scale={scale} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[1, 1]} />
+        <mesh 
+          scale={scale} 
+          rotation={[-Math.PI / 2, 0, 0]} 
+          geometry={sharedGeometries.plane}
+        >
           <primitive object={materials} />
         </mesh>
       );
@@ -610,6 +733,55 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     }
   }, [groupRef]);
 
+  // Add distance-based LOD and performance monitoring for better performance with many cubes
+  const [distanceToCamera, setDistanceToCamera] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
+  
+  useEffect(() => {
+    if (!groupRef.current) return;
+    
+    const checkDistanceAndVisibility = () => {
+      if (!groupRef.current) return;
+      
+      // Calculate distance to camera for LOD
+      const objectPosition = new THREE.Vector3();
+      groupRef.current.getWorldPosition(objectPosition);
+      const distance = camera.position.distanceTo(objectPosition);
+      
+      if (Math.abs(distance - distanceToCamera) > 1) { // Only update if distance changed significantly
+        setDistanceToCamera(distance);
+      }
+      
+      // Advanced culling: hide objects that are very far when performance is low
+      const quality = getAdaptiveQuality();
+      const shouldBeVisible = !(quality === 'low' && distance > 100);
+      
+      if (shouldBeVisible !== isVisible) {
+        setIsVisible(shouldBeVisible);
+      }
+    };
+    
+    // Adaptive check frequency based on performance
+    let frameCount = 0;
+    let frameId: number;
+    const throttledCheck = () => {
+      frameCount++;
+      const quality = getAdaptiveQuality();
+      const checkInterval = quality === 'low' ? 20 : quality === 'medium' ? 15 : 10;
+      
+      if (frameCount % checkInterval === 0) {
+        checkDistanceAndVisibility();
+      }
+      frameId = requestAnimationFrame(throttledCheck);
+    };
+    
+    frameId = requestAnimationFrame(throttledCheck);
+    
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId);
+    };
+  }, [camera, distanceToCamera, isVisible]);
+
   // Only render control panel when needed
   const controlPanelVisible = hovered || selected;
   
@@ -677,6 +849,11 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     onUpdate(updatedData);
   };
 
+  // Don't render if not visible (performance culling)
+  if (!isVisible) {
+    return null;
+  }
+
   return (
     <>
       {/* Transform controls - only render when needed */}
@@ -727,6 +904,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
             color={primitiveData.color || '#4ade80'}
             texture={texture}
             cubeFaces={primitiveData.cubeFaces}
+            distanceToCamera={distanceToCamera}
           />
         ) : (
           url?.startsWith('primitive://') ? (
@@ -734,6 +912,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
               type={(url?.replace('primitive://', '') || 'cube') as PrimitiveType}
               scale={scale}
               color="#4ade80"
+              distanceToCamera={distanceToCamera}
             />
           ) : (
             <ErrorBoundary 
