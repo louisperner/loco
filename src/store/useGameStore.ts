@@ -126,6 +126,9 @@ interface GameState {
   // Always on top
   alwaysOnTop: boolean;
 
+  // Show culling sphere
+  showCullingSphere: boolean;
+
   // Actions
   setUiVisible: (visible: boolean) => void;
   setShowCatalog: (show: boolean) => void;
@@ -183,6 +186,9 @@ interface GameState {
 
   // Always on top
   setAlwaysOnTop: (enabled: boolean) => void;
+
+  // Show culling sphere
+  setShowCullingSphere: (show: boolean) => void;
 
   // Drawing overlay actions
   setShowDrawingOverlay: (show: boolean) => void;
@@ -318,6 +324,9 @@ export const useGameStore = create<GameState & GameStateActions>()(
 
       // Always on top
       alwaysOnTop: false,
+
+      // Show culling sphere
+      showCullingSphere: false,
 
       // Actions
       setUiVisible: (visible: boolean) => set({ uiVisible: visible }),
@@ -520,6 +529,9 @@ export const useGameStore = create<GameState & GameStateActions>()(
 
       // Always on top
       setAlwaysOnTop: (enabled: boolean) => set({ alwaysOnTop: enabled }),
+
+      // Show culling sphere
+      setShowCullingSphere: (show: boolean) => set({ showCullingSphere: show }),
 
       // Drawing overlay actions
       setShowDrawingOverlay: (show: boolean) =>

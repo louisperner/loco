@@ -17,6 +17,7 @@ import Inventory from '../Inventory/Inventory';
 import { Bloom, EffectComposer } from '@react-three/postprocessing';
 import WebFrames from '../Models/WebFrames';
 import { Crosshair, Floor, PreviewFrame, FrameRateLimiter, CameraExposer } from '../Scene';
+import CullingSphere from '../Scene/CullingSphere';
 import Minimap, { MinimapRenderer } from '../Scene/Minimap';
 import CoordinateDisplay from '../ui/CoordinateDisplay';
 import { rgbaToString } from '../../utils/colorUtils';
@@ -29,6 +30,7 @@ import GamepadController from './GamepadController';
 import UserProfile from './UserProfile';
 import { User as UserIcon } from 'lucide-react';
 import PerformanceMonitor from '../ui/PerformanceMonitor';
+import PerformanceTest from '../ui/PerformanceTest';
 
 interface InventoryItem {
   id: string;
@@ -80,6 +82,9 @@ const Player: React.FC = () => {
   const showCoordinates = useGameStore((state) => state.showCoordinates);
   const alwaysOnTop = useGameStore((state) => state.alwaysOnTop);
   const setAlwaysOnTop = useGameStore((state) => state.setAlwaysOnTop);
+  
+  const showCullingSphere = useGameStore((state) => state.showCullingSphere);
+  const setShowCullingSphere = useGameStore((state) => state.setShowCullingSphere);
 
   const showCatalog = useGameStore((state) => state.showCatalog);
   const setShowCatalog = useGameStore((state) => state.setShowCatalog);
@@ -342,6 +347,12 @@ const Player: React.FC = () => {
       } else if (e.metaKey && e.key === 'ArrowDown') {
         e.preventDefault();
         setAlwaysOnTop(false);
+      }
+
+      // Toggle culling sphere with 'C' key
+      if ((e.key === 'c' || e.key === 'C') && !pendingWebsiteUrl && !showCatalog && !isSpotlightOpen && !showInventory) {
+        e.preventDefault();
+        setShowCullingSphere(!showCullingSphere);
       }
     };
 
@@ -782,6 +793,13 @@ const Player: React.FC = () => {
                 groundShape={groundShape as 'circle' | 'square' | 'hexagon'}
               />
               
+              {/* Culling sphere visualization */}
+              <CullingSphere 
+                radius={25} 
+                visible={showCullingSphere} 
+                opacity={0.1}
+              />
+              
               {/* Minimap renderer - only renders to the shared canvas */}
               {visibilitySettings.minimapVisible && <MinimapRenderer />}
             </Bvh>
@@ -1135,6 +1153,9 @@ const Player: React.FC = () => {
 
           {/* Performance Monitor */}
           {uiVisible && showCoordinates && <PerformanceMonitor visible={true} />}
+
+          {/* Performance Test */}
+          {uiVisible && showCoordinates && <PerformanceTest />}
 
           {/* FrameLoop Indicator */}
           <div

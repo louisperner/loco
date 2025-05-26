@@ -36,26 +36,65 @@ const sharedMaterials = {
   edgeLines: new THREE.LineBasicMaterial({ color: "#000000", transparent: true, opacity: 0.3 }),
   // Add simplified materials for distant objects
   simpleCube: new THREE.MeshBasicMaterial({ color: "#4ade80" }), // Basic material for distant cubes
+  // Pre-create common cube materials to avoid lag on creation
+  greenCube: new THREE.MeshStandardMaterial({ color: "#4ade80" }),
+  redCube: new THREE.MeshStandardMaterial({ color: "#ef4444" }),
+  blueCube: new THREE.MeshStandardMaterial({ color: "#3b82f6" }),
+  yellowCube: new THREE.MeshStandardMaterial({ color: "#eab308" }),
+  whiteCube: new THREE.MeshStandardMaterial({ color: "#ffffff" }),
 };
 
 // Material cache to avoid creating duplicate materials
 const materialCache = new Map<string, THREE.Material>();
 
-const getCachedMaterial = (key: string, createMaterial: () => THREE.Material): THREE.Material => {
+// Debounced material creation to prevent lag spikes
+let materialCreationQueue: Array<{ key: string; createMaterial: () => THREE.Material; resolve: (material: THREE.Material) => void }> = [];
+let materialCreationTimeout: number | null = null;
+
+const processMaterialQueue = () => {
+  if (materialCreationQueue.length === 0) return;
+  
+  // Process one material at a time to avoid lag spikes
+  const { key, createMaterial, resolve } = materialCreationQueue.shift()!;
+  
   if (!materialCache.has(key)) {
-    // Clean up cache if it's getting too large
     cleanupMaterialCache();
-    materialCache.set(key, createMaterial());
+    const material = createMaterial();
+    materialCache.set(key, material);
+    resolve(material);
+  } else {
+    resolve(materialCache.get(key)!);
   }
-  return materialCache.get(key)!;
+  
+  // Schedule next material creation
+  if (materialCreationQueue.length > 0) {
+    materialCreationTimeout = window.setTimeout(processMaterialQueue, 16); // ~60fps
+  }
+};
+
+const getCachedMaterial = (key: string, createMaterial: () => THREE.Material): THREE.Material => {
+  if (materialCache.has(key)) {
+    return materialCache.get(key)!;
+  }
+  
+  // For immediate needs, create synchronously but with simpler materials
+  cleanupMaterialCache();
+  const material = createMaterial();
+  materialCache.set(key, material);
+  return material;
 };
 
 // Performance monitoring
 let frameCount = 0;
 let lastFPSCheck = performance.now();
 let currentFPS = 60;
+let fpsUpdateCounter = 0;
 
 const updateFPS = () => {
+  // Only update FPS every 10th call to reduce overhead
+  fpsUpdateCounter++;
+  if (fpsUpdateCounter % 10 !== 0) return;
+  
   frameCount++;
   const now = performance.now();
   if (now - lastFPSCheck >= 1000) {
@@ -249,9 +288,6 @@ const PrimitiveModel: React.FC<PrimitiveModelProps & { distanceToCamera?: number
   }, [type, cubeFaces, color]);
   
   const materials = useMemo(() => {
-    // Update FPS counter
-    updateFPS();
-    
     // Use face materials for custom cubes if available
     if (type === 'cube' && cubeFaces && faceMaterials.length > 0) {
       return faceMaterials;
@@ -274,6 +310,17 @@ const PrimitiveModel: React.FC<PrimitiveModelProps & { distanceToCamera?: number
     // Use simplified materials for distant objects or when performance is low
     if (useSimpleMaterial && type === 'cube') {
       return sharedMaterials.simpleCube;
+    }
+    
+    // Use pre-created materials for common cube colors to avoid lag
+    if (type === 'cube' && !useSimpleMaterial) {
+      switch (color) {
+        case '#4ade80': return sharedMaterials.greenCube;
+        case '#ef4444': return sharedMaterials.redCube;
+        case '#3b82f6': return sharedMaterials.blueCube;
+        case '#eab308': return sharedMaterials.yellowCube;
+        case '#ffffff': return sharedMaterials.whiteCube;
+      }
     }
     
     const colorKey = `color-${color}-${type}-${useSimpleMaterial ? 'basic' : 'standard'}`;
@@ -568,58 +615,30 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     }
   }, [initialPosition, initialRotation]);
 
-  // Compute and cache bounding box to avoid recalculating it every frame
-  useEffect(() => {
-    // Initialize bounding box
-    if (groupRef.current) {
+  // Lazy bounding box calculation - only compute when needed
+  const getBoundingBox = useCallback(() => {
+    if (!boundingBoxRef.current && groupRef.current) {
       boundingBoxRef.current = new THREE.Box3().setFromObject(groupRef.current);
     }
-    
-    // We'll update the bounding box when position/rotation/scale changes in other effects
-    // instead of using MutationObserver which doesn't work well with Three.js objects
+    return boundingBoxRef.current;
   }, []);
   
-  // Update bounding box when position changes
+  // Invalidate bounding box when position/rotation changes (lazy recalculation)
   useEffect(() => {
-    if (groupRef.current && boundingBoxRef.current) {
-      boundingBoxRef.current = new THREE.Box3().setFromObject(groupRef.current);
-    }
-  }, [initialPosition]);
-  
-  // Update bounding box when rotation changes
-  useEffect(() => {
-    if (groupRef.current && boundingBoxRef.current) {
-      boundingBoxRef.current = new THREE.Box3().setFromObject(groupRef.current);
-    }
-  }, [initialRotation]);
+    boundingBoxRef.current = null; // Invalidate cache
+  }, [initialPosition, initialRotation]);
 
-  // Apply scale to the model
+  // Apply scale to the model and invalidate bounding box
   useEffect(() => {
     if (groupRef.current) {
       groupRef.current.scale.set(scale, scale, scale);
-      // Update bounding box when scale changes
-      if (boundingBoxRef.current) {
-        boundingBoxRef.current = new THREE.Box3().setFromObject(groupRef.current);
-      }
+      // Invalidate bounding box cache when scale changes
+      boundingBoxRef.current = null;
     }
   }, [scale]);
 
-  // Update collider size based on object size
-  useEffect(() => {
-    if (groupRef.current) {
-      const box = new THREE.Box3().setFromObject(groupRef.current);
-      const size = new THREE.Vector3();
-      box.getSize(size);
-      
-      // Update the collider mesh size
-      const collider = groupRef.current.children.find(child => child.name === `model-collider-${id}`);
-      if (collider && collider instanceof THREE.Mesh) {
-        const geometry = collider.geometry as THREE.BoxGeometry;
-        geometry.dispose(); // Clean up old geometry
-        collider.geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
-      }
-    }
-  }, [scale, id]); // Update when scale changes
+  // Simplified collider - use basic box geometry without dynamic sizing
+  // This avoids expensive bounding box calculations on every scale change
 
   // Much more aggressive debouncing for pointer events
   const handlePointerOver = useCallback((e: { nativeEvent: PointerEvent }): void => {
@@ -705,7 +724,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     }
   }, [modelData, onUpdate, isPrimitive, primitiveData]);
 
-  // Highly optimized raycast function using cached bounding box and throttling
+  // Highly optimized raycast function using lazy bounding box and throttling
   const optimizedRaycast = useCallback((raycaster: THREE.Raycaster, intersects: THREE.Intersection[]) => {
     // Skip if not visible
     if (!groupRef.current?.visible) return;
@@ -715,8 +734,9 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     if (now - lastRaycastTime.current < RAY_THROTTLE) return;
     lastRaycastTime.current = now;
     
-    // Use cached bounding box if available, otherwise create a new one
-    const box = boundingBoxRef.current || new THREE.Box3().setFromObject(groupRef.current);
+    // Use lazy bounding box calculation
+    const box = getBoundingBox();
+    if (!box) return;
     
     // Check if ray intersects bounding box
     if (raycaster.ray.intersectsBox(box)) {
@@ -731,56 +751,81 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         object: groupRef.current
       });
     }
-  }, [groupRef]);
+  }, [getBoundingBox]);
 
-  // Add distance-based LOD and performance monitoring for better performance with many cubes
+  // Spherical culling system - only render objects within 25 units of player
   const [distanceToCamera, setDistanceToCamera] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+  const CULLING_SPHERE_RADIUS = 25; // 25 units radius around player
   
   useEffect(() => {
     if (!groupRef.current) return;
     
-    const checkDistanceAndVisibility = () => {
+    console.log(`Starting culling monitoring for cube ${id}`);
+    
+    // Delay the performance monitoring to avoid lag on cube creation
+    const startDelay = setTimeout(() => {
       if (!groupRef.current) return;
       
-      // Calculate distance to camera for LOD
-      const objectPosition = new THREE.Vector3();
-      groupRef.current.getWorldPosition(objectPosition);
-      const distance = camera.position.distanceTo(objectPosition);
+      console.log(`Culling monitoring active for cube ${id}`);
       
-      if (Math.abs(distance - distanceToCamera) > 1) { // Only update if distance changed significantly
+      let frameId: number;
+      let frameCount = 0;
+      
+      const checkDistanceAndVisibility = () => {
+        if (!groupRef.current) return;
+        
+        // Update FPS counter here instead of in materials
+        updateFPS();
+        
+        // Calculate distance to camera for spherical culling
+        const objectPosition = new THREE.Vector3();
+        groupRef.current.getWorldPosition(objectPosition);
+        const distance = camera.position.distanceTo(objectPosition);
+        
+        // Always update distance for accurate tracking
         setDistanceToCamera(distance);
-      }
+        
+        // Simple spherical culling: hide objects outside the 25-unit sphere
+        const finalVisibility = distance <= CULLING_SPHERE_RADIUS;
+        
+        // Always update visibility state
+        setIsVisible(finalVisibility);
+        
+        // Ensure the Three.js object visibility matches our state
+        if (groupRef.current) {
+          groupRef.current.visible = finalVisibility;
+        }
+        
+        // Debug log (temporary)
+        if (frameCount % 120 === 0) { // Log every 2 seconds
+          console.log(`Cube ${id}: distance=${distance.toFixed(1)}, visible=${finalVisibility}, radius=${CULLING_SPHERE_RADIUS}`);
+        }
+      };
       
-      // Advanced culling: hide objects that are very far when performance is low
-      const quality = getAdaptiveQuality();
-      const shouldBeVisible = !(quality === 'low' && distance > 100);
+      // More frequent and consistent checking
+      const throttledCheck = () => {
+        frameCount++;
+        const quality = getAdaptiveQuality();
+        const checkInterval = quality === 'low' ? 5 : quality === 'medium' ? 3 : 1; // Very frequent checks for reliable culling
+        
+        if (frameCount % checkInterval === 0) {
+          checkDistanceAndVisibility();
+        }
+        frameId = requestAnimationFrame(throttledCheck);
+      };
       
-      if (shouldBeVisible !== isVisible) {
-        setIsVisible(shouldBeVisible);
-      }
-    };
-    
-    // Adaptive check frequency based on performance
-    let frameCount = 0;
-    let frameId: number;
-    const throttledCheck = () => {
-      frameCount++;
-      const quality = getAdaptiveQuality();
-      const checkInterval = quality === 'low' ? 20 : quality === 'medium' ? 15 : 10;
-      
-      if (frameCount % checkInterval === 0) {
-        checkDistanceAndVisibility();
-      }
       frameId = requestAnimationFrame(throttledCheck);
-    };
-    
-    frameId = requestAnimationFrame(throttledCheck);
+      
+      return () => {
+        if (frameId) cancelAnimationFrame(frameId);
+      };
+    }, 100); // 100ms delay to avoid lag on creation
     
     return () => {
-      if (frameId) cancelAnimationFrame(frameId);
+      clearTimeout(startDelay);
     };
-  }, [camera, distanceToCamera, isVisible]);
+  }, [camera, id]); // Only depend on camera and id to avoid infinite loops
 
   // Only render control panel when needed
   const controlPanelVisible = hovered || selected;
@@ -849,10 +894,8 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     onUpdate(updatedData);
   };
 
-  // Don't render if not visible (performance culling)
-  if (!isVisible) {
-    return null;
-  }
+  // Note: We don't return null here because we need the component to stay mounted
+  // to continue checking distance. Instead, we use the visible prop on the group.
 
   return (
     <>
@@ -875,6 +918,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         onClick={handleClick}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
+        visible={isVisible}
         userData={{ 
           type: 'model', 
           id,

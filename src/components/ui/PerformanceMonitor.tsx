@@ -33,7 +33,7 @@ const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({ visible = true 
   };
 
   return (
-    <div className="fixed top-4 right-4 bg-black/80 text-white p-3 rounded-lg text-sm font-mono z-50 backdrop-blur-sm border border-white/10">
+    <div className=" top-4 right-4 bg-black/80 text-white p-3 rounded-lg text-sm font-mono z-50 backdrop-blur-sm border border-white/10">
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <span>FPS:</span>
