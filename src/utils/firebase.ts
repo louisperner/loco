@@ -29,6 +29,8 @@ export const isFirebaseConfigured = Boolean(
 
 // Initialize Firebase only if it's configured
 export let auth: Auth | null = null;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export let db: any = null;
 export let googleProvider: GoogleAuthProvider | null = null;
 
@@ -54,6 +56,7 @@ if (isFirebaseConfigured) {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createUserDocument = async (userId: string, userData: Record<string, any>) => {
   if (!isFirebaseConfigured || !db) {
     console.error('Firebase is not configured');

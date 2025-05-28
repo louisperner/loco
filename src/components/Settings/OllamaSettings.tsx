@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useOllamaStore } from '@/store/useOllamaStore';
-import { Bot, Info, Zap, ServerIcon, Globe } from 'lucide-react';
+import { Bot, Info, Zap, ServerIcon } from 'lucide-react';
 import { DEFAULT_OLLAMA_MODELS, testOllamaConnection, DEFAULT_OLLAMA_ENDPOINT, normalizeEndpoint } from '@/lib/ollama-constants';
 import { ollamaApi } from '@/lib/ollama';
 
@@ -19,7 +19,6 @@ const OllamaSettings: React.FC = () => {
   } = useOllamaStore();
 
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown');
-  const [availableModels, setAvailableModels] = useState<{ id: string; name: string }[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [customModels, setCustomModels] = useState<{ id: string; name: string }[]>([]);
   const [inputEndpoint, setInputEndpoint] = useState(endpoint);
@@ -40,6 +39,7 @@ const OllamaSettings: React.FC = () => {
     checkConnection();
     // Update the input field with the normalized endpoint
     setInputEndpoint(endpoint);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endpoint]);
 
   // Load available models from the Ollama server
@@ -67,7 +67,7 @@ const OllamaSettings: React.FC = () => {
       
       // Fallback to default models if no models were found
       if (modelsList.length === 0) {
-        console.log("No models found in API response, using defaults");
+        // console.log("No models found in API response, using defaults");
         modelsList = DEFAULT_OLLAMA_MODELS;
       }
       

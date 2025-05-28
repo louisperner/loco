@@ -368,7 +368,7 @@ const HotbarTopNav: React.FC = () => {
       }
     }
     
-    console.log('HotbarTopNav: Final cube position after grid snap', position);
+    // console.log('HotbarTopNav: Final cube position after grid snap', position);
 
     // Create a unique ID for the primitive
     const id = `${type}-${Date.now()}`;
@@ -387,7 +387,7 @@ const HotbarTopNav: React.FC = () => {
         </svg>
       `;
 
-    console.log('HotbarTopNav: Selected texture for primitive', selectedImageTexture);
+    // console.log('HotbarTopNav: Selected texture for primitive', selectedImageTexture);
     
     const primitiveData = {
       id,
@@ -406,7 +406,7 @@ const HotbarTopNav: React.FC = () => {
       thumbnailUrl: selectedImageTexture?.url || `data:image/svg+xml;base64,${btoa(svgString)}`,
     };
     
-    console.log('HotbarTopNav: Creating primitive with data', primitiveData);
+    // console.log('HotbarTopNav: Creating primitive with data', primitiveData);
     
     // Add primitive to the model store
     addModel(primitiveData);

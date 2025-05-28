@@ -13,8 +13,7 @@ import {
   PrimitiveModelProps,
   PrimitiveModelData,
   StoreImageData,
-  StoreVideoData,
-  CubeFace
+  StoreVideoData
 } from './types';
 import ErrorBoundary from './ErrorBoundary';
 import { processFileUrl, controlButtonStyle } from './utils';
@@ -48,9 +47,12 @@ const sharedMaterials = {
 const materialCache = new Map<string, THREE.Material>();
 
 // Debounced material creation to prevent lag spikes
+// eslint-disable-next-line prefer-const
 let materialCreationQueue: Array<{ key: string; createMaterial: () => THREE.Material; resolve: (material: THREE.Material) => void }> = [];
+// @ts-ignore
 let materialCreationTimeout: number | null = null;
 
+// @ts-ignore
 const processMaterialQueue = () => {
   if (materialCreationQueue.length === 0) return;
   
@@ -510,7 +512,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
           newTexture.needsUpdate = true;
           setTexture(newTexture);
         };
-        img.onerror = (error) => {
+        img.onerror = () => {
           // console.error('ModelInScene: Failed to load image texture', error);
         };
       } else if (primitiveData.textureType === 'video') {
@@ -588,7 +590,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
           if (snappedPosition[0] !== initialPosition[0] || 
               snappedPosition[1] !== initialPosition[1] || 
               snappedPosition[2] !== initialPosition[2]) {
-            console.log('ModelInScene: Correcting off-grid cube position', initialPosition, '->', snappedPosition);
+              // console.log('ModelInScene: Correcting off-grid cube position', initialPosition, '->', snappedPosition);
             groupRef.current.position.set(...snappedPosition);
             onUpdate({
               ...modelData,

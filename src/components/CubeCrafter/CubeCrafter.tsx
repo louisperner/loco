@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Save, Palette, Image as ImageIcon, RotateCw, Download } from 'lucide-react';
+import { X, Save, Palette, Image as ImageIcon, RotateCw } from 'lucide-react';
 import { useImageStore } from '@/store/useImageStore';
 import { useModelStore } from '@/store/useModelStore';
-import * as THREE from 'three';
 
 interface CubeFace {
   id: string;
@@ -266,7 +265,7 @@ const CubeCrafter: React.FC<CubeCrafterProps> = ({ isOpen, onClose }) => {
     };
 
     // Add to model store
-    const cubeId = addModel(cubeData);
+    addModel(cubeData);
 
     // Show success message
     const toast = document.createElement('div');
@@ -297,10 +296,22 @@ const CubeCrafter: React.FC<CubeCrafterProps> = ({ isOpen, onClose }) => {
     onClose();
   };
 
+  // Initialize canvas when component becomes visible
+  useEffect(() => {
+    if (isOpen) {
+      // Small delay to ensure the canvas is properly mounted in the DOM
+      setTimeout(() => {
+        drawCubeNet();
+      }, 50);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
   // Redraw canvas when faces change
   useEffect(() => {
     drawCubeNet();
-  }, [cubeFaces, selectedFace]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cubeFaces, selectedFace, isOpen]);
 
   if (!isOpen) return null;
 

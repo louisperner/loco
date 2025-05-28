@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DEFAULT_OLLAMA_ENDPOINT } from '@/lib/ollama-constants';
 
 interface OllamaState {
   endpoint: string;

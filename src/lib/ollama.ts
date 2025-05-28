@@ -164,7 +164,7 @@ export const ollamaApi = {
     callbacks: StreamCallbacks
   ): Promise<void> {
 
-    console.log("[DEBUG] Ollama Stream Request:", endpoint, request, callbacks);
+    // console.log("[DEBUG] Ollama Stream Request:", endpoint, request, callbacks);
 
     try {
       // Cancel any existing stream before starting a new one
@@ -192,7 +192,7 @@ export const ollamaApi = {
       
       try {
         // Use fetch API instead of axios for better compatibility with streaming responses
-        console.log("[DEBUG] Sending fetch request to:", `${normalizedEndpoint}/api/chat`);
+        // console.log("[DEBUG] Sending fetch request to:", `${normalizedEndpoint}/api/chat`);
         
         const response = await fetch(`${normalizedEndpoint}/api/chat`, {
           method: 'POST',
@@ -201,11 +201,11 @@ export const ollamaApi = {
           signal: activeStreamController.signal
         });
 
-        console.log("[DEBUG] Fetch response received:", { 
-          status: response.status, 
-          ok: response.ok, 
-          contentType: response.headers.get('content-type') 
-        });
+        // console.log("[DEBUG] Fetch response received:", { 
+        //   status: response.status, 
+        //   ok: response.ok, 
+        //   contentType: response.headers.get('content-type') 
+        // });
 
         if (!response.ok) {
           throw new Error(`Ollama API returned ${response.status}: ${response.statusText}`);
@@ -230,7 +230,7 @@ export const ollamaApi = {
             
             if (line) {
               try {
-                console.log("[DEBUG] Processing line:", line.substring(0, 100) + (line.length > 100 ? '...' : ''));
+                // console.log("[DEBUG] Processing line:", line.substring(0, 100) + (line.length > 100 ? '...' : ''));
                 const parsed = JSON.parse(line) as OllamaStreamResponse;
                 
                 // Extract content from different possible locations in the response
@@ -239,12 +239,12 @@ export const ollamaApi = {
                 // Check for direct 'response' field (older API style)
                 if (parsed.response !== undefined) {
                   content = parsed.response;
-                  console.log("[DEBUG] Found response field in parsed JSON");
+                  // console.log("[DEBUG] Found response field in parsed JSON");
                 } 
                 // Check for nested content in message (newer API style)
                 else if (parsed.message?.content !== undefined) {
                   content = parsed.message.content;
-                  console.log("[DEBUG] Found message.content field in parsed JSON");
+                  // console.log("[DEBUG] Found message.content field in parsed JSON");
                 }
                 
                 if (content !== undefined) {
@@ -262,7 +262,7 @@ export const ollamaApi = {
                   return;
                 }
               } catch (error) {
-                console.log("Error parsing JSON stream response:", error, "Line:", line);
+                // console.log("Error parsing JSON stream response:", error, "Line:", line);
                 // Skip invalid JSON
               }
             }
@@ -322,7 +322,7 @@ export const ollamaApi = {
         const response = await axios.get(`${normalizedEndpoint}/api/tags`);
         return response.data;
       } catch (firstError) {
-        console.log("Failed to fetch tags, trying models endpoint:", firstError);
+        // console.log("Failed to fetch tags, trying models endpoint:", firstError);
         
         // If tags endpoint fails, try the models endpoint
         try {
@@ -348,33 +348,33 @@ export const ollamaApi = {
     try {
       const normalizedEndpoint = normalizeEndpoint(endpoint);
       
-      console.log("[DEBUG] Interview Assistant request to:", normalizedEndpoint, request.model);
-      console.log("[DEBUG] Request message structure:", request.messages.map(msg => {
-        if (typeof msg.content === 'string') {
-          return { role: msg.role, contentType: 'string', length: msg.content.length };
-        } else if (Array.isArray(msg.content)) {
-          return { 
-            role: msg.role, 
-            contentType: 'array', 
-            contentItems: msg.content.map(item => ({
-              type: item.type,
-              dataLength: item.type === 'image' ? (item as OllamaImageContent).image.length : 
-                           item.type === 'text' ? (item as OllamaTextContent).text.length : 0
-            }))
-          };
-        } else {
-          return { role: msg.role, contentType: 'unknown' };
-        }
-      }));
+      // console.log("[DEBUG] Interview Assistant request to:", normalizedEndpoint, request.model);
+      // console.log("[DEBUG] Request message structure:", request.messages.map(msg => {
+      //   if (typeof msg.content === 'string') {
+      //     return { role: msg.role, contentType: 'string', length: msg.content.length };
+      //   } else if (Array.isArray(msg.content)) {
+      //     return { 
+      //       role: msg.role, 
+      //       contentType: 'array', 
+      //       contentItems: msg.content.map(item => ({
+      //         type: item.type,
+      //         dataLength: item.type === 'image' ? (item as OllamaImageContent).image.length : 
+      //                      item.type === 'text' ? (item as OllamaTextContent).text.length : 0
+      //       }))
+      //     };
+      //   } else {
+      //     return { role: msg.role, contentType: 'unknown' };
+      //   }
+      // }));
       
       // Also log if messages contain the 'images' array from the new format
-      console.log("[DEBUG] Checking for images array in messages:", request.messages.map(msg => {
-        return {
-          role: msg.role,
-          hasImages: 'images' in msg,
-          imagesCount: 'images' in msg ? (msg as any).images.length : 0
-        };
-      }));
+      // console.log("[DEBUG] Checking for images array in messages:", request.messages.map(msg => {
+      //   return {
+      //     role: msg.role,
+      //     hasImages: 'images' in msg,
+      //     imagesCount: 'images' in msg ? (msg as any).images.length : 0
+      //   };
+      // }));
       
       // Use the same fetch and streaming approach as streamChat for consistency
       const headers: Record<string, string> = {
@@ -387,7 +387,7 @@ export const ollamaApi = {
         ...request,
         stream: true
       });
-      console.log("[DEBUG] Request body size:", requestBody.length, "bytes");
+      // console.log("[DEBUG] Request body size:", requestBody.length, "bytes");
       
       const response = await fetch(`${normalizedEndpoint}/api/chat`, {
         method: 'POST',
@@ -395,11 +395,11 @@ export const ollamaApi = {
         body: requestBody
       });
 
-      console.log("[DEBUG] Interview Assistant fetch response:", { 
-        status: response.status, 
-        ok: response.ok, 
-        contentType: response.headers.get('content-type') 
-      });
+      // console.log("[DEBUG] Interview Assistant fetch response:", { 
+      //   status: response.status, 
+      //   ok: response.ok, 
+      //   contentType: response.headers.get('content-type') 
+      // });
 
       if (!response.ok) {
         throw new Error(`Ollama API returned ${response.status}: ${response.statusText}`);
@@ -434,7 +434,7 @@ export const ollamaApi = {
             
             if (line) {
               try {
-                console.log("[DEBUG] Processing line:", line.substring(0, 100) + (line.length > 100 ? '...' : ''));
+                // console.log("[DEBUG] Processing line:", line.substring(0, 100) + (line.length > 100 ? '...' : ''));
                 const parsed = JSON.parse(line);
                 
                 // Extract content from parsed JSON
@@ -442,10 +442,10 @@ export const ollamaApi = {
                 
                 if (parsed.response !== undefined) {
                   content = parsed.response;
-                  console.log("[DEBUG] Found response field in parsed JSON");
+                  // console.log("[DEBUG] Found response field in parsed JSON");
                 } else if (parsed.message?.content !== undefined) {
                   content = parsed.message.content;
-                  console.log("[DEBUG] Found message.content field in parsed JSON");
+                  // console.log("[DEBUG] Found message.content field in parsed JSON");
                 }
                 
                 if (content !== undefined) {
@@ -453,7 +453,7 @@ export const ollamaApi = {
                 }
               } catch (error) {
                 // Skip invalid JSON
-                console.log("Error parsing JSON in stream:", error);
+                // console.log("Error parsing JSON in stream:", error);
               }
             }
             

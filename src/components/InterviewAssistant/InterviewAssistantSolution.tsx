@@ -26,8 +26,7 @@ export const InterviewAssistantSolution: React.FC<SolutionProps> = ({
   setSolution,
   isCopied,
   copyCodeToClipboard,
-  isTyping,
-  typedSolution
+  isTyping
 }) => {
   if (isGenerating) {
     return (

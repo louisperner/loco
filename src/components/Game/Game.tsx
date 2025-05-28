@@ -25,10 +25,6 @@ import { useFileHandling } from '../../hooks/useFileHandling';
 import { useGameStore, HotbarContext, EnvironmentSettings } from '../../store/useGameStore';
 import TouchControls from '../Scene/TouchControls';
 import GamepadController from './GamepadController';
-// Fix for missing AuthContext - replace with your actual import if available
-// import { useAuth } from '@/contexts/AuthContext';
-import UserProfile from './UserProfile';
-import { User as UserIcon } from 'lucide-react';
 import PerformanceMonitor from '../ui/PerformanceMonitor';
 import PerformanceTest from '../ui/PerformanceTest';
 
@@ -388,6 +384,7 @@ const Player: React.FC = () => {
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('focus', handleFocus);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     pendingWebsiteUrl,
     showCatalog,
@@ -478,8 +475,8 @@ const Player: React.FC = () => {
   // Listen for addObject events from FPSControls
   useEffect(() => {
     const handleAddObject = (event: CustomEvent) => {
-      const { position, type, snapToFace } = event.detail;
-      console.log('Game: Received addObject event', { position, type, snapToFace });
+      const { position, type } = event.detail;
+      // console.log('Game: Received addObject event', { position, type });
       
       // Check if a cube is selected in hotbar
       const selectedHotbarItem = useGameStore.getState().selectedHotbarItem;
@@ -490,7 +487,7 @@ const Player: React.FC = () => {
 
       
       if (isCubeSelected || type === 'cube') {
-        console.log('Game: Adding cube at position', position);
+        // console.log('Game: Adding cube at position', position);
         
         // ALWAYS snap cube positions to grid for consistency
         const snappedPosition: [number, number, number] = [
@@ -499,9 +496,10 @@ const Player: React.FC = () => {
           Math.round(position[2])
         ];
         
-        console.log('Game: Snapped cube position from', position, 'to', snappedPosition);
-        
+        // console.log('Game: Snapped cube position from', position, 'to', snappedPosition);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         // Check if the selected hotbar item is a custom cube
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const isCustomCube = selectedHotbarItem && (selectedHotbarItem as any).customCube;
         
         let cubeData;
@@ -518,16 +516,20 @@ const Player: React.FC = () => {
             isPrimitive: true,
             primitiveType: 'cube' as const,
             customCube: true,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             cubeFaces: (selectedHotbarItem as any).cubeFaces,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             color: (selectedHotbarItem as any).color || '#4ade80',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             textureUrl: (selectedHotbarItem as any).textureUrl,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             textureType: (selectedHotbarItem as any).textureType,
             thumbnailUrl: selectedHotbarItem.thumbnailUrl as string,
           };
         } else {
           // Create a basic cube (fallback for when no custom cube is selected)
           const selectedImageTexture = useGameStore.getState().selectedImageTexture;
-          console.log('Game: Selected texture for basic cube', selectedImageTexture);
+          // console.log('Game: Selected texture for basic cube', selectedImageTexture);
           
           cubeData = {
             url: 'primitive://cube',
@@ -546,7 +548,7 @@ const Player: React.FC = () => {
           };
         }
         
-        console.log('Game: Creating cube with data', cubeData);
+        // console.log('Game: Creating cube with data', cubeData);
         
         // Add a cube primitive at the specified position
         const { addModel } = useModelStore.getState();
@@ -1058,6 +1060,7 @@ const Player: React.FC = () => {
                 const finalRotation = isCubePrimitive ? [0, 0, 0] as [number, number, number] : rotation;
                 
                 // Preserve all custom cube properties when cloning
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const newModelData: any = {
                   url: model.url,
                   fileName: model.fileName,

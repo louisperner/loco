@@ -301,9 +301,13 @@ export const useInventory = (
         modifiedAt: new Date().toISOString(),
         category: getModelCategory(model.fileName || 'Unknown'),
         // Preserve custom cube properties
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         customCube: (model as any).customCube,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         cubeFaces: (model as any).cubeFaces,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         isPrimitive: (model as any).isPrimitive,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         primitiveType: (model as any).primitiveType,
         };
       });
@@ -356,6 +360,7 @@ export const useInventory = (
         if (seenIds.has(item.id)) return;
 
         // Skip URL-based deduplication for custom cubes since they all share the same primitive URL
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const isCustomCube = (item as any).customCube;
         
         const normalizedUrl = item.url ? item.url.replace(/\\/g, '/').toLowerCase() : null;
@@ -407,26 +412,26 @@ export const useInventory = (
       // Restore hotbar items
       try {
         const savedHotbar = localStorage.getItem(HOTBAR_STORAGE_KEY);
-        // console.log('Loaded savedHotbar from localStorage:', savedHotbar);
+        // // console.log('Loaded savedHotbar from localStorage:', savedHotbar);
         if (savedHotbar) {
           const savedHotbarIds = JSON.parse(savedHotbar) as (string | null)[];
-          // console.log('Parsed savedHotbarIds:', savedHotbarIds);
+          // // console.log('Parsed savedHotbarIds:', savedHotbarIds);
           const newHotbarItems: (InventoryItem | null)[] = Array(9).fill(null);
 
           savedHotbarIds.forEach((id, index) => {
             if (id) {
               const item = uniqueItems.find((item) => item.id === id);
-              // console.log(`Looking for item with ID ${id} for slot ${index}:`, item);
+              // // console.log(`Looking for item with ID ${id} for slot ${index}:`, item);
               if (item) {
                 newHotbarItems[index] = item;
               }
             }
           });
 
-          // console.log('Restored hotbar from localStorage:', newHotbarItems);
+          // // console.log('Restored hotbar from localStorage:', newHotbarItems);
           setHotbarItems(newHotbarItems);
         } else {
-          // console.log('No saved hotbar found in localStorage');
+          // // console.log('No saved hotbar found in localStorage');
         }
       } catch (error) {
         // eslint-disable-next-line no-console
@@ -453,16 +458,17 @@ export const useInventory = (
   useEffect(() => {
     loadItemsFromDisk();
     // We depend on the underlying data, not the function itself to avoid infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeImages, storeModels, storeVideos]);
 
   // Save hotbar to localStorage whenever it changes
   useEffect(() => {
     try {
-      // console.log('Saving hotbar to localStorage:', hotbarItems);
+      // // console.log('Saving hotbar to localStorage:', hotbarItems);
       const hotbarIds = hotbarItems.map((item) => (item ? item.id : null));
-      // console.log('Hotbar IDs to save:', hotbarIds);
+      // // console.log('Hotbar IDs to save:', hotbarIds);
       localStorage.setItem(HOTBAR_STORAGE_KEY, JSON.stringify(hotbarIds));
-      // console.log('Hotbar saved to localStorage successfully');
+      // // console.log('Hotbar saved to localStorage successfully');
     } catch (error) {
       // eslint-disable-next-line no-console
       // console.error('Error saving hotbar to localStorage:', error);
@@ -472,31 +478,31 @@ export const useInventory = (
   // Move addItemToHotbarSlot into useCallback to avoid dependency cycle
   const addItemToHotbarSlot = useCallback(
     (item: InventoryItem, slotIndex: number): void => {
-      // console.log(`addItemToHotbarSlot called with item: ${item.fileName} for slot: ${slotIndex}`);
+      // // console.log(`addItemToHotbarSlot called with item: ${item.fileName} for slot: ${slotIndex}`);
 
       if (slotIndex >= 0 && slotIndex < 9) {
         const existingIndex = hotbarItems.findIndex((hotbarItem) => hotbarItem && hotbarItem.id === item.id);
 
-        // console.log(`Existing index of item in hotbar: ${existingIndex}`);
+        // // console.log(`Existing index of item in hotbar: ${existingIndex}`);
 
         if (existingIndex !== -1 && existingIndex !== slotIndex) {
-          //console.log(`Item exists in slot ${existingIndex}, moving to slot ${slotIndex}`);
+          //// console.log(`Item exists in slot ${existingIndex}, moving to slot ${slotIndex}`);
           const newHotbarItems = [...hotbarItems];
           newHotbarItems[existingIndex] = null;
           newHotbarItems[slotIndex] = item;
-          //console.log('New hotbar items before update:', newHotbarItems);
+          //// console.log('New hotbar items before update:', newHotbarItems);
           setHotbarItems(newHotbarItems);
         } else if (existingIndex === -1) {
-          //console.log(`Item doesn't exist in hotbar, adding to slot ${slotIndex}`);
+          //// console.log(`Item doesn't exist in hotbar, adding to slot ${slotIndex}`);
           const newHotbarItems = [...hotbarItems];
           newHotbarItems[slotIndex] = item;
-          //console.log('New hotbar items before update:', newHotbarItems);
+          //// console.log('New hotbar items before update:', newHotbarItems);
           setHotbarItems(newHotbarItems);
         } else {
-          //console.log(`Item already exists in slot ${slotIndex}, no change needed`);
+          //// console.log(`Item already exists in slot ${slotIndex}, no change needed`);
         }
       } else {
-        //console.log(`Invalid slot index: ${slotIndex}`);
+        //// console.log(`Invalid slot index: ${slotIndex}`);
       }
     },
     [hotbarItems, setHotbarItems],
@@ -549,7 +555,7 @@ export const useInventory = (
       if (e.key === 'q' || e.key === 'Q') {
         e.preventDefault();
         // eslint-disable-next-line no-console
-        // console.log('Q key pressed, clearing selection globally');
+        // // console.log('Q key pressed, clearing selection globally');
         setSelectedItem(null);
         setSelectedHotbarSlot(null);
         return;
@@ -565,7 +571,7 @@ export const useInventory = (
 
         // Debug information
         // eslint-disable-next-line no-console
-        // console.log(`Number key ${e.key} pressed, selecting hotbar slot ${slotIndex}`);
+        // // console.log(`Number key ${e.key} pressed, selecting hotbar slot ${slotIndex}`);
 
         // Always select the slot regardless of content
         setSelectedHotbarSlot(slotIndex);
@@ -583,7 +589,7 @@ export const useInventory = (
           });
         } else {
           // eslint-disable-next-line no-console
-          // console.log(`No item in slot ${slotIndex}, clearing item selection`);
+          // // console.log(`No item in slot ${slotIndex}, clearing item selection`);
           setSelectedItem(null);
           useGameStore.getState().setSelectedHotbarItem(null);
         }
@@ -591,7 +597,7 @@ export const useInventory = (
     };
 
     // eslint-disable-next-line no-console
-    // console.log("Global hotbar and deselection keyboard handler initialized");
+    // // console.log("Global hotbar and deselection keyboard handler initialized");
 
     // Use true for capture to ensure this handler runs before others
     document.addEventListener('keydown', handleGlobalHotkeys as unknown as EventListener, true);
@@ -599,7 +605,7 @@ export const useInventory = (
     return () => {
       document.removeEventListener('keydown', handleGlobalHotkeys as unknown as EventListener, true);
       // eslint-disable-next-line no-console
-      // console.log("Global hotbar keyboard handler removed");
+      // // console.log("Global hotbar keyboard handler removed");
     };
   }, [hotbarItems, setSelectedItem, setSelectedHotbarSlot]);
 
@@ -623,7 +629,7 @@ export const useInventory = (
       if (e.key === 'Escape') {
         e.preventDefault();
         // eslint-disable-next-line no-console
-        // console.log('Escape key pressed, closing inventory');
+        // // console.log('Escape key pressed, closing inventory');
         setShowFullInventory(false);
         setSelectedItem(null);
 
@@ -674,7 +680,7 @@ export const useInventory = (
         }
         // Right click and we have a remove handler
         else if (e.button === 2 && typeof onRemoveObject === 'function') {
-          // console.log('Right click on canvas, removing object');
+          // // console.log('Right click on canvas, removing object');
           onRemoveObject();
         }
       }
@@ -690,12 +696,12 @@ export const useInventory = (
     document.addEventListener('mousedown', handleMouseClick as unknown as EventListener);
     document.addEventListener('contextmenu', preventContextMenu as unknown as EventListener);
 
-    // console.log("Mouse click handler initialized");
+    // // console.log("Mouse click handler initialized");
 
     return () => {
       document.removeEventListener('mousedown', handleMouseClick as unknown as EventListener);
       document.removeEventListener('contextmenu', preventContextMenu as unknown as EventListener);
-      // console.log("Mouse click handler removed");
+      // // console.log("Mouse click handler removed");
     };
   }, [selectedHotbarSlot, hotbarItems, onRemoveObject, handleAddToCanvas]);
 
@@ -750,12 +756,12 @@ export const useInventory = (
       e.stopPropagation();
 
       // Log the item being added and current hotbar state
-      //console.log('handleAddToHotbar called with item:', item);
-      //console.log('Current hotbar state:', hotbarItems);
-      //console.log('Selected hotbar slot:', selectedHotbarSlot);
+      //// console.log('handleAddToHotbar called with item:', item);
+      //// console.log('Current hotbar state:', hotbarItems);
+      //// console.log('Selected hotbar slot:', selectedHotbarSlot);
 
       if (selectedHotbarSlot !== null) {
-        //console.log(`Adding item to selected slot ${selectedHotbarSlot}`);
+        //// console.log(`Adding item to selected slot ${selectedHotbarSlot}`);
         // First try using the helper function
         addItemToHotbarSlot(item, selectedHotbarSlot);
 
@@ -766,7 +772,7 @@ export const useInventory = (
       } else {
         const emptySlotIndex = hotbarItems.findIndex((slot) => slot === null);
         if (emptySlotIndex !== -1) {
-          //console.log(`Adding item to first empty slot ${emptySlotIndex}`);
+          //// console.log(`Adding item to first empty slot ${emptySlotIndex}`);
           // First try using the helper function
           addItemToHotbarSlot(item, emptySlotIndex);
 
@@ -775,7 +781,7 @@ export const useInventory = (
           newHotbarItems[emptySlotIndex] = item;
           setHotbarItems(newHotbarItems);
         } else {
-          //console.log('No empty slots, adding to slot 0');
+          //// console.log('No empty slots, adding to slot 0');
           // First try using the helper function
           addItemToHotbarSlot(item, 0);
 
@@ -949,32 +955,35 @@ export const useInventory = (
       );
 
       // For custom cubes, use more specific matching to avoid removing all cubes
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const isCustomCube = (itemToDelete as any).customCube;
-      console.log(`Removing item: ${itemToDelete.fileName}, isCustomCube: ${isCustomCube}, itemId: ${itemId}`);
+      // console.log(`Removing item: ${itemToDelete.fileName}, isCustomCube: ${isCustomCube}, itemId: ${itemId}`);
       
       const canvasModels = modelStore.models.filter((model) => {
         // First check for direct inventory ID match (for clones placed from inventory)
         if (model.inventoryId === itemId) {
-          console.log(`Found model by inventoryId: ${model.id}`);
+          // console.log(`Found model by inventoryId: ${model.id}`);
           return true;
         }
         
         // Check if this model IS the inventory item (for original models created by cube crafter)
         if (model.id === itemId) {
-          console.log(`Found model by direct ID match: ${model.id}`);
+          // console.log(`Found model by direct ID match: ${model.id}`);
           return true;
         }
         
         // For custom cubes, use fileName matching as additional safety
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (isCustomCube && (model as any).customCube) {
           const matches = model.fileName === itemToDelete.fileName;
           if (matches) {
-            console.log(`Found custom cube by fileName: ${model.id} (${model.fileName})`);
+            // console.log(`Found custom cube by fileName: ${model.id} (${model.fileName})`);
           }
           return matches;
         }
         
         // For regular models, use URL/path matching
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (!isCustomCube && !(model as any).customCube) {
           return model.url === itemToDelete.url || model.url === itemToDelete.filePath;
         }
@@ -982,7 +991,7 @@ export const useInventory = (
         return false;
       });
       
-      console.log(`Found ${canvasModels.length} models to remove for item ${itemToDelete.fileName}`);
+      // console.log(`Found ${canvasModels.length} models to remove for item ${itemToDelete.fileName}`);
 
       const canvasVideos = videoStore.videos.filter(
         (video) => video.id === itemId || video.src === itemToDelete.url || video.src === itemToDelete.filePath,
@@ -1078,10 +1087,10 @@ export const useInventory = (
   // Direct method to add an item to the hotbar (no event required)
   const addItemToHotbarDirect = useCallback(
     (item: InventoryItem): void => {
-      // console.log('addItemToHotbarDirect called with item:', item);
+      // // console.log('addItemToHotbarDirect called with item:', item);
 
       if (selectedHotbarSlot !== null) {
-        // console.log(`Adding item directly to selected slot ${selectedHotbarSlot}`);
+        // // console.log(`Adding item directly to selected slot ${selectedHotbarSlot}`);
         // Update hotbar items
         const newHotbarItems = [...hotbarItems];
         newHotbarItems[selectedHotbarSlot] = item;
@@ -1089,12 +1098,12 @@ export const useInventory = (
       } else {
         const emptySlotIndex = hotbarItems.findIndex((slot) => slot === null);
         if (emptySlotIndex !== -1) {
-          // console.log(`Adding item directly to first empty slot ${emptySlotIndex}`);
+          // // console.log(`Adding item directly to first empty slot ${emptySlotIndex}`);
           const newHotbarItems = [...hotbarItems];
           newHotbarItems[emptySlotIndex] = item;
           setHotbarItems(newHotbarItems);
         } else {
-          // console.log('No empty slots, adding directly to slot 0');
+          // // console.log('No empty slots, adding directly to slot 0');
           const newHotbarItems = [...hotbarItems];
           newHotbarItems[0] = item;
           setHotbarItems(newHotbarItems);

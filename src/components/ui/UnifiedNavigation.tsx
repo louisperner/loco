@@ -8,14 +8,11 @@ import {
   LogOut,
   UserPlus,
   ChevronRight,
-  Search,
-  Cloud,
   Home,
   Minimize2,
   Maximize2,
   Zap,
   Eye,
-  EyeOff
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAIChatStore } from '@/store/useAIChatStore';
@@ -95,6 +92,7 @@ const UnifiedNavigation: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showSettings, showInventory, isAIChatVisible, isInterviewAssistantVisible, isExpanded]);
 
   const navigationSections: NavigationSection[] = [
@@ -110,7 +108,7 @@ const UnifiedNavigation: React.FC = () => {
           icon: <User size={16} />,
           action: () => {
             // Open profile modal/page
-            console.log('Open profile');
+            // console.log('Open profile');
           }
         },
         {
@@ -187,7 +185,7 @@ const UnifiedNavigation: React.FC = () => {
           icon: <Eye size={16} />,
           action: () => {
             // Open appearance settings
-            console.log('Open appearance settings');
+            // console.log('Open appearance settings');
           }
         },
         {
@@ -196,7 +194,7 @@ const UnifiedNavigation: React.FC = () => {
           icon: <Zap size={16} />,
           action: () => {
             // Show shortcuts help
-            console.log('Show shortcuts');
+            // console.log('Show shortcuts');
           }
         }
       ]

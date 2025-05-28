@@ -20,6 +20,7 @@ import UnifiedNavigation from './components/ui/UnifiedNavigation';
 // Global sync state context
 export const SyncContext = React.createContext({
   isSyncing: false,
+  // @ts-ignore
   setSyncing: (isSyncing: boolean) => {}
 });
 
@@ -48,16 +49,17 @@ const SyncingIndicator: React.FC<{ isSyncing: boolean }> = ({ isSyncing }) => {
 
 const AppContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { currentUser, authModalOpen, initialize, isFirebaseAvailable } = useAuthStore();
+  const { currentUser, authModalOpen, isFirebaseAvailable } = useAuthStore();
   const [isSyncing, setSyncing] = useState<boolean>(false);
   const { isVisible, toggleVisibility } = useAIChatStore();
   const interviewAssistant = useInterviewAssistantStore();
 
+  // @ts-ignore
   useEffect(() => {
     // Initialize global shortcut handling for Electron
     if (window.electron) {
       const unsubscribe = window.electron.onGlobalShortcut((command: string) => {
-        console.log('Global shortcut received:', command);
+        // console.log('Global shortcut received:', command);
         
         switch (command) {
           case 'toggle-interview-assistant':
@@ -69,7 +71,7 @@ const AppContent: React.FC = () => {
               const captureScreenshot = async () => {
                 if (interviewAssistant.isCapturing) return;
                 
-                const screenshots = interviewAssistant.screenshots;
+                // const screenshots = interviewAssistant.screenshots;
                 const wasVisible = interviewAssistant.isVisible;
                 
                 interviewAssistant.setCapturing(true);

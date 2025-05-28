@@ -106,6 +106,7 @@ const Minimap: React.FC<MinimapProps> = ({
     sharedCanvasRef.canvas = mapCanvasRef.current;
     
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (sharedCanvasRef.canvas === mapCanvasRef.current) {
         sharedCanvasRef.canvas = null;
       }

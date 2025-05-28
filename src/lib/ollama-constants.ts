@@ -69,7 +69,7 @@ export const testOllamaConnection = async (endpoint = DEFAULT_OLLAMA_ENDPOINT): 
         return false;
       }
       
-      console.log("Ollama connected successfully. Version:", data.version);
+      // console.log("Ollama connected successfully. Version:", data.version);
       return true;
     } catch (error: unknown) {
       // Type guard to check properties safely

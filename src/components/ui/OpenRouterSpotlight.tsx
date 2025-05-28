@@ -64,7 +64,6 @@ const OpenRouterSpotlight: React.FC<OpenRouterSpotlightProps> = () => {
   const currentModel = ollamaEnabled ? ollamaModel : openRouterModel;
   const currentUseStreaming = ollamaEnabled ? ollamaStreaming : openRouterStreaming;
   const currentHistory = ollamaEnabled ? ollamaHistory : openRouterHistory;
-  const addToCurrentHistory = ollamaEnabled ? addToOllamaHistory : addToOpenRouterHistory;
   
   // State for the controller reference
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -75,7 +74,7 @@ const OpenRouterSpotlight: React.FC<OpenRouterSpotlightProps> = () => {
   // Check if streaming is supported for the selected model
   useEffect(() => {
     if (!ollamaEnabled) {
-      setStreamingSupported(isStreamingSupported(currentModel));
+      setStreamingSupported(isStreamingSupported());
     } else {
       // Ollama generally supports streaming for all models
       setStreamingSupported(true);
@@ -139,6 +138,7 @@ const OpenRouterSpotlight: React.FC<OpenRouterSpotlightProps> = () => {
     if (ollamaEnabled && showModelSelector) {
       loadOllamaModels();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ollamaEnabled, showModelSelector]);
 
   // Close model selector when clicking outside
@@ -306,6 +306,7 @@ const OpenRouterSpotlight: React.FC<OpenRouterSpotlightProps> = () => {
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKey, currentModel, siteName, siteUrl, isStreaming, currentUseStreaming, ollamaEnabled, ollamaEndpoint]);
   
   // Toggle spotlight visibility

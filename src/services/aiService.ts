@@ -130,7 +130,7 @@ DO NOT include any text before or after the JSON. Return ONLY the JSON object.`;
     ];
     
     // Include screenshots if available and the selected model supports vision
-    const supportsVision = ['openai/gpt-4-vision', 'openai/gpt-4o', 'anthropic/claude-3-opus', 'anthropic/claude-3-sonnet', 'anthropic/claude-3-haiku'].includes(selectedModel);
+    // const supportsVision = ['openai/gpt-4-vision', 'openai/gpt-4o', 'anthropic/claude-3-opus', 'anthropic/claude-3-sonnet', 'anthropic/claude-3-haiku'].includes(selectedModel);
     
     if (screenshots.length > 0) {
       logger.log('Including screenshots in the OpenRouter request for vision model');
@@ -435,7 +435,7 @@ DO NOT include any text before or after the JSON. Return ONLY the JSON object.`;
     
     // Check if we have screenshots and if the model might support images
     // For now, treat any model with "llava" in the name as a vision model
-    const supportsVision = selectedModel.toLowerCase().includes('llava');
+    // const supportsVision = selectedModel.toLowerCase().includes('llava');
     
     // If we have screenshots and the model supports vision, add screenshots as base64 data
     if (screenshots.length > 0) {

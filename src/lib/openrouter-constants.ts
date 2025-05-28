@@ -38,6 +38,6 @@ export const OPENROUTER_STREAMING_PROVIDERS = [
 ];
 
 // Helper function to check if a model supports streaming
-export const isStreamingSupported = (modelId: string) => {
+export const isStreamingSupported = () => {
   return true;
 }; 
