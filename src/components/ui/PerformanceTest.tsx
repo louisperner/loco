@@ -5,8 +5,6 @@ const PerformanceTest: React.FC = () => {
   const { addModel } = useModelStore();
 
   const createMultipleCubes = (count: number, spread: number = 10) => {
-    const startTime = performance.now();
-    
     for (let i = 0; i < count; i++) {
       // Create cubes in a larger area to test culling
       const x = (Math.random() - 0.5) * spread * 2;
@@ -29,13 +27,10 @@ const PerformanceTest: React.FC = () => {
         color,
       });
     }
-    
-    const endTime = performance.now();
-    console.log(`Created ${count} cubes in ${endTime - startTime}ms`);
   };
 
   return (
-    <div className="hide bottom-20 right-4 bg-black/80 text-white p-3 rounded-lg text-sm z-50 backdrop-blur-sm border border-white/10 z-50">
+    <div className="hide bottom-20 right-4 bg-black/80 text-white p-3 rounded-lg text-sm backdrop-blur-sm border border-white/10 z-50">
       <div className="flex flex-col gap-2">
         <h3 className="font-bold text-center">Performance Test</h3>
         <button

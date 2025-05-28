@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { FaCog, FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaGlobeAmericas, FaDesktop, FaRobot, FaServer } from 'react-icons/fa';
+import { FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaGlobeAmericas, FaDesktop, FaRobot, FaServer } from 'react-icons/fa';
 import { ColorsTab } from './tabs/ColorsTab';
 import { GroundTab } from './tabs/GroundTab';
 import { CrosshairTab } from './tabs/CrosshairTab';
@@ -10,11 +10,8 @@ import { OpenRouterTab } from './tabs/OpenRouterTab';
 import { OllamaTab } from './tabs/OllamaTab';
 import { SettingsPanelProps, SettingsTab } from './types';
 import { RgbaColor } from 'react-colorful';
-import { UserIcon, Save, Cloud, CheckCircle, Download, Database } from 'lucide-react';
-import { useAuthStore } from '@/store/useAuthStore';
+import { CheckCircle } from 'lucide-react';
 import UserProfile from '../Game/UserProfile';
-import { syncSettingsToFirestore, loadSettingsFromFirestore, syncSettings, syncAllLocalStorage } from '@/utils/local-storage-sync';
-import { SyncContext } from '@/main';
 
 interface CrosshairSettings {
   visible: boolean;
@@ -135,12 +132,6 @@ export function SettingsPanel({
   // Color picker container ref for portal
   const colorPickerContainerRef = useRef<HTMLDivElement>(null);
 
-  // Get auth state for showing user profile and sync operations
-  const { currentUser, toggleAuthModal, isFirebaseAvailable } = useAuthStore();
-  
-  // Sync context for cloud operations
-  const { setSyncing } = useContext(SyncContext);
-
   // Set up the color picker refs if not provided
   const effectiveColorPickerRefs = colorPickerRefs || { current: {} };
 
@@ -148,25 +139,6 @@ export function SettingsPanel({
   useEffect(() => {
     setOpen(isOpen || false);
   }, [isOpen]);
-
-  // Handle profile toggle
-  const handleUserProfileToggle = useCallback(() => {
-    setShowUserProfile((prevState) => !prevState);
-  }, []);
-
-  // Handle panel open/close and notify parent
-  // const handleOpenChange = useCallback(
-  //   (isOpen: boolean) => {
-  //     setOpen(isOpen);
-  //     if (onToggle) {
-  //       onToggle(isOpen);
-  //     }
-  //     if (!isOpen && onClose) {
-  //       onClose();
-  //     }
-  //   },
-  //   [onToggle, onClose]
-  // );
 
   // Tab change handler that also notifies parent
   const handleTabChange = useCallback(
@@ -238,78 +210,6 @@ export function SettingsPanel({
       onAlwaysOnTopToggle(enabled);
     }
   }, [onAlwaysOnTopToggle]);
-
-  // Cloud sync handlers
-  const handleSaveToCloud = useCallback(async () => {
-    if (!currentUser) {
-      return;
-    }
-    try {
-      setSyncStatus('Saving to cloud...');
-      await syncSettingsToFirestore(currentUser.uid);
-      setSyncStatus('Saved to cloud!');
-      setTimeout(() => setSyncStatus(null), 3000);
-    } catch (error) {
-      console.error('Failed to save settings to cloud:', error);
-      setSyncStatus('Failed to save!');
-      setTimeout(() => setSyncStatus(null), 3000);
-    }
-  }, [currentUser]);
-
-  const handleLoadFromCloud = useCallback(async () => {
-    if (!currentUser) {
-      return;
-    }
-    try {
-      setSyncStatus('Loading from cloud...');
-      await loadSettingsFromFirestore(currentUser.uid);
-      setSyncStatus('Settings loaded!');
-      setTimeout(() => setSyncStatus(null), 3000);
-    } catch (error) {
-      console.error('Failed to load settings from cloud:', error);
-      setSyncStatus('Failed to load!');
-      setTimeout(() => setSyncStatus(null), 3000);
-    }
-  }, [currentUser]);
-
-  const handleSyncSettings = useCallback(async () => {
-    if (!currentUser) {
-      return;
-    }
-    try {
-      setSyncStatus('Syncing settings...');
-      await syncSettings(currentUser.uid);
-      setSyncStatus('Settings synced!');
-      setTimeout(() => setSyncStatus(null), 3000);
-    } catch (error) {
-      console.error('Failed to sync settings:', error);
-      setSyncStatus('Failed to sync!');
-      setTimeout(() => setSyncStatus(null), 3000);
-    }
-  }, [currentUser]);
-
-  const handleSyncAllStorage = useCallback(async () => {
-    if (!currentUser) {
-      return;
-    }
-    try {
-      setSyncStatus('Syncing all data...');
-      setSyncing(true);
-      await syncAllLocalStorage(currentUser.uid);
-      setSyncStatus('All data synced!');
-      setTimeout(() => {
-        setSyncStatus(null);
-      }, 3000);
-    } catch (error) {
-      console.error('Failed to sync all data:', error);
-      setSyncStatus('Failed to sync all data!');
-      setTimeout(() => {
-        setSyncStatus(null);
-      }, 3000);
-    } finally {
-      setSyncing(false);
-    }
-  }, [currentUser, setSyncing]);
 
   // Define all the available tabs
   const definedTabs: SettingsTab[] = [
@@ -445,7 +345,7 @@ export function SettingsPanel({
       )}
 
       {/* User profile button in top right */}
-      <div className='fixed top-[70px] right-6 z-50 bg-white hover:bg-white/40 text-white rounded-full backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 border border-white/10 select-none'>
+      {/* <div className='fixed top-[70px] right-6 z-50 bg-white hover:bg-white/40 text-white rounded-full backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 border border-white/10 select-none'>
         {!currentUser && isFirebaseAvailable && (
           <button
             onClick={() => toggleAuthModal(true)}
@@ -464,17 +364,17 @@ export function SettingsPanel({
             <UserIcon className='w-6 h-6 text-white' />
           </button>
         )}
-      </div>
+      </div> */}
 
       {/* Settings Button */}
-      <Button
+      {/* <Button
         variant='ghost'
         size='icon'
         className='fixed top-4 right-4 z-50 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 border border-white/10 select-none'
         onClick={() => setOpen(true)}
       >
         <FaCog className='w-6 h-6 text-white' />
-      </Button>
+      </Button> */}
 
       {/* Settings Modal */}
       {open && (

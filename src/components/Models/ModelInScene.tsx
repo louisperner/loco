@@ -761,14 +761,10 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
   useEffect(() => {
     if (!groupRef.current) return;
     
-    console.log(`Starting culling monitoring for cube ${id}`);
-    
     // Delay the performance monitoring to avoid lag on cube creation
     const startDelay = setTimeout(() => {
       if (!groupRef.current) return;
-      
-      console.log(`Culling monitoring active for cube ${id}`);
-      
+            
       let frameId: number;
       let frameCount = 0;
       
@@ -795,11 +791,6 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         // Ensure the Three.js object visibility matches our state
         if (groupRef.current) {
           groupRef.current.visible = finalVisibility;
-        }
-        
-        // Debug log (temporary)
-        if (frameCount % 120 === 0) { // Log every 2 seconds
-          console.log(`Cube ${id}: distance=${distance.toFixed(1)}, visible=${finalVisibility}, radius=${CULLING_SPHERE_RADIUS}`);
         }
       };
       

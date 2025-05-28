@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
+import './styles/navigation.css';
 import Player from './components/Game/Game';
 import SplashScreen from './components/Game/SplashScreen';
 import PWAInstallPrompts from './components/Game/PWAInstallPrompts';
@@ -14,6 +15,7 @@ import { InterviewAssistant } from './components/InterviewAssistant';
 import AIChat from './components/AIChat';
 import { useAIChatStore } from './store/useAIChatStore';
 import { useInterviewAssistantStore } from './store/interviewAssistantStore';
+import UnifiedNavigation from './components/ui/UnifiedNavigation';
 
 // Global sync state context
 export const SyncContext = React.createContext({
@@ -212,6 +214,9 @@ const AppContent: React.FC = () => {
           <PWAInstallPrompts />}
         <Analytics />
         <SyncingIndicator isSyncing={isSyncing} />
+        
+        {/* Unified Navigation */}
+        <UnifiedNavigation />
         
         {/* AI Chat Component */}
         <AIChat isVisible={isVisible} toggleVisibility={toggleVisibility} />

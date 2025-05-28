@@ -1,0 +1,87 @@
+/* Navigation animations and transitions */
+@keyframes slide-in-from-top-2 {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-from-top-1 {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+
+.slide-in-from-top-2 {
+  animation: slide-in-from-top-2 0.2s ease-out;
+}
+
+.slide-in-from-top-1 {
+  animation: slide-in-from-top-1 0.15s ease-out;
+}
+
+/* Smooth hover effects */
+.unified-navigation button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.unified-navigation button:hover {
+  transform: scale(1.05);
+}
+
+/* Backdrop blur enhancement */
+.backdrop-blur-md {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Custom scrollbar for navigation */
+.unified-navigation .overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.unified-navigation .overflow-y-auto::-webkit-scrollbar-track {
+  background: #333333;
+  border-radius: 3px;
+}
+
+.unified-navigation .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #555555;
+  border-radius: 3px;
+}
+
+.unified-navigation .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #666666;
+}
+
+/* Glow effect for active items */
+.unified-navigation .active-glow {
+  box-shadow: 0 0 20px rgba(125, 50, 150, 0.3);
+}
+
+/* Pulse animation for status indicators */
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse {
+  animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+} 
