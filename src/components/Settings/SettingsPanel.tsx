@@ -126,8 +126,6 @@ export function SettingsPanel({
 
   // State hooks for internal component state
   const [showUserProfile, setShowUserProfile] = useState<boolean>(false);
-  // @ts-ignore
-  const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [open, setOpen] = useState<boolean>(isOpen || false);
   
   // Color picker container ref for portal
@@ -421,58 +419,8 @@ export function SettingsPanel({
               <div className="bg-[#222222] p-3">
                 <div className="flex justify-between items-center w-full">
                   <span className="text-xs text-gray-400">
-                    {syncStatus && (
-                      <span className="flex items-center">
-                        {syncStatus === 'Synced!' || syncStatus === 'Settings synced!' || syncStatus === 'Settings loaded!' || syncStatus === 'Saved to cloud!' || syncStatus === 'All data synced!' ? 
-                          <CheckCircle className="w-4 h-4 mr-1 text-green-400" /> : null}
-                        {syncStatus}
-                      </span>
-                    )}
+                    Settings
                   </span>
-                  {/* {currentUser && (
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs text-white bg-[#7d3296] hover:bg-[#9149a8] rounded flex items-center"
-                        onClick={handleSyncAllStorage}
-                        title="Sync all data with cloud (cloud-first approach)"
-                      >
-                        <Database className="w-3 h-3 mr-1" />
-                        All Data
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs text-white bg-[#7d3296] hover:bg-[#9149a8] rounded flex items-center"
-                        onClick={handleSyncSettings}
-                        title="Sync settings with cloud (cloud-first approach)"
-                      >
-                        <Cloud className="w-3 h-3 mr-1" />
-                        Settings
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs text-white bg-[#444] hover:bg-[#555] rounded flex items-center"
-                        onClick={handleSaveToCloud}
-                        title="Save current settings to cloud"
-                      >
-                        <Save className="w-3 h-3 mr-1" />
-                        Save
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs text-white bg-[#444] hover:bg-[#555] rounded flex items-center"
-                        onClick={handleLoadFromCloud}
-                        title="Load settings from cloud"
-                      >
-                        <Download className="w-3 h-3 mr-1" />
-                        Load
-                      </Button>
-                    </div>
-                  )} */}
                 </div>
               </div>
             </div>

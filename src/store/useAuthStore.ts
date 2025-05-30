@@ -8,7 +8,6 @@ import {
   signInWithPopup,
 } from 'firebase/auth';
 import { auth, googleProvider, createUserDocument, isFirebaseConfigured } from '../utils/firebase';
-import { syncAllLocalStorage } from '../utils/local-storage-sync';
 
 interface AuthState {
   currentUser: User | null;
@@ -51,9 +50,6 @@ export const useAuthStore = create<AuthState>((set) => ({
         lastLogin: new Date().toISOString(),
       });
 
-      // Sync all localStorage items using cloud-first approach
-      await syncAllLocalStorage(userCredential.user.uid);
-
       set({ authModalOpen: false });
     } catch (err) {
       // console.log.error('Erro no login:', err);
@@ -83,9 +79,6 @@ export const useAuthStore = create<AuthState>((set) => ({
         lastLogin: new Date().toISOString(),
       });
 
-      // Sync all localStorage items using cloud-first approach
-      await syncAllLocalStorage(userCredential.user.uid);
-
       set({ authModalOpen: false });
     } catch (err) {
       // console.log.error('Erro no cadastro:', err);
@@ -113,9 +106,6 @@ export const useAuthStore = create<AuthState>((set) => ({
         photoURL: result.user.photoURL || '',
         lastLogin: new Date().toISOString(),
       });
-
-      // Sync all localStorage items using cloud-first approach
-      await syncAllLocalStorage(result.user.uid);
 
       set({ authModalOpen: false });
     } catch (err) {
@@ -151,13 +141,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       set({ currentUser: user });
-      
-      // Sync all localStorage items when auth state changes (user logs in)
-      if (user) {
-        // syncAllLocalStorage(user.uid).catch(err => 
-        //   // console.log.error('Error syncing localStorage on auth state change:', err)
-        // );
-      }
     });
     return unsubscribe;
   },

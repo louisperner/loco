@@ -3,8 +3,28 @@ import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls } from '@react-three/drei';
 import { Vector3, Euler, Quaternion } from 'three';
-import { savePosition, loadPosition, POSITION_STORAGE_KEY } from '@/utils/local-storage-sync';
 import { useGameStore } from '@/store/useGameStore';
+
+const POSITION_STORAGE_KEY = 'player-position';
+
+// Simple position save/load functions
+const savePosition = (position: { x: number; y: number; z: number }) => {
+  try {
+    localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(position));
+  } catch (error) {
+    console.error('Error saving position:', error);
+  }
+};
+
+const loadPosition = (): { x: number; y: number; z: number } | null => {
+  try {
+    const saved = localStorage.getItem(POSITION_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch (error) {
+    console.error('Error loading position:', error);
+    return null;
+  }
+};
 
 interface FPSControlsProps {
   speed?: number;
