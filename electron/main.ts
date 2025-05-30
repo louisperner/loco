@@ -111,6 +111,15 @@ app.whenReady().then(() => {
     createTrayIcon(win);
   });
 
+  // Clean up tray when window is closed
+  win.on('closed', () => {
+    if (tray && !tray.isDestroyed()) {
+      logger.log('Destroying tray icon on window close');
+      tray.destroy();
+      tray = null;
+    }
+  });
+
   // Ensure window stays on top even when focus changes - using floating level (highest)
   win.setAlwaysOnTop(true, 'floating', 1);
 
@@ -472,6 +481,13 @@ app.whenReady().then(() => {
   app.on('will-quit', () => {
     // Unregister all shortcuts
     globalShortcut.unregisterAll();
+    
+    // Destroy tray icon if it exists
+    if (tray && !tray.isDestroyed()) {
+      logger.log('Destroying tray icon on app quit');
+      tray.destroy();
+      tray = null;
+    }
   });
 
   // Listen for IPC messages for toggling visibility and functions
@@ -511,6 +527,13 @@ function createTrayIcon(mainWindow) {
   if (!mainWindow || mainWindow.isDestroyed()) {
     logger.error('Cannot create tray icon: window is not available');
     return;
+  }
+
+  // Destroy existing tray icon if it exists to prevent duplicates
+  if (tray && !tray.isDestroyed()) {
+    logger.log('Destroying existing tray icon to prevent duplicates');
+    tray.destroy();
+    tray = null;
   }
 
   // Create tray icon
