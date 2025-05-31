@@ -9,17 +9,17 @@ const PerformanceTab: React.FC = () => {
   const { addModel } = useModelStore();
 
   const handleCullingEnabledChange = (enabled: boolean) => {
-    console.log('PerformanceTab: Setting culling enabled to:', enabled);
+    // console.log('PerformanceTab: Setting culling enabled to:', enabled);
     setCullingSettings({ enabled });
   };
 
   const handleCanvasRadiusChange = (value: number[]) => {
-    console.log('PerformanceTab: Setting canvas radius to:', value[0]);
+    // console.log('PerformanceTab: Setting canvas radius to:', value[0]);
     setCullingSettings({ canvasRadius: value[0] });
   };
 
   const handleMinimapRadiusChange = (value: number[]) => {
-    console.log('PerformanceTab: Setting minimap radius to:', value[0]);
+    // console.log('PerformanceTab: Setting minimap radius to:', value[0]);
     setCullingSettings({ minimapRadius: value[0] });
   };
 
@@ -117,31 +117,6 @@ const PerformanceTab: React.FC = () => {
               onCheckedChange={setShowCullingSphere}
             />
           </div>
-        </div>
-
-                {/* Debug Info */}
-        <div className="mt-6 p-4 bg-yellow-800/20 rounded-lg border border-yellow-500/30">
-          <h4 className="text-sm font-semibold text-white mb-2">Debug Info</h4>
-          <div className="text-xs text-gray-300 space-y-1">
-            <div>Culling Enabled: {cullingSettings.enabled ? 'Yes' : 'No'}</div>
-            <div>Canvas Radius: {cullingSettings.canvasRadius} units</div>
-            <div>Minimap Radius: {cullingSettings.minimapRadius} units</div>
-            <div>Show Sphere: {showCullingSphere ? 'Yes' : 'No'}</div>
-          </div>
-        </div>
-
-        {/* Test Section */}
-        <div className="mt-6 p-4 bg-blue-800/20 rounded-lg border border-blue-500/30">
-          <h4 className="text-sm font-semibold text-white mb-2">Culling Test</h4>
-          <p className="text-xs text-gray-400 mb-3">
-            Create test cubes at different distances (10, 25, 40, 55, 70 units) to test culling
-          </p>
-          <button
-            onClick={createTestCubes}
-            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
-          >
-            Create Test Cubes
-          </button>
         </div>
 
         {/* Performance Tips */}

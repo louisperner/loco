@@ -761,9 +761,6 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
   const [isVisible, setIsVisible] = useState(true);
   const { cullingSettings } = useGameStore();
   
-  const isMinimapRender = camera.position.y > 400;
-  console.log(`ModelInScene ${id}: camera.position.y = ${camera.position.y.toFixed(1)}, isMinimapRender = ${isMinimapRender}`);
-  
   const CULLING_SPHERE_RADIUS = cullingSettings.enabled 
     ? cullingSettings.canvasRadius 
     : Infinity; // Disable culling if not enabled

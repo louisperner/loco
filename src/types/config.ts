@@ -11,22 +11,22 @@ export interface LocoConfig {
     language?: string;
     autoSave?: boolean;
     cloudSync?: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   data: {
-    models: any[];
-    videos: any[];
-    images: any[];
-    webFrames: any[];
-    hotbarItems: any[];
+    models: unknown[];
+    videos: unknown[];
+    images: unknown[];
+    webFrames: unknown[];
+    hotbarItems: unknown[];
     playerPosition?: {
       x: number;
       y: number;
       z: number;
     };
-    scrollPositions?: Record<string, any>;
-    urlHistory?: any[];
-    [key: string]: any;
+    scrollPositions?: Record<string, unknown>;
+    urlHistory?: unknown[];
+    [key: string]: unknown;
   };
 }
 

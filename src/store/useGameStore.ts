@@ -572,13 +572,13 @@ export const useGameStore = create<GameState & GameStateActions>()(
 
              // Culling settings actions
        setCullingSettings: (settings: Partial<GameState['cullingSettings']>) => {
-         console.log('Store: Updating culling settings:', settings);
+         // console.log('Store: Updating culling settings:', settings);
          set((state) => {
            const newSettings = {
              ...state.cullingSettings,
              ...settings,
            };
-           console.log('Store: New culling settings:', newSettings);
+           // console.log('Store: New culling settings:', newSettings);
            return {
              cullingSettings: newSettings,
            };
