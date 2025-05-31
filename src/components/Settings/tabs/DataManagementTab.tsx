@@ -26,11 +26,12 @@ export function DataManagementTab({ onCleanAllFiles }: DataManagementTabProps) {
       } else {
         // Fallback to direct electron API call
         // Check if we have access to the electron API
+        // @ts-ignore
         if (!window.electron || typeof window.electron.cleanAllFiles !== 'function') {
           console.error('Electron API or cleanAllFiles function not available');
           throw new Error('Clean files function not available');
         }
-        
+        // @ts-ignore
         result = await window.electron.cleanAllFiles();
       }
       

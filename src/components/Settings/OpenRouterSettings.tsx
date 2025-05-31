@@ -36,7 +36,7 @@ const OpenRouterSettings: React.FC = () => {
 
   // Check if streaming is supported for the selected model
   useEffect(() => {
-    setStreamingSupported(isStreamingSupported(defaultModel));
+    setStreamingSupported(isStreamingSupported());
     return undefined;
   }, [defaultModel]);
 

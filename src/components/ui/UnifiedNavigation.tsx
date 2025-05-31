@@ -9,7 +9,6 @@ import {
   UserPlus,
   ChevronRight,
   Home,
-  Minimize2,
   Maximize2,
   Zap,
   Eye,

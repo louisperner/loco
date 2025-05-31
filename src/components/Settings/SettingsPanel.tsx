@@ -11,7 +11,6 @@ import { OllamaTab } from './tabs/OllamaTab';
 import PerformanceTab from './tabs/PerformanceTab';
 import { SettingsPanelProps, SettingsTab } from './types';
 import { RgbaColor } from 'react-colorful';
-import { CheckCircle } from 'lucide-react';
 import UserProfile from '../Game/UserProfile';
 
 interface CrosshairSettings {

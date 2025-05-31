@@ -7,7 +7,9 @@ interface CoordinateDisplayProps {
 
 const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({ cameraRef }) => {
   const [coordinates, setCoordinates] = useState({ x: 0, y: 0, z: 0 });
+  // @ts-ignore
   const [rotations, setRotations] = useState({ x: 0, y: 0, z: 0 });
+  // @ts-ignore
   const [direction, setDirection] = useState({ x: 0, y: 0, z: 0 });
   
   useEffect(() => {

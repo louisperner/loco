@@ -440,9 +440,6 @@ const HotbarTopNav: React.FC = () => {
       case 'code':
         handleCodeAdd();
         break;
-      case 'texture':
-        setShowTextureSelector(true);
-        break;
       case 'cube-crafter':
         setShowCubeCrafter(true);
         break;
@@ -528,7 +525,7 @@ const HotbarTopNav: React.FC = () => {
     //   )
     // },
     {
-      id: '3d',
+      id: 'model',
       icon: (
         <svg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'>
           <path
@@ -644,17 +641,17 @@ const HotbarTopNav: React.FC = () => {
         </svg>
       ),
     },
-    {
-      id: 'texture',
-      icon: (
-        <svg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'>
-          <path d='M2 2H18V18H2V2Z' stroke='currentColor' strokeWidth='2' />
-          <path d='M6 6H8V8H6V6ZM10 6H12V8H10V6ZM14 6H16V8H14V6Z' fill='currentColor' />
-          <path d='M6 10H8V12H6V10ZM10 10H12V12H10V10ZM14 10H16V12H14V10Z' fill='currentColor' />
-          <path d='M6 14H8V16H6V14ZM10 14H12V16H10V14ZM14 14H16V16H14V14Z' fill='currentColor' />
-        </svg>
-      ),
-    },
+    // {
+    //   id: 'texture',
+    //   icon: (
+    //     <svg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'>
+    //       <path d='M2 2H18V18H2V2Z' stroke='currentColor' strokeWidth='2' />
+    //       <path d='M6 6H8V8H6V6ZM10 6H12V8H10V6ZM14 6H16V8H14V6Z' fill='currentColor' />
+    //       <path d='M6 10H8V12H6V10ZM10 10H12V12H10V10ZM14 10H16V12H14V10Z' fill='currentColor' />
+    //       <path d='M6 14H8V16H6V14ZM10 14H12V16H10V14ZM14 14H16V16H14V14Z' fill='currentColor' />
+    //     </svg>
+    //   ),
+    // },
     {
       id: 'cube-crafter',
       icon: (

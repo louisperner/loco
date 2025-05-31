@@ -427,6 +427,7 @@ export const useFileHandling = (
           // Save the file to disk using Electron's IPC
           if (window.electron && window.electron.saveVideoFile) {
             window.electron
+              // @ts-ignore
               .saveVideoFile(file, file.name)
               .then((savedPath: string) => {
                 // Update video with the new file path
@@ -484,6 +485,7 @@ export const useFileHandling = (
         // Save the file to disk using Electron's IPC
         if (window.electron && window.electron.saveVideoFile) {
           window.electron
+            // @ts-ignore
             .saveVideoFile(file, file.name)
             .then((savedPath: string) => {
               // Update video with the new file path

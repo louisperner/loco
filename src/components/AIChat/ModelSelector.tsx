@@ -59,7 +59,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ className }) => {
   // Check if streaming is supported for the selected model
   useEffect(() => {
     if (!ollamaEnabled) {
-      setStreamingSupported(isStreamingSupported(currentModel));
+      setStreamingSupported(isStreamingSupported());
     } else {
       // Ollama generally supports streaming for all models
       setStreamingSupported(true);
