@@ -829,7 +829,8 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
   }, [camera, id, CULLING_SPHERE_RADIUS, cullingSettings.enabled, cullingSettings.canvasRadius]); // Ensure re-check if culling settings change
 
   // Only render control panel when needed
-  const controlPanelVisible = hovered || selected;
+  // const controlPanelVisible = hovered || selected;
+  const controlPanelVisible = false;
   
   const handleColorChange = (newColor: string) => {
     if (isPrimitive && primitiveData) {

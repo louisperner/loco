@@ -115,6 +115,12 @@ const FPSControls: React.FC<FPSControlsProps> = ({
   const lastActionTime = useRef<number>(0);
   const actionInterval = useRef<number | null>(null);
   
+  // Refs for line drawing
+  const isDrawingLine = useRef<boolean>(false);
+  const initialPlacementFaceNormal = useRef<THREE.Vector3 | null>(null);
+  const lastPlacedBlockPosition = useRef<THREE.Vector3 | null>(null);
+  const lineDrawingObstructed = useRef<boolean>(false); // New ref for obstruction state
+
   // Configure raycaster for more precise object detection
   useEffect(() => {
     if (raycaster.current) {
@@ -186,12 +192,13 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     raycaster.current.far = Infinity; // Set to infinite for better detection
 
     // Only show highlighting if a cube primitive is selected in hotbar
-    const isCubeSelected = selectedHotbarItem && 
-                          ((selectedHotbarItem.url as string)?.includes('primitive://cube') || 
-                           (selectedHotbarItem.fileName as string)?.toLowerCase().includes('cube'));
+    const isCubeSelectedForHighlight = selectedHotbarItem
+                                     ? (selectedHotbarItem.url?.includes('primitive://cube') || 
+                                        selectedHotbarItem.fileName?.toLowerCase().includes('cube'))
+                                     : false;
 
     // Check for intersections with cube objects only if cube is selected
-    if (isCubeSelected) {
+    if (isCubeSelectedForHighlight) {
       // Get only cube objects for more precise detection
       const cubeObjects: THREE.Object3D[] = [];
       scene.traverse((object) => {
@@ -737,11 +744,74 @@ const FPSControls: React.FC<FPSControlsProps> = ({
       // Function to perform placement action
       const performPlacementAction = () => {
         // Check if a cube is selected in hotbar
-        const isCubeSelected = selectedHotbarItem && 
-                              ((selectedHotbarItem.url as string)?.includes('primitive://cube') || 
-                               (selectedHotbarItem.fileName as string)?.toLowerCase().includes('cube'));
+        const isCubeSelected = selectedHotbarItem
+                              ? (selectedHotbarItem.url?.includes('primitive://cube') || 
+                                 selectedHotbarItem.fileName?.toLowerCase().includes('cube'))
+                              : false;
 
         if (isCubeSelected) {
+          // If we are drawing a line and have an established direction and last position
+          if (isDrawingLine.current && initialPlacementFaceNormal.current && lastPlacedBlockPosition.current) {
+            // If line drawing was previously obstructed during this drag, do nothing further.
+            if (lineDrawingObstructed.current) {
+              return;
+            }
+
+            const newPosition = lastPlacedBlockPosition.current.clone().add(initialPlacementFaceNormal.current);
+
+            // Round to grid for Minecraft-like snapping
+            newPosition.x = Math.round(newPosition.x);
+            newPosition.y = Math.round(newPosition.y);
+            newPosition.z = Math.round(newPosition.z);
+
+            let positionOccupied = false;
+            const cubesInScene: THREE.Mesh[] = []; // Store as THREE.Mesh[]
+            scene.traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) { // Type guard
+                const mesh = child as THREE.Mesh;
+                // Collect all potential cube objects
+                if (mesh.userData?.primitiveType === 'cube' ||
+                    (mesh.name.includes('cube') && !mesh.name.includes('helper') && mesh.name !== 'highlight') ||
+                    (mesh.geometry?.type === 'BoxGeometry' && !mesh.name.includes('helper') && mesh.name !== 'highlight')
+                   ) {
+                  cubesInScene.push(mesh);
+                }
+              }
+            });
+
+            for (const cube of cubesInScene) {
+              const existingCubePosition = new THREE.Vector3();
+              cube.getWorldPosition(existingCubePosition);
+
+              if (
+                Math.round(existingCubePosition.x) === newPosition.x &&
+                Math.round(existingCubePosition.y) === newPosition.y &&
+                Math.round(existingCubePosition.z) === newPosition.z
+              ) {
+                positionOccupied = true;
+                break;
+              }
+            }
+
+            if (!positionOccupied) {
+              // Dispatch cube placement event
+              const addEvent = new CustomEvent('addObject', {
+                detail: {
+                  position: [newPosition.x, newPosition.y, newPosition.z],
+                  type: 'cube',
+                  snapToFace: true, // This might need adjustment or a new flag for line drawing
+                },
+              });
+              window.dispatchEvent(addEvent);
+              lastPlacedBlockPosition.current = newPosition.clone(); // Update last placed position
+            } else {
+              // Stop line drawing for this drag if obstructed
+              // initialPlacementFaceNormal.current = null; // Keep this to know we were drawing a line
+              lineDrawingObstructed.current = true; // Set obstruction flag
+            }
+            return; // Skip the rest of the function as we've handled line placement (or obstruction)
+          }
+
           // Create a precise raycaster for cube placement
           const placementRaycaster = new THREE.Raycaster();
           placementRaycaster.near = 0.1;
@@ -880,6 +950,12 @@ const FPSControls: React.FC<FPSControlsProps> = ({
                 newPosition.y = Math.round(newPosition.y);
                 newPosition.z = Math.round(newPosition.z);
                 
+                // If this is the start of a line drawing, store the normal and initial position
+                if (isDrawingLine.current && !initialPlacementFaceNormal.current) {
+                  initialPlacementFaceNormal.current = normal.clone();
+                  lastPlacedBlockPosition.current = newPosition.clone();
+                }
+
                 // Dispatch cube placement event
                 const addEvent = new CustomEvent('addObject', {
                   detail: {
@@ -1046,11 +1122,18 @@ const FPSControls: React.FC<FPSControlsProps> = ({
         isMouseDown.current = true;
         mouseButton.current = e.button;
         lastActionTime.current = performance.now();
+        lineDrawingObstructed.current = false; // Reset obstruction on new mousedown
 
         // Perform immediate action
-        if (e.button === 0) {
-          // Left click - placement
+        if (e.button === 0) { // Left click
           e.preventDefault();
+          const currentIsCubeSelected = selectedHotbarItem
+                                        ? (selectedHotbarItem.url?.includes('primitive://cube') || 
+                                           selectedHotbarItem.fileName?.toLowerCase().includes('cube'))
+                                        : false;
+          if (currentIsCubeSelected) {
+            isDrawingLine.current = true; // Start line drawing mode
+          }
           performPlacementAction();
         } else if (e.button === 2) {
           // Right click - removal
@@ -1083,7 +1166,13 @@ const FPSControls: React.FC<FPSControlsProps> = ({
       const handleMouseUp = (): void => {
         isMouseDown.current = false;
         mouseButton.current = -1;
-        
+
+        // Reset line drawing state
+        isDrawingLine.current = false;
+        initialPlacementFaceNormal.current = null;
+        lastPlacedBlockPosition.current = null;
+        lineDrawingObstructed.current = false; // Reset obstruction on mouseup
+
         if (actionInterval.current) {
           clearInterval(actionInterval.current);
           actionInterval.current = null;
