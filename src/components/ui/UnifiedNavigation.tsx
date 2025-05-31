@@ -295,12 +295,12 @@ const UnifiedNavigation: React.FC = () => {
                     <p className="text-xs text-white/60">Quick access to all features</p>
                   </div>
                 </div>
-                <button
+                {/* <button
                   onClick={() => setIsMinimized(true)}
                   className="w-7 h-7 rounded-lg hover:bg-[#4c4c4c] flex items-center justify-center text-white/60 hover:text-white/90 transition-all duration-200"
                 >
                   <Minimize2 size={13} />
-                </button>
+                </button> */}
               </div>
             </div>
 

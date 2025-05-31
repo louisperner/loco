@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaGlobeAmericas, FaDesktop, FaRobot, FaServer } from 'react-icons/fa';
+import { FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaGlobeAmericas, FaDesktop, FaRobot, FaServer, FaTachometerAlt } from 'react-icons/fa';
 import { ColorsTab } from './tabs/ColorsTab';
 import { GroundTab } from './tabs/GroundTab';
 import { CrosshairTab } from './tabs/CrosshairTab';
@@ -8,6 +8,7 @@ import { EnvironmentTab } from './tabs/EnvironmentTab';
 import InterfaceSettings from './InterfaceSettings';
 import { OpenRouterTab } from './tabs/OpenRouterTab';
 import { OllamaTab } from './tabs/OllamaTab';
+import PerformanceTab from './tabs/PerformanceTab';
 import { SettingsPanelProps, SettingsTab } from './types';
 import { RgbaColor } from 'react-colorful';
 import { CheckCircle } from 'lucide-react';
@@ -316,6 +317,12 @@ export function SettingsPanel({
           onAlwaysOnTopToggle={handleAlwaysOnTopToggle}
         />
       ),
+    },
+    {
+      id: 'performance',
+      label: 'Performance',
+      icon: <FaTachometerAlt size='14' />,
+      content: <PerformanceTab />,
     },
     {
       id: 'openrouter',

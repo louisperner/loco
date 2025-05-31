@@ -8,11 +8,18 @@ interface CoordinateDisplayProps {
 const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({ cameraRef }) => {
   const [coordinates, setCoordinates] = useState({ x: 0, y: 0, z: 0 });
   const [rotations, setRotations] = useState({ x: 0, y: 0, z: 0 });
+  const [direction, setDirection] = useState({ x: 0, y: 0, z: 0 });
+  
   useEffect(() => {
     const updateCoordinates = () => {
       if (cameraRef.current) {
         const position = cameraRef.current.position;
         const rotation = cameraRef.current.rotation;
+        
+        // Calculate direction vector
+        const directionVector = new THREE.Vector3(0, 0, -1);
+        directionVector.applyQuaternion(cameraRef.current.quaternion);
+        
         setCoordinates({
           x: Math.round(position.x * 100) / 100,
           y: Math.round(position.y * 100) / 100,
@@ -22,6 +29,11 @@ const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({ cameraRef }) => {
           x: Math.round(rotation.x * 100) / 100,
           y: Math.round(rotation.y * 100) / 100,
           z: Math.round(rotation.z * 100) / 100,
+        });
+        setDirection({
+          x: Math.round(directionVector.x * 100) / 100,
+          y: Math.round(directionVector.y * 100) / 100,
+          z: Math.round(directionVector.z * 100) / 100,
         });
       }
     };
@@ -44,7 +56,9 @@ const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({ cameraRef }) => {
           <span>
             v0.2: {coordinates.x}, {coordinates.y}, {coordinates.z}
             <br />
-            {rotations.x}, {rotations.y}, {rotations.z}
+            rot: {rotations.x}, {rotations.y}, {rotations.z}
+            <br />
+            dir: {direction.x}, {direction.y}, {direction.z}
           </span>
         </div>
       </div>

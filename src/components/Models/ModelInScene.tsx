@@ -19,6 +19,7 @@ import ErrorBoundary from './ErrorBoundary';
 import { processFileUrl, controlButtonStyle } from './utils';
 import LoadingIndicator from '../Scene/LoadingIndicator';
 import { useStore } from '@/store/useStore';
+import { useGameStore } from '../../store/useGameStore';
 
 // Add shared geometries and materials at the top level to avoid recreating them
 const sharedGeometries = {
@@ -755,10 +756,18 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     }
   }, [getBoundingBox]);
 
-  // Spherical culling system - only render objects within 25 units of player
+  // Spherical culling system with configurable radius
   const [distanceToCamera, setDistanceToCamera] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
-  const CULLING_SPHERE_RADIUS = 25; // 25 units radius around player
+  const { cullingSettings } = useGameStore();
+  
+  const isMinimapRender = camera.position.y > 400;
+  console.log(`ModelInScene ${id}: camera.position.y = ${camera.position.y.toFixed(1)}, isMinimapRender = ${isMinimapRender}`);
+  
+  const CULLING_SPHERE_RADIUS = cullingSettings.enabled 
+    ? cullingSettings.canvasRadius 
+    : Infinity; // Disable culling if not enabled
+
   
   useEffect(() => {
     if (!groupRef.current) return;
@@ -784,8 +793,10 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         // Always update distance for accurate tracking
         setDistanceToCamera(distance);
         
-        // Simple spherical culling: hide objects outside the 25-unit sphere
+        // Simple spherical culling: hide objects outside the configured radius
         const finalVisibility = distance <= CULLING_SPHERE_RADIUS;
+        
+
         
         // Always update visibility state
         setIsVisible(finalVisibility);
@@ -818,7 +829,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     return () => {
       clearTimeout(startDelay);
     };
-  }, [camera, id]); // Only depend on camera and id to avoid infinite loops
+  }, [camera, id, CULLING_SPHERE_RADIUS, cullingSettings.enabled, cullingSettings.canvasRadius]); // Ensure re-check if culling settings change
 
   // Only render control panel when needed
   const controlPanelVisible = hovered || selected;
@@ -915,7 +926,8 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
         userData={{ 
           type: 'model', 
           id,
-          primitiveType: isPrimitive ? primitiveData?.primitiveType : undefined
+          primitiveType: isPrimitive ? primitiveData?.primitiveType : undefined,
+          isModelInScene: true
         }}
         name={`model-${id}`}
       >

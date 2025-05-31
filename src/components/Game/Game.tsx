@@ -20,6 +20,7 @@ import { Crosshair, Floor, PreviewFrame, FrameRateLimiter, CameraExposer } from 
 import CullingSphere from '../Scene/CullingSphere';
 import Minimap, { MinimapRenderer } from '../Scene/Minimap';
 import CoordinateDisplay from '../ui/CoordinateDisplay';
+import DirectionDisplay from '../ui/DirectionDisplay';
 import { rgbaToString } from '../../utils/colorUtils';
 import { useFileHandling } from '../../hooks/useFileHandling';
 import { useGameStore, HotbarContext, EnvironmentSettings } from '../../store/useGameStore';
@@ -323,7 +324,7 @@ const Player: React.FC = () => {
           handleInventoryToggle(false);
         } else if (showHelp) {
           handleToggleHelp();
-        } else if (currentMode === 'build') {
+        } else if (currentMode === 'preview') {
           handleModeChange('live');
         }
       }
@@ -479,10 +480,9 @@ const Player: React.FC = () => {
       // console.log('Game: Received addObject event', { position, type });
       
       // Check if a cube is selected in hotbar
-      const selectedHotbarItem = useGameStore.getState().selectedHotbarItem;
-      const isCubeSelected = selectedHotbarItem && 
-                            ((selectedHotbarItem.url as string)?.includes('primitive://cube') || 
-                             (selectedHotbarItem.fileName as string)?.toLowerCase().includes('cube'));
+      const selectedHotbarItemId = useGameStore.getState().selectedHotbarItem;
+      // For now, we'll handle cube creation differently since selectedHotbarItem is now just an ID
+      const isCubeSelected = type === 'cube';
       
 
       
@@ -497,101 +497,26 @@ const Player: React.FC = () => {
         ];
         
         // console.log('Game: Snapped cube position from', position, 'to', snappedPosition);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        // Check if the selected hotbar item is a custom cube
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const isCustomCube = selectedHotbarItem && (selectedHotbarItem as any).customCube;
+        // Create a basic cube
+        const selectedImageTexture = useGameStore.getState().selectedImageTexture;
         
-        let cubeData;
-        
-        if (isCustomCube) {
-          // Use the custom cube data from the hotbar item
-          cubeData = {
-            url: 'primitive://cube',
-            fileName: (selectedHotbarItem.fileName as string) || 'Custom Cube',
-            position: snappedPosition,
-            rotation: [0, 0, 0] as [number, number, number], // Always keep cubes axis-aligned
-            scale: 1,
-            isInScene: true,
-            isPrimitive: true,
-            primitiveType: 'cube' as const,
-            customCube: true,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            cubeFaces: (selectedHotbarItem as any).cubeFaces,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            color: (selectedHotbarItem as any).color || '#4ade80',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            textureUrl: (selectedHotbarItem as any).textureUrl,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            textureType: (selectedHotbarItem as any).textureType,
-            thumbnailUrl: selectedHotbarItem.thumbnailUrl as string,
-          };
-        } else {
-          // Create a basic cube (fallback for when no custom cube is selected)
-          const selectedImageTexture = useGameStore.getState().selectedImageTexture;
-          // console.log('Game: Selected texture for basic cube', selectedImageTexture);
-          
-          cubeData = {
-            url: 'primitive://cube',
-            fileName: 'cube.gltf',
-            position: snappedPosition,
-            rotation: [0, 0, 0] as [number, number, number], // Always keep cubes axis-aligned
-            scale: 1,
-            isInScene: true,
-            isPrimitive: true,
-            primitiveType: 'cube' as const,
-            color: selectedImageTexture ? '#ffffff' : '#4ade80', // White when textured, green when not
-            textureUrl: selectedImageTexture?.url || undefined,
-            textureType: selectedImageTexture ? 'image' as const : undefined,
-            textureName: selectedImageTexture?.fileName || undefined,
-            thumbnailUrl: selectedImageTexture?.url || `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4ade80"><path d="M12 2l9 4.5v11L12 22l-9-4.5v-11L12 2z"/></svg>')}`,
-          };
-        }
+        const cubeData = {
+          url: 'primitive://cube',
+          fileName: 'cube.gltf',
+          position: snappedPosition,
+          rotation: [0, 0, 0] as [number, number, number], // Always keep cubes axis-aligned
+          scale: 1,
+          isInScene: true,
+          isPrimitive: true,
+          primitiveType: 'cube' as const,
+          color: '#4ade80',
+        };
         
         // console.log('Game: Creating cube with data', cubeData);
         
         // Add a cube primitive at the specified position
         const { addModel } = useModelStore.getState();
         addModel(cubeData);
-      } else if (selectedHotbarItem) {
-        // Add the selected item from hotbar
-                 if (selectedHotbarItem.type === 'model') {
-           const { addModel } = useModelStore.getState();
-           addModel({
-             url: selectedHotbarItem.url as string,
-             fileName: selectedHotbarItem.fileName as string,
-             position: position,
-             rotation: [0, 0, 0],
-             scale: 1,
-             isInScene: true,
-             inventoryId: selectedHotbarItem.id as string,
-           });
-         } else if (selectedHotbarItem.type === 'image') {
-           const { addImage } = useImageStore.getState();
-           addImage({
-             src: selectedHotbarItem.url as string,
-             fileName: selectedHotbarItem.fileName as string,
-             position: position,
-             rotation: [0, 0, 0],
-             scale: 1,
-             isInScene: true,
-             inventoryId: selectedHotbarItem.id as string,
-           });
-         } else if (selectedHotbarItem.type === 'video') {
-           const { addVideo } = useVideoStore.getState();
-           addVideo({
-             src: selectedHotbarItem.url as string,
-             fileName: selectedHotbarItem.fileName as string,
-             position: position,
-             rotation: [0, 0, 0],
-             scale: 3,
-             isPlaying: true,
-             volume: 0.5,
-             loop: true,
-             isInScene: true,
-             inventoryId: selectedHotbarItem.id as string,
-           });
-         }
       }
     };
 
@@ -797,7 +722,6 @@ const Player: React.FC = () => {
               
               {/* Culling sphere visualization */}
               <CullingSphere 
-                radius={25} 
                 visible={showCullingSphere} 
                 opacity={0.1}
               />
@@ -928,7 +852,7 @@ const Player: React.FC = () => {
           )}
 
           {/* Mode indicator */}
-          {uiVisible && currentMode === 'build' && !confirmedPosition && (
+          {uiVisible && currentMode === 'preview' && !confirmedPosition && (
             <div className='fixed top-16 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center'>
               <span>
                 {pendingWebsiteUrl
@@ -1150,6 +1074,9 @@ const Player: React.FC = () => {
 
           {/* Coordinate Display */}
           {uiVisible && showCoordinates && <CoordinateDisplay cameraRef={cameraRef} />}
+
+          {/* Direction Display */}
+          {uiVisible && showCoordinates && <DirectionDisplay cameraRef={cameraRef} />}
 
           {/* Minimap */}
           {uiVisible && visibilitySettings.minimapVisible && <Minimap size={280} opacity={0.9} scale={25} />}

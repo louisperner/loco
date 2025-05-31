@@ -4,26 +4,56 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls } from '@react-three/drei';
 import { Vector3, Euler, Quaternion } from 'three';
 import { useGameStore } from '@/store/useGameStore';
+import { getCurrentUserDirection, saveDirectionToHistory } from '@/utils/userDirection';
 
-const POSITION_STORAGE_KEY = 'player-position';
+const PLAYER_STATE_STORAGE_KEY = 'player-state';
 
-// Simple position save/load functions
-const savePosition = (position: { x: number; y: number; z: number }) => {
+// Enhanced player state interface
+interface PlayerState {
+  position: { x: number; y: number; z: number };
+  rotation: { x: number; y: number; z: number };
+  direction: { x: number; y: number; z: number };
+}
+
+// Enhanced save/load functions for position and direction
+const savePlayerState = (state: PlayerState) => {
   try {
-    localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(position));
+    localStorage.setItem(PLAYER_STATE_STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
-    console.error('Error saving position:', error);
+    console.error('Error saving player state:', error);
   }
 };
 
-const loadPosition = (): { x: number; y: number; z: number } | null => {
+const loadPlayerState = (): PlayerState | null => {
   try {
-    const saved = localStorage.getItem(POSITION_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : null;
+    const saved = localStorage.getItem(PLAYER_STATE_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    
+    // Check for legacy position-only data
+    const legacyPosition = localStorage.getItem('player-position');
+    if (legacyPosition) {
+      const position = JSON.parse(legacyPosition);
+      return {
+        position,
+        rotation: { x: 0, y: 0, z: 0 },
+        direction: { x: 0, y: 0, z: -1 }
+      };
+    }
+    
+    return null;
   } catch (error) {
-    console.error('Error loading position:', error);
+    console.error('Error loading player state:', error);
     return null;
   }
+};
+
+// Helper function to calculate direction vector from camera
+const getCameraDirection = (camera: THREE.Camera): { x: number; y: number; z: number } => {
+  const direction = new THREE.Vector3(0, 0, -1);
+  direction.applyQuaternion(camera.quaternion);
+  return { x: direction.x, y: direction.y, z: direction.z };
 };
 
 interface FPSControlsProps {
@@ -132,9 +162,11 @@ const FPSControls: React.FC<FPSControlsProps> = ({
   // Add near top of component
   const isMobile = useRef(false);
 
-  // Reference to track when to save position
+  // Reference to track when to save position and direction
   const lastPositionSave = useRef<number>(Date.now());
+  const lastDirectionSave = useRef<number>(Date.now());
   const saveInterval = 5000; // Save position every 5 seconds
+  const directionSaveInterval = 10000; // Save direction to history every 10 seconds
 
   // Add highlight mesh ref
   const highlightMesh = useRef<THREE.Mesh | null>(null);
@@ -274,18 +306,24 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     }
   });
 
-  // Load saved position on mount
+  // Load saved player state on mount
   useEffect(() => {
     if (!enabled) return;
 
-    const savedPosition = loadPosition();
+    const savedState = loadPlayerState();
     
-    if (savedPosition && !hasSetInitialPosition.current) {
-      // Set initial position from saved position
-      camera.position.set(savedPosition.x, savedPosition.y, savedPosition.z);
+    if (savedState && !hasSetInitialPosition.current) {
+      // Set initial position from saved state
+      camera.position.set(savedState.position.x, savedState.position.y, savedState.position.z);
+      
+      // Restore camera rotation if available
+      if (savedState.rotation) {
+        camera.rotation.set(savedState.rotation.x, savedState.rotation.y, savedState.rotation.z);
+      }
+      
       hasSetInitialPosition.current = true;
 
-      // Initialize rotation values based on current camera rotation
+      // Initialize rotation values based on restored camera rotation
       targetRotationX.current = camera.rotation.x;
       targetRotationY.current = camera.rotation.y;
       currentRotationX.current = camera.rotation.x;
@@ -303,16 +341,25 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     }
   }, [camera, enabled, initialPosition]);
 
-  // Save position on unmount
+  // Save player state on unmount
   useEffect(() => {
     return () => {
       if (camera) {
-        savePosition({
-          x: camera.position.x,
-          y: camera.position.y,
-          z: camera.position.z
-        });
-        // Position saved on component unmount
+        const playerState: PlayerState = {
+          position: {
+            x: camera.position.x,
+            y: camera.position.y,
+            z: camera.position.z
+          },
+          rotation: {
+            x: camera.rotation.x,
+            y: camera.rotation.y,
+            z: camera.rotation.z
+          },
+          direction: getCameraDirection(camera)
+        };
+        savePlayerState(playerState);
+        // Player state saved on component unmount
       }
     };
   }, [camera]);
@@ -627,15 +674,31 @@ const FPSControls: React.FC<FPSControlsProps> = ({
       if (moveDown.current) camera.position.y -= actualSpeed;
     }
 
-    // Check if we need to save the position (every 5 seconds)
+    // Check if we need to save the player state (every 5 seconds)
     const now = Date.now();
     if (now - lastPositionSave.current > saveInterval) {
-      savePosition({
-        x: camera.position.x,
-        y: camera.position.y,
-        z: camera.position.z
-      });
+      const playerState: PlayerState = {
+        position: {
+          x: camera.position.x,
+          y: camera.position.y,
+          z: camera.position.z
+        },
+        rotation: {
+          x: camera.rotation.x,
+          y: camera.rotation.y,
+          z: camera.rotation.z
+        },
+        direction: getCameraDirection(camera)
+      };
+      savePlayerState(playerState);
       lastPositionSave.current = now;
+    }
+
+    // Check if we need to save direction to history (every 10 seconds)
+    if (now - lastDirectionSave.current > directionSaveInterval) {
+      const userDirection = getCurrentUserDirection(camera);
+      saveDirectionToHistory(userDirection);
+      lastDirectionSave.current = now;
     }
   });
 
@@ -1162,13 +1225,22 @@ const FPSControls: React.FC<FPSControlsProps> = ({
       // Quickly save position data synchronously
       if (camera) {
         try {
-          localStorage.setItem(
-            POSITION_STORAGE_KEY, 
-            JSON.stringify({
+          const playerState: PlayerState = {
+            position: {
               x: camera.position.x,
               y: camera.position.y,
               z: camera.position.z
-            })
+            },
+            rotation: {
+              x: camera.rotation.x,
+              y: camera.rotation.y,
+              z: camera.rotation.z
+            },
+            direction: getCameraDirection(camera)
+          };
+          localStorage.setItem(
+            PLAYER_STATE_STORAGE_KEY, 
+            JSON.stringify(playerState)
           );
         } catch (e) {
           // Silent fail - don't block page close

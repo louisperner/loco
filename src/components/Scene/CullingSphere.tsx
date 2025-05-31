@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useGameStore } from '../../store/useGameStore';
 
 interface CullingSphereProps {
   radius?: number;
@@ -9,12 +10,16 @@ interface CullingSphereProps {
 }
 
 const CullingSphere: React.FC<CullingSphereProps> = ({ 
-  radius = 150, 
+  radius, 
   visible = false,
   opacity = 0.1 
 }) => {
   const { camera } = useThree();
   const sphereRef = useRef<THREE.Mesh>(null);
+  const { cullingSettings } = useGameStore();
+  
+  // Use canvas culling radius from settings if no radius provided
+  const effectiveRadius = radius ?? cullingSettings.canvasRadius;
   
   useEffect(() => {
     if (!sphereRef.current || !visible) return;
@@ -46,7 +51,7 @@ const CullingSphere: React.FC<CullingSphereProps> = ({
   
   return (
     <mesh ref={sphereRef}>
-      <sphereGeometry args={[radius, 32, 32]} />
+      <sphereGeometry args={[effectiveRadius, 32, 32]} />
       <meshBasicMaterial 
         color="#00ff00" 
         transparent 

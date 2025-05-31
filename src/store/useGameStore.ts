@@ -60,8 +60,8 @@ export interface ImageTexture {
 }
 
 export interface HotbarContextType {
-  selectedHotbarItem: HotbarItem | null;
-  setSelectedHotbarItem: (item: HotbarItem | null) => void;
+  selectedHotbarItem: string | null;
+  setSelectedHotbarItem: (item: string | null) => void;
 }
 
 // Create a context for the hotbar selection
@@ -70,7 +70,7 @@ export const HotbarContext = React.createContext<HotbarContextType>({
   setSelectedHotbarItem: () => {},
 });
 
-interface GameState {
+export interface GameState {
   // UI States
   uiVisible: boolean;
   showCatalog: boolean;
@@ -81,13 +81,13 @@ interface GameState {
   showDrawingOverlay: boolean;
 
   // Mode states
-  currentMode: string;
+  currentMode: 'live' | 'preview';
   movementEnabled: boolean;
-  viewMode: string;
+  viewMode: '3D' | '2D';
 
   // Frame states
   frames: WebFrame[];
-  selectedFrame: number | null;
+  selectedFrame: string | null;
   pendingWebsiteUrl: string | null;
 
   // Preview states
@@ -104,14 +104,26 @@ interface GameState {
   selectedTheme: string | null;
 
   // Hotbar states
-  selectedHotbarItem: HotbarItem | null;
-  selectedImageTexture: ImageTexture | null;
+  selectedHotbarItem: string | null;
+  selectedImageTexture: string | null;
 
   // Visibility states
-  visibilitySettings: VisibilitySettings;
+  visibilitySettings: {
+    floorVisible: boolean;
+    gridVisible: boolean;
+    floorPlaneVisible: boolean;
+    backgroundVisible: boolean;
+    minimapVisible: boolean;
+  };
 
   // Crosshair states
-  crosshairSettings: CrosshairSettings;
+  crosshairSettings: {
+    visible: boolean;
+    size: number;
+    color: string;
+    thickness: number;
+    style: string;
+  };
 
   // Ground states
   gravityEnabled: boolean;
@@ -129,6 +141,13 @@ interface GameState {
   // Show culling sphere
   showCullingSphere: boolean;
 
+  // Culling settings
+  cullingSettings: {
+    canvasRadius: number;
+    minimapRadius: number;
+    enabled: boolean;
+  };
+
   // Actions
   setUiVisible: (visible: boolean) => void;
   setShowCatalog: (show: boolean) => void;
@@ -137,7 +156,7 @@ interface GameState {
   setShowInventory: (show: boolean) => void;
   setIsSpotlightOpen: (isOpen: boolean) => void;
 
-  setCurrentMode: (mode: string) => void;
+  setCurrentMode: (mode: 'live' | 'preview') => void;
   setMovementEnabled: (enabled: boolean) => void;
 
   setFrames: (frames: WebFrame[]) => void;
@@ -145,7 +164,7 @@ interface GameState {
   removeFrame: (frameId: number) => void;
   restoreFramePosition: (frameId: number) => void;
   updateFrameUrl: (frameId: number, newUrl: string) => void;
-  setSelectedFrame: (frameId: number | null) => void;
+  setSelectedFrame: (frameId: string | null) => void;
   setPendingWebsiteUrl: (url: string | null) => void;
 
   setShowPreview: (show: boolean) => void;
@@ -159,8 +178,8 @@ interface GameState {
   setShowColorPicker: (type: string | null) => void;
   setSelectedTheme: (theme: string | null) => void;
 
-  setSelectedHotbarItem: (item: HotbarItem | null) => void;
-  setSelectedImageTexture: (texture: ImageTexture | null) => void;
+  setSelectedHotbarItem: (item: string | null) => void;
+  setSelectedImageTexture: (texture: string | null) => void;
 
   setVisibilitySetting: (setting: keyof VisibilitySettings, value: boolean) => void;
 
@@ -192,6 +211,9 @@ interface GameState {
 
   // Drawing overlay actions
   setShowDrawingOverlay: (show: boolean) => void;
+
+  // Culling settings actions
+  setCullingSettings: (settings: Partial<GameState['cullingSettings']>) => void;
 }
 
 // Add the missing interface
@@ -237,6 +259,7 @@ type GameStateActions = Pick<
   | 'setShowCoordinates'
   | 'setAlwaysOnTop'
   | 'setShowDrawingOverlay'
+  | 'setCullingSettings'
 >;
 
 export const useGameStore = create<GameState & GameStateActions>()(
@@ -328,6 +351,13 @@ export const useGameStore = create<GameState & GameStateActions>()(
       // Show culling sphere
       showCullingSphere: false,
 
+      // Culling settings
+      cullingSettings: {
+        canvasRadius: 25,
+        minimapRadius: 1000,
+        enabled: true,
+      },
+
       // Actions
       setUiVisible: (visible: boolean) => set({ uiVisible: visible }),
       setShowCatalog: (show: boolean) => set({ showCatalog: show }),
@@ -336,7 +366,7 @@ export const useGameStore = create<GameState & GameStateActions>()(
       setShowInventory: (show: boolean) => set({ showInventory: show }),
       setIsSpotlightOpen: (isOpen: boolean) => set({ isSpotlightOpen: isOpen }),
 
-      setCurrentMode: (mode: string) => set({ currentMode: mode }),
+      setCurrentMode: (mode: 'live' | 'preview') => set({ currentMode: mode }),
       setMovementEnabled: (enabled: boolean) => set({ movementEnabled: enabled }),
 
       setFrames: (frames: WebFrame[]) => set({ frames }),
@@ -389,7 +419,7 @@ export const useGameStore = create<GameState & GameStateActions>()(
           frames: state.frames.map((frame) => (frame.id === frameId.toString() ? { ...frame, url: newUrl } : frame)),
         }));
       },
-      setSelectedFrame: (frameId: number | null) => set({ selectedFrame: frameId }),
+      setSelectedFrame: (frameId: string | null) => set({ selectedFrame: frameId }),
       setPendingWebsiteUrl: (url: string | null) => set({ pendingWebsiteUrl: url }),
 
       setShowPreview: (show: boolean) => set({ showPreview: show }),
@@ -403,8 +433,8 @@ export const useGameStore = create<GameState & GameStateActions>()(
       setShowColorPicker: (type: string | null) => set({ showColorPicker: type }),
       setSelectedTheme: (theme: string | null) => set({ selectedTheme: theme }),
 
-      setSelectedHotbarItem: (item: HotbarItem | null) => set({ selectedHotbarItem: item }),
-      setSelectedImageTexture: (texture: ImageTexture | null) => set({ selectedImageTexture: texture }),
+      setSelectedHotbarItem: (item: string | null) => set({ selectedHotbarItem: item }),
+      setSelectedImageTexture: (texture: string | null) => set({ selectedImageTexture: texture }),
 
       setVisibilitySetting: (setting: keyof VisibilitySettings, value: boolean) =>
         set((state) => ({
@@ -438,11 +468,11 @@ export const useGameStore = create<GameState & GameStateActions>()(
         const { pendingWebsiteUrl } = get();
 
         set({
-          currentMode: mode,
+          currentMode: mode === 'live' ? 'live' : 'preview',
           movementEnabled: mode === 'live',
         });
 
-        if (mode === 'build') {
+        if (mode === 'preview') {
           set({
             showPreview: true,
             confirmedPosition: null,
@@ -514,13 +544,13 @@ export const useGameStore = create<GameState & GameStateActions>()(
             thickness: 2,
             style: 'circle',
           },
-                visibilitySettings: {
-        floorVisible: true,
-        gridVisible: true,
-        floorPlaneVisible: true,
-        backgroundVisible: true,
-        minimapVisible: false,
-      },
+          visibilitySettings: {
+            floorVisible: true,
+            gridVisible: true,
+            floorPlaneVisible: true,
+            backgroundVisible: true,
+            minimapVisible: false,
+          },
         });
       },
 
@@ -539,6 +569,21 @@ export const useGameStore = create<GameState & GameStateActions>()(
           showDrawingOverlay: show,
           ...(show ? { movementEnabled: false, canvasInteractive: false } : { movementEnabled: true, canvasInteractive: true }),
         }),
+
+             // Culling settings actions
+       setCullingSettings: (settings: Partial<GameState['cullingSettings']>) => {
+         console.log('Store: Updating culling settings:', settings);
+         set((state) => {
+           const newSettings = {
+             ...state.cullingSettings,
+             ...settings,
+           };
+           console.log('Store: New culling settings:', newSettings);
+           return {
+             cullingSettings: newSettings,
+           };
+         });
+       },
     }),
     {
       name: 'game-storage',
