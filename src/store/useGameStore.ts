@@ -62,8 +62,8 @@ export interface ImageTexture {
 }
 
 export interface HotbarContextType {
-  selectedHotbarItem: string | null;
-  setSelectedHotbarItem: (item: string | null) => void;
+  selectedHotbarItem: HotbarItem | null;
+  setSelectedHotbarItem: (item: HotbarItem | null) => void;
 }
 
 // Create a context for the hotbar selection

@@ -402,9 +402,9 @@ const HotbarTopNav: React.FC = () => {
       isPrimitive: true,
       primitiveType: type,
       color: selectedImageTexture ? '#ffffff' : '#4ade80', // White when textured, green when not
-      textureUrl: selectedImageTexture?.url || undefined,
+      textureUrl: selectedImageTexture?.src || undefined,
       textureType: selectedImageTexture ? 'image' : undefined,
-      textureName: selectedImageTexture?.fileName || undefined,
+      textureName: selectedImageTexture?.fileName || 'Basic Cube',
       thumbnailUrl: selectedImageTexture?.src || `data:image/svg+xml;base64,${btoa(svgString)}`,
     };
     
