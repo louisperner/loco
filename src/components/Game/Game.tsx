@@ -1076,7 +1076,7 @@ const Player: React.FC = () => {
           {uiVisible && showCoordinates && <CoordinateDisplay cameraRef={cameraRef} />}
 
           {/* Direction Display */}
-          {uiVisible && showCoordinates && <DirectionDisplay cameraRef={cameraRef} />}
+          {/* {uiVisible && showCoordinates && <DirectionDisplay cameraRef={cameraRef} />} */}
 
           {/* Minimap */}
           {uiVisible && visibilitySettings.minimapVisible && <Minimap size={280} opacity={0.9} scale={25} />}

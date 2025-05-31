@@ -54,11 +54,12 @@ const CoordinateDisplay: React.FC<CoordinateDisplayProps> = ({ cameraRef }) => {
       <div className='flex flex-col space-y-1 font-mono text-[10px]'>
         <div className='flex items-center'>
           <span>
-            v0.2: {coordinates.x}, {coordinates.y}, {coordinates.z}
+            xyz: {coordinates.x}, {coordinates.y}, {coordinates.z}
             <br />
-            rot: {rotations.x}, {rotations.y}, {rotations.z}
-            <br />
-            dir: {direction.x}, {direction.y}, {direction.z}
+            {/* v0.2:  */}
+            {/* rot: {rotations.x}, {rotations.y}, {rotations.z} */}
+            {/* <br /> */}
+            {/* dir: {direction.x}, {direction.y}, {direction.z} */}
           </span>
         </div>
       </div>

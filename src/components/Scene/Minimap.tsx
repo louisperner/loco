@@ -251,7 +251,7 @@ const Minimap: React.FC<MinimapProps> = ({
 
   // Simple and correct rotation calculation
   // Convert radians to degrees and apply directly
-  const rotationDegrees = (playerRotation * 180) / Math.PI;
+  const rotationDegrees = -(playerRotation * 180) / Math.PI;
 
   // Only show in 3D mode
   if (viewMode !== '3D') return null;
@@ -322,10 +322,10 @@ const Minimap: React.FC<MinimapProps> = ({
               height: '0',
               borderLeft: '4px solid transparent',
               borderRight: '4px solid transparent',
-              borderBottom: '12px solid yellow',
+              borderBottom: '12px solid red',
               transform: `translate(-50%, -50%) rotate(${rotationDegrees}deg)`,
               transformOrigin: 'center center',
-              zIndex: 1
+              zIndex: 1000,
             }}
           />
         </div>
@@ -456,10 +456,10 @@ const Minimap: React.FC<MinimapProps> = ({
                   height: '0',
                   borderLeft: '6px solid transparent',
                   borderRight: '6px solid transparent',
-                  borderBottom: '18px solid yellow',
+                  borderBottom: '18px solid red',
                   transform: `translate(-50%, -50%) rotate(${rotationDegrees}deg)`,
                   transformOrigin: 'center center',
-                  zIndex: 1
+                  zIndex: 1000
                 }}
               />
             </div>
