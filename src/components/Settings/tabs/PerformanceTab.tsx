@@ -1,12 +1,19 @@
 import React from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { useGameStore } from '../../../store/useGameStore';
+import { Button } from '@/components/ui/button';
+import { useGameStore } from '@/store/useGameStore';
 import { useModelStore } from '../../../store/useModelStore';
 
 const PerformanceTab: React.FC = () => {
   const { cullingSettings, setCullingSettings, showCullingSphere, setShowCullingSphere } = useGameStore();
   const { addModel } = useModelStore();
+  // const [status, setStatus] = useState(''); // Unused
+  // const [fpsHistory, setFpsHistory] = useState<number[]>([]); // Unused
+  // const createTestCubes = useGameStore((state) => state.createTestCubes); // Removed as it's not in GameStore and a local function with the same name exists
+
+  // const environmentSettings = useGameStore((state) => state.environmentSettings); // Unused
+  // const setEnvironmentSetting = useGameStore((state) => state.setEnvironmentSetting); // Unused
 
   const handleCullingEnabledChange = (enabled: boolean) => {
     // console.log('PerformanceTab: Setting culling enabled to:', enabled);
@@ -119,6 +126,16 @@ const PerformanceTab: React.FC = () => {
           </div>
         </div>
 
+        {/* Test Culling Button */}
+        <div className="mt-6">
+            <Button onClick={createTestCubes} variant="outline">
+                Create Test Cubes
+            </Button>
+            <p className="text-xs text-gray-400 mt-2">
+                Creates 5 cubes at varying distances to test culling.
+            </p>
+        </div>
+        
         {/* Performance Tips */}
         <div className="mt-6 p-4 bg-gray-800/50 rounded-lg">
           <h4 className="text-sm font-semibold text-white mb-2">Performance Tips</h4>

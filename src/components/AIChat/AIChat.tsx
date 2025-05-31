@@ -89,7 +89,7 @@ const AIChat: React.FC<AIChatProps> = ({ isVisible, toggleVisibility }) => {
         shouldStream = ollamaStore.useStreaming;
       } else {
         // For OpenRouter, check if the model supports streaming
-        const supportsStreaming = isStreamingSupported(defaultModel);
+        const supportsStreaming = isStreamingSupported();
         shouldStream = useStreaming && supportsStreaming;
       }
       

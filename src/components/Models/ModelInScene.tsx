@@ -486,7 +486,6 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     scale: initialScale = 1,
   } = modelData;
 
-  const [hovered, setHovered] = useState<boolean>(false);
   const [showControls, setShowControls] = useState<boolean>(false);
   const [transformMode, setTransformMode] = useState<'translate' | 'rotate'>('translate');
   const [scale, setScale] = useState<number>(initialScale);
@@ -660,7 +659,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     
     // More aggressive debounce (150ms instead of 50ms)
     pointerTimerRef.current = window.setTimeout(() => {
-      setHovered(true);
+      // setHovered(true); // Commented out as hovered state is not used
       document.body.style.cursor = 'pointer';
     }, 150);
   }, []);
@@ -677,7 +676,7 @@ const ModelInScene: React.FC<ModelInSceneProps> = ({
     
     // More aggressive debounce
     pointerTimerRef.current = window.setTimeout(() => {
-      setHovered(false);
+      // setHovered(false); // Commented out as hovered state is not used
       document.body.style.cursor = 'auto';
     }, 200);
   }, []);

@@ -24,7 +24,9 @@ const HotbarTopNav: React.FC = () => {
   const addCodeBlock = useCodeStore((state) => state.addCodeBlock);
   const updateModel = useModelStore((state) => state.updateModel);
   const setShowDrawingOverlay = useGameStore((state) => state.setShowDrawingOverlay);
-  const { selectedImageTexture } = useGameStore();
+  const { selectedImageTexture: selectedImageTextureId } = useGameStore();
+  const images = useImageStore((state) => state.images);
+  const selectedImageTexture = images.find(img => img.id === selectedImageTextureId);
 
   let position: [number, number, number] = [0, 1, 0];
   let rotation: [number, number, number] = [0, 0, 0];
@@ -403,7 +405,7 @@ const HotbarTopNav: React.FC = () => {
       textureUrl: selectedImageTexture?.url || undefined,
       textureType: selectedImageTexture ? 'image' : undefined,
       textureName: selectedImageTexture?.fileName || undefined,
-      thumbnailUrl: selectedImageTexture?.url || `data:image/svg+xml;base64,${btoa(svgString)}`,
+      thumbnailUrl: selectedImageTexture?.src || `data:image/svg+xml;base64,${btoa(svgString)}`,
     };
     
     // console.log('HotbarTopNav: Creating primitive with data', primitiveData);
@@ -698,11 +700,11 @@ const HotbarTopNav: React.FC = () => {
               key={item.id}
               onClick={() => handleButtonClick(item.id)}
               className={`w-[35px] h-[35px] flex items-center justify-center text-white/90 hover:bg-[#3C3C3C] rounded transition-colors relative ${
-                item.id === 'texture' && selectedImageTexture ? 'bg-green-600' : ''
+                item.id === 'texture' && selectedImageTextureId ? 'bg-green-600' : ''
               }`}
             >
               {item.icon}
-              {item.id === 'texture' && selectedImageTexture && (
+              {item.id === 'texture' && selectedImageTextureId && (
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-gray-800"></div>
               )}
             </button>
