@@ -27,6 +27,9 @@ import TouchControls from '../Scene/TouchControls';
 import GamepadController from './GamepadController';
 import PerformanceMonitor from '../ui/PerformanceMonitor';
 import PerformanceTest from '../ui/PerformanceTest';
+import { useProceduralWorld } from '../../hooks/useProceduralWorld';
+import { WorldRenderer } from '../World/ChunkRenderer';
+import { BLOCK_TYPES } from '../World/TerrainGenerator';
 
 interface InventoryItem {
   id: string;
@@ -619,6 +622,41 @@ const Player: React.FC = () => {
     },
   });
 
+  // Procedural World State
+  const [proceduralWorldSettings, setProceduralWorldSettings] = useState({
+    enabled: false,
+    renderDistance: 3,
+    terrainSeed: 12345,
+    enableCulling: true,
+    autoGenerate: true,
+  });
+
+  // Player position for procedural world
+  const [playerPosition, setPlayerPosition] = useState(new THREE.Vector3(0, 1.7, 0));
+
+  // Initialize procedural world hook
+  const { regenerateWorld } = useProceduralWorld(playerPosition, proceduralWorldSettings);
+
+  // Update player position for procedural world
+  useEffect(() => {
+    const updatePlayerPosition = () => {
+      if (cameraRef.current) {
+        setPlayerPosition(cameraRef.current.position.clone());
+      }
+    };
+
+    const interval = setInterval(updatePlayerPosition, 500); // Update every 500ms
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handlers for procedural world settings
+  const handleProceduralWorldSettingChange = (setting: string, value: any) => {
+    setProceduralWorldSettings(prev => ({
+      ...prev,
+      [setting]: value
+    }));
+  };
+
   return (
     <>
       <HotbarContext.Provider value={{ selectedHotbarItem, setSelectedHotbarItem }}>
@@ -797,6 +835,16 @@ const Player: React.FC = () => {
                 groundShape={groundShape as 'circle' | 'square' | 'hexagon'}
               />
               
+              {/* Procedural World Renderer */}
+              {proceduralWorldSettings.enabled && (
+                <WorldRenderer
+                  playerPosition={playerPosition}
+                  renderDistance={proceduralWorldSettings.renderDistance}
+                  enableCulling={proceduralWorldSettings.enableCulling}
+                  terrainSeed={proceduralWorldSettings.terrainSeed}
+                />
+              )}
+              
               {/* Culling sphere visualization */}
               <CullingSphere 
                 visible={showCullingSphere} 
@@ -924,6 +972,9 @@ const Player: React.FC = () => {
                     value as EnvironmentSettings[keyof EnvironmentSettings],
                   )
                 }
+                proceduralWorldSettings={proceduralWorldSettings}
+                onProceduralWorldSettingChange={handleProceduralWorldSettingChange}
+                onRegenerateWorld={regenerateWorld}
               />
             </div>
           )}

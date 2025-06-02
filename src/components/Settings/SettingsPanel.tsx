@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaGlobeAmericas, FaDesktop, FaRobot, FaServer, FaTachometerAlt } from 'react-icons/fa';
+import { FaTimes, FaPalette, FaLayerGroup, FaAdjust, FaGlobeAmericas, FaDesktop, FaRobot, FaServer, FaTachometerAlt, FaCubes } from 'react-icons/fa';
 import { ColorsTab } from './tabs/ColorsTab';
 import { GroundTab } from './tabs/GroundTab';
 import { CrosshairTab } from './tabs/CrosshairTab';
 import { EnvironmentTab } from './tabs/EnvironmentTab';
+import { ProceduralWorldTab } from './tabs/ProceduralWorldTab';
 import InterfaceSettings from './InterfaceSettings';
 import { OpenRouterTab } from './tabs/OpenRouterTab';
 import { OllamaTab } from './tabs/OllamaTab';
@@ -118,6 +119,15 @@ export function SettingsPanel({
     starsFade: true,
   },
   onEnvironmentSettingChange,
+  proceduralWorldSettings = {
+    enabled: false,
+    renderDistance: 3,
+    terrainSeed: 12345,
+    enableCulling: true,
+    autoGenerate: true,
+  },
+  onProceduralWorldSettingChange,
+  onRegenerateWorld,
 }: SettingsPanelProps) {
   // Mark unused variables with void operator to avoid lint warnings
   void children;
@@ -211,6 +221,27 @@ export function SettingsPanel({
       onAlwaysOnTopToggle(enabled);
     }
   }, [onAlwaysOnTopToggle]);
+
+  // Procedural world settings change handler with parent notification
+  const handleProceduralWorldSettingChange = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (setting: string, value: any) => {
+      if (onProceduralWorldSettingChange) {
+        onProceduralWorldSettingChange(setting, value);
+      }
+    },
+    [onProceduralWorldSettingChange]
+  );
+
+  // Regenerate world handler with parent notification
+  const handleRegenerateWorld = useCallback(
+    (newSeed?: number) => {
+      if (onRegenerateWorld) {
+        onRegenerateWorld(newSeed);
+      }
+    },
+    [onRegenerateWorld]
+  );
 
   // Define all the available tabs
   const definedTabs: SettingsTab[] = [
@@ -334,6 +365,26 @@ export function SettingsPanel({
       label: 'Ollama',
       icon: <FaServer size='14' />,
       content: <OllamaTab />,
+    },
+    {
+      id: 'proceduralworld',
+      label: 'Procedural World',
+      icon: <FaCubes size='14' />,
+      content: (
+        <ProceduralWorldTab
+          enabled={proceduralWorldSettings?.enabled || false}
+          renderDistance={proceduralWorldSettings?.renderDistance || 3}
+          terrainSeed={proceduralWorldSettings?.terrainSeed || 12345}
+          enableCulling={proceduralWorldSettings?.enableCulling || true}
+          autoGenerate={proceduralWorldSettings?.autoGenerate || true}
+          onEnabledChange={(enabled) => handleProceduralWorldSettingChange('enabled', enabled)}
+          onRenderDistanceChange={(distance) => handleProceduralWorldSettingChange('renderDistance', distance)}
+          onTerrainSeedChange={(seed) => handleProceduralWorldSettingChange('terrainSeed', seed)}
+          onEnableCullingChange={(enabled) => handleProceduralWorldSettingChange('enableCulling', enabled)}
+          onAutoGenerateChange={(enabled) => handleProceduralWorldSettingChange('autoGenerate', enabled)}
+          onRegenerateWorld={handleRegenerateWorld}
+        />
+      ),
     },
   ];
 

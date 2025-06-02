@@ -139,6 +139,15 @@ export interface SettingsPanelProps {
   onCoordinatesToggle?: (show: boolean) => void;
   alwaysOnTop?: boolean;
   onAlwaysOnTopToggle?: (enabled: boolean) => void;
+  proceduralWorldSettings?: {
+    enabled: boolean;
+    renderDistance: number;
+    terrainSeed: number;
+    enableCulling: boolean;
+    autoGenerate: boolean;
+  };
+  onProceduralWorldSettingChange?: (setting: string, value: SettingValue) => void;
+  onRegenerateWorld?: (newSeed?: number) => void;
 }
 
 export interface ColorPickerControlProps {
