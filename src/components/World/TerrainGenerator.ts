@@ -1,4 +1,4 @@
-// Space-themed procedural world generator
+// Space-themed procedural world generator with cube-only objects
 export interface SpaceObject {
   type: SpaceObjectType;
   position: [number, number, number];
@@ -7,6 +7,9 @@ export interface SpaceObject {
   color: string;
   material?: string;
   userData?: any;
+  hasCollision?: boolean;
+  mass?: number;
+  isFloating?: boolean;
 }
 
 export interface SpaceObjectType {
@@ -16,81 +19,71 @@ export interface SpaceObjectType {
   minScale: number;
   maxScale: number;
   colors: readonly string[];
+  hasCollision: boolean;
+  mass: number;
 }
 
-// Define space object types
+// Define space object types - all cubes with different properties
 export const SPACE_OBJECT_TYPES = {
-  ASTEROID_SMALL: {
-    id: 'asteroid_small',
-    name: 'Small Asteroid',
-    density: 0.8,
-    minScale: 0.5,
-    maxScale: 2.0,
-    colors: ['#4a4a4a', '#6b6b6b', '#8b7355', '#5a5a5a', '#3a3a3a']
-  },
-  ASTEROID_MEDIUM: {
-    id: 'asteroid_medium',
-    name: 'Medium Asteroid',
+  SMALL_DEBRIS: {
+    id: 'small_debris',
+    name: 'Small Space Debris',
     density: 0.3,
-    minScale: 2.0,
-    maxScale: 5.0,
-    colors: ['#5a5a5a', '#7b7b7b', '#9b8366', '#6a6a6a', '#4a4a4a']
+    minScale: 0.5,
+    maxScale: 1.5,
+    colors: ['#4a4a4a', '#6b6b6b', '#8b7355', '#5a5a5a', '#3a3a3a'],
+    hasCollision: true,
+    mass: 1
   },
-  ASTEROID_LARGE: {
-    id: 'asteroid_large',
-    name: 'Large Asteroid',
+  METAL_FRAGMENT: {
+    id: 'metal_fragment',
+    name: 'Metal Fragment',
+    density: 0.2,
+    minScale: 1.0,
+    maxScale: 3.0,
+    colors: ['#7f8c8d', '#95a5a6', '#bdc3c7', '#34495e'],
+    hasCollision: true,
+    mass: 3
+  },
+  ASTEROID_CHUNK: {
+    id: 'asteroid_chunk',
+    name: 'Asteroid Chunk',
     density: 0.1,
-    minScale: 5.0,
-    maxScale: 12.0,
-    colors: ['#6a6a6a', '#8b8b8b', '#ab9377', '#7a7a7a', '#5a5a5a']
+    minScale: 2.0,
+    maxScale: 6.0,
+    colors: ['#5a5a5a', '#7b7b7b', '#9b8366', '#6a6a6a', '#4a4a4a'],
+    hasCollision: true,
+    mass: 8
   },
-  PLANET_SMALL: {
-    id: 'planet_small',
-    name: 'Small Planet',
-    density: 0.02,
-    minScale: 15.0,
-    maxScale: 25.0,
-    colors: ['#4a90e2', '#e74c3c', '#f39c12', '#27ae60', '#9b59b6']
-  },
-  PLANET_LARGE: {
-    id: 'planet_large',
-    name: 'Large Planet',
-    density: 0.005,
-    minScale: 30.0,
-    maxScale: 50.0,
-    colors: ['#3498db', '#e67e22', '#2ecc71', '#8e44ad', '#34495e']
-  },
-  MOON: {
-    id: 'moon',
-    name: 'Moon',
+  ENERGY_CRYSTAL: {
+    id: 'energy_crystal',
+    name: 'Energy Crystal',
     density: 0.05,
+    minScale: 1.5,
+    maxScale: 4.0,
+    colors: ['#00ffff', '#ff00ff', '#ffff00', '#00ff00', '#ff0080'],
+    hasCollision: true,
+    mass: 2
+  },
+  CARGO_CONTAINER: {
+    id: 'cargo_container',
+    name: 'Cargo Container',
+    density: 0.02,
     minScale: 3.0,
     maxScale: 8.0,
-    colors: ['#bdc3c7', '#95a5a6', '#ecf0f1', '#d5dbdb', '#a6acaf']
+    colors: ['#2c3e50', '#34495e', '#e74c3c', '#f39c12'],
+    hasCollision: true,
+    mass: 15
   },
-  SPACE_STATION: {
-    id: 'space_station',
-    name: 'Space Station',
-    density: 0.001,
-    minScale: 8.0,
+  LARGE_WRECKAGE: {
+    id: 'large_wreckage',
+    name: 'Large Wreckage',
+    density: 0.01,
+    minScale: 5.0,
     maxScale: 15.0,
-    colors: ['#2c3e50', '#34495e', '#7f8c8d', '#95a5a6']
-  },
-  CRYSTAL_FORMATION: {
-    id: 'crystal_formation',
-    name: 'Crystal Formation',
-    density: 0.15,
-    minScale: 1.0,
-    maxScale: 4.0,
-    colors: ['#00ffff', '#ff00ff', '#ffff00', '#00ff00', '#ff0080']
-  },
-  DEBRIS: {
-    id: 'debris',
-    name: 'Space Debris',
-    density: 0.4,
-    minScale: 0.2,
-    maxScale: 1.0,
-    colors: ['#7f8c8d', '#95a5a6', '#bdc3c7', '#34495e']
+    colors: ['#34495e', '#2c3e50', '#7f8c8d', '#95a5a6'],
+    hasCollision: true,
+    mass: 25
   }
 } as const;
 
@@ -105,8 +98,8 @@ export class SpaceGenerator {
   private static instance: SpaceGenerator;
   private seed: number;
   private chunks: Map<string, SpaceChunk> = new Map();
-  private chunkSize = 100; // Space chunks are larger
-  private maxObjectsPerChunk = 25;
+  private chunkSize = 200; // Larger chunks for sparser space
+  private maxObjectsPerChunk = 8; // Much fewer objects for empty space
 
   private constructor(seed: number = 12345) {
     this.seed = seed;
@@ -188,7 +181,7 @@ export class SpaceGenerator {
 
     // Determine object density based on distance from origin (0,0)
     const distanceFromOrigin = Math.sqrt(chunkX * chunkX + chunkZ * chunkZ);
-    const densityMultiplier = Math.max(0.1, 1 - (distanceFromOrigin * 0.05)); // Less dense further out
+    const densityMultiplier = Math.max(0.05, 1 - (distanceFromOrigin * 0.08)); // Much sparser space
 
     // Generate different types of space objects
     const objectTypes = Object.values(SPACE_OBJECT_TYPES);
@@ -198,42 +191,38 @@ export class SpaceGenerator {
       const z = baseZ + this.random(i + 100, chunkX, chunkZ) * this.chunkSize;
       
       // Use 3D noise to determine if an object should be placed here
-      const density = this.noise3D(x * 0.01, 0, z * 0.01);
-      if (density < 0.3) continue; // Skip if density is too low
+      const density = this.noise3D(x * 0.005, 0, z * 0.005); // Lower frequency for sparser distribution
+      if (density < 0.6) continue; // Higher threshold for much sparser space
 
-             // Determine object type based on noise and distance
-       let selectedType: SpaceObjectType = SPACE_OBJECT_TYPES.DEBRIS as SpaceObjectType;
-       const typeRandom = this.random(i + 200, chunkX, chunkZ);
+      // Determine object type based on noise and distance
+      let selectedType: SpaceObjectType = SPACE_OBJECT_TYPES.SMALL_DEBRIS as SpaceObjectType;
+      const typeRandom = this.random(i + 200, chunkX, chunkZ);
       
-             if (distanceFromOrigin > 10) {
-         // Far from origin - more likely to have large objects
-         if (typeRandom < 0.01) selectedType = SPACE_OBJECT_TYPES.PLANET_LARGE as SpaceObjectType;
-         else if (typeRandom < 0.03) selectedType = SPACE_OBJECT_TYPES.PLANET_SMALL as SpaceObjectType;
-         else if (typeRandom < 0.04) selectedType = SPACE_OBJECT_TYPES.SPACE_STATION as SpaceObjectType;
-         else if (typeRandom < 0.1) selectedType = SPACE_OBJECT_TYPES.ASTEROID_LARGE as SpaceObjectType;
-         else if (typeRandom < 0.3) selectedType = SPACE_OBJECT_TYPES.ASTEROID_MEDIUM as SpaceObjectType;
-         else if (typeRandom < 0.6) selectedType = SPACE_OBJECT_TYPES.ASTEROID_SMALL as SpaceObjectType;
-         else if (typeRandom < 0.75) selectedType = SPACE_OBJECT_TYPES.MOON as SpaceObjectType;
-         else if (typeRandom < 0.85) selectedType = SPACE_OBJECT_TYPES.CRYSTAL_FORMATION as SpaceObjectType;
-         else selectedType = SPACE_OBJECT_TYPES.DEBRIS as SpaceObjectType;
-       } else {
-         // Near origin - more asteroids and debris
-         if (typeRandom < 0.05) selectedType = SPACE_OBJECT_TYPES.MOON as SpaceObjectType;
-         else if (typeRandom < 0.15) selectedType = SPACE_OBJECT_TYPES.ASTEROID_LARGE as SpaceObjectType;
-         else if (typeRandom < 0.4) selectedType = SPACE_OBJECT_TYPES.ASTEROID_MEDIUM as SpaceObjectType;
-         else if (typeRandom < 0.7) selectedType = SPACE_OBJECT_TYPES.ASTEROID_SMALL as SpaceObjectType;
-         else if (typeRandom < 0.85) selectedType = SPACE_OBJECT_TYPES.CRYSTAL_FORMATION as SpaceObjectType;
-         else selectedType = SPACE_OBJECT_TYPES.DEBRIS as SpaceObjectType;
-       }
+      if (distanceFromOrigin > 5) {
+        // Far from origin - more likely to have larger debris
+        if (typeRandom < 0.05) selectedType = SPACE_OBJECT_TYPES.LARGE_WRECKAGE as SpaceObjectType;
+        else if (typeRandom < 0.15) selectedType = SPACE_OBJECT_TYPES.CARGO_CONTAINER as SpaceObjectType;
+        else if (typeRandom < 0.25) selectedType = SPACE_OBJECT_TYPES.ASTEROID_CHUNK as SpaceObjectType;
+        else if (typeRandom < 0.40) selectedType = SPACE_OBJECT_TYPES.ENERGY_CRYSTAL as SpaceObjectType;
+        else if (typeRandom < 0.70) selectedType = SPACE_OBJECT_TYPES.METAL_FRAGMENT as SpaceObjectType;
+        else selectedType = SPACE_OBJECT_TYPES.SMALL_DEBRIS as SpaceObjectType;
+      } else {
+        // Near origin - mostly small debris and fragments
+        if (typeRandom < 0.10) selectedType = SPACE_OBJECT_TYPES.CARGO_CONTAINER as SpaceObjectType;
+        else if (typeRandom < 0.20) selectedType = SPACE_OBJECT_TYPES.ASTEROID_CHUNK as SpaceObjectType;
+        else if (typeRandom < 0.35) selectedType = SPACE_OBJECT_TYPES.ENERGY_CRYSTAL as SpaceObjectType;
+        else if (typeRandom < 0.65) selectedType = SPACE_OBJECT_TYPES.METAL_FRAGMENT as SpaceObjectType;
+        else selectedType = SPACE_OBJECT_TYPES.SMALL_DEBRIS as SpaceObjectType;
+      }
 
-      // Generate Y position with some variation
-      const y = (this.random(i + 300, chunkX, chunkZ) - 0.5) * 50; // Spread objects in 3D space
+      // Generate Y position with much more variation for 3D floating space
+      const y = (this.random(i + 300, chunkX, chunkZ) - 0.5) * 100; // More spread in 3D space
 
       // Generate scale within type bounds
       const scaleRandom = this.random(i + 400, chunkX, chunkZ);
       const scale = selectedType.minScale + scaleRandom * (selectedType.maxScale - selectedType.minScale);
 
-      // Generate rotation
+      // Generate rotation for floating objects
       const rotation: [number, number, number] = [
         this.random(i + 500, chunkX, chunkZ) * Math.PI * 2,
         this.random(i + 600, chunkX, chunkZ) * Math.PI * 2,
@@ -250,6 +239,9 @@ export class SpaceGenerator {
         scale,
         rotation,
         color,
+        hasCollision: selectedType.hasCollision,
+        mass: selectedType.mass,
+        isFloating: true,
         userData: {
           chunkCoord: { x: chunkX, z: chunkZ },
           objectIndex: i
@@ -302,6 +294,9 @@ export class SpaceGenerator {
       scale: (type.minScale + type.maxScale) / 2,
       rotation: [0, 0, 0],
       color: type.colors[0],
+      hasCollision: type.hasCollision,
+      mass: type.mass,
+      isFloating: true,
       userData: {
         chunkCoord: { x: chunkX, z: chunkZ },
         objectIndex: chunk.objects.length,

@@ -15,7 +15,8 @@ import {
   Settings, 
   Layers,
   Cpu,
-  Globe
+  Box,
+  Orbit
 } from 'lucide-react';
 
 interface ProceduralWorldTabProps {
@@ -77,12 +78,12 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
 
   const getRenderDistanceInfo = (distance: number) => {
     const chunks = (distance * 2 + 1) ** 2;
-    const objects = chunks * 25; // Approximate space objects per chunk
+    const objects = chunks * 4; // Fewer objects per chunk for sparse space
     
-    if (distance <= 2) return { level: 'Low', color: 'bg-green-500', chunks, objects };
-    if (distance <= 4) return { level: 'Medium', color: 'bg-yellow-500', chunks, objects };
-    if (distance <= 6) return { level: 'High', color: 'bg-orange-500', chunks, objects };
-    return { level: 'Ultra', color: 'bg-red-500', chunks, objects };
+    if (distance <= 2) return { level: 'Minimal', color: 'bg-green-500', chunks, objects };
+    if (distance <= 3) return { level: 'Light', color: 'bg-yellow-500', chunks, objects };
+    if (distance <= 4) return { level: 'Medium', color: 'bg-orange-500', chunks, objects };
+    return { level: 'Heavy', color: 'bg-red-500', chunks, objects };
   };
 
   const distanceInfo = getRenderDistanceInfo(renderDistance);
@@ -93,19 +94,19 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Rocket className="w-5 h-5" />
-            Space Environment
+            <Orbit className="w-5 h-5" />
+            Floating Space Cubes
           </CardTitle>
           <CardDescription>
-            Generate infinite space environments with asteroids, planets, and cosmic structures
+            Generate sparse floating cube debris fields with collision properties in zero gravity
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <Label>Enable Space Generation</Label>
+              <Label>Enable Cube Fields</Label>
               <p className="text-sm text-muted-foreground">
-                Generates space objects automatically as you explore the cosmos
+                Generates floating cube debris automatically as you explore space
               </p>
             </div>
             <Switch
@@ -122,20 +123,20 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Globe className="w-5 h-5" />
-                Space Configuration
+                <Box className="w-5 h-5" />
+                Cube Field Configuration
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Seed Configuration */}
               <div className="space-y-3">
-                <Label>Universe Seed</Label>
+                <Label>Field Seed</Label>
                 <div className="flex gap-2">
                   <Input
                     type="number"
                     value={newSeed}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSeedChange(e.target.value)}
-                    placeholder="Enter a universe seed..."
+                    placeholder="Enter a field seed..."
                     className="flex-1"
                   />
                   <Button
@@ -147,7 +148,7 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  The seed determines how space objects are distributed. Use the same seed to generate identical universes.
+                  The seed determines how floating cubes are distributed. Use the same seed to generate identical debris fields.
                 </p>
               </div>
 
@@ -161,7 +162,7 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                     Auto Generation
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Generates space regions automatically as you move through space
+                    Generates new cube fields automatically as you move through space
                   </p>
                 </div>
                 <Switch
@@ -199,7 +200,7 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                 <Slider
                   value={[renderDistance]}
                   onValueChange={(value) => onRenderDistanceChange(value[0])}
-                  max={8}
+                  max={6}
                   min={1}
                   step={1}
                   className="w-full"
@@ -211,8 +212,8 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                     <span>{distanceInfo.chunks} regions</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Rocket className="w-4 h-4" />
-                    <span>~{Math.floor(distanceInfo.objects / 1000)}k objects</span>
+                    <Box className="w-4 h-4" />
+                    <span>~{distanceInfo.objects} cubes</span>
                   </div>
                 </div>
               </div>
@@ -227,7 +228,7 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                     Optimization Culling
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Removes objects outside view for better performance
+                    Removes cubes outside view for better performance
                   </p>
                 </div>
                 <Switch
@@ -247,7 +248,7 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                         Fade Animation
                       </Label>
                       <p className="text-sm text-muted-foreground">
-                        Objects fade in smoothly when new regions are discovered
+                        Cubes fade in smoothly when new regions are discovered
                       </p>
                     </div>
                     <Switch
@@ -260,10 +261,10 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
             </CardContent>
           </Card>
 
-          {/* Universe Actions */}
+          {/* Field Actions */}
           <Card>
             <CardHeader>
-              <CardTitle>Universe Actions</CardTitle>
+              <CardTitle>Field Actions</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -276,57 +277,81 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                   {isRegenerating ? (
                     <>
                       <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Regenerating Universe...
+                      Regenerating Field...
                     </>
                   ) : (
                     <>
                       <RotateCcw className="w-4 h-4 mr-2" />
-                      Regenerate Universe
+                      Regenerate Cube Field
                     </>
                   )}
                 </Button>
                 
                 <p className="text-sm text-muted-foreground text-center">
-                  This will clear the current universe and generate a new one with the specified seed
+                  This will clear the current cube field and generate a new one with the specified seed
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Space Object Types Info */}
+          {/* Cube Types Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Space Object Types</CardTitle>
+              <CardTitle>Floating Cube Types</CardTitle>
               <CardDescription>
-                Objects that can be found in the procedural space environment
+                Different types of cubes found floating in space with collision properties
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-gray-500 rounded-full"></div>
-                  <span>Asteroids</span>
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gray-500 rounded-sm"></div>
+                    <span>Small Debris</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">Mass: 1</Badge>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-                  <span>Planets</span>
+                <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-slate-400 rounded-sm"></div>
+                    <span>Metal Fragment</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">Mass: 3</Badge>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-gray-300 rounded-full"></div>
-                  <span>Moons</span>
+                <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-stone-500 rounded-sm"></div>
+                    <span>Asteroid Chunk</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">Mass: 8</Badge>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-cyan-400 rounded-full"></div>
-                  <span>Crystals</span>
+                <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-cyan-400 rounded-sm"></div>
+                    <span>Energy Crystal</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">Mass: 2</Badge>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-slate-600 rounded-full"></div>
-                  <span>Space Stations</span>
+                <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-orange-500 rounded-sm"></div>
+                    <span>Cargo Container</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">Mass: 15</Badge>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
-                  <span>Debris</span>
+                <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-slate-600 rounded-sm"></div>
+                    <span>Large Wreckage</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">Mass: 25</Badge>
                 </div>
+              </div>
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <strong>Zero Gravity:</strong> All cubes float freely in space with collision detection. 
+                  Heavier objects have more mass and different collision properties.
+                </p>
               </div>
             </CardContent>
           </Card>

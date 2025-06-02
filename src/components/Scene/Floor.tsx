@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Grid, Plane, Circle } from '@react-three/drei';
+import { usePlane } from '@react-three/cannon';
 import { useThemeStore } from '../../store/ThemeStore';
 import * as THREE from 'three';
 
@@ -21,6 +22,13 @@ const Floor: React.FC<FloorProps> = ({
   const gridColor = useThemeStore(state => state.gridColor);
   const floorPlaneColor = useThemeStore(state => state.floorPlaneColor);
   const floorPlaneOpacity = useThemeStore(state => state.floorPlaneOpacity);
+  
+  // Physics floor plane - invisible but solid
+  const [ref] = usePlane(() => ({
+    rotation: [-Math.PI / 2, 0, 0], // Horizontal plane
+    position: [0, 0, 0],
+    type: 'Static', // Static body for the floor
+  }));
   
   // Extract RGB values from the rgba strings
   const parseColor = (rgba: string): THREE.Color => {
@@ -54,116 +62,167 @@ const Floor: React.FC<FloorProps> = ({
     
     if (isInfinite) {
       return (
-        <Plane 
-          args={[2000, 2000]} 
-          rotation={[-Math.PI / 2, 0, 0]} 
-          position={[0, 0, 0]}
-          receiveShadow
-          raycast={() => null}
-        >
-          {floorMaterial}
-        </Plane>
-      );
-    }
-    
-    switch (groundShape) {
-      case 'circle':
-        return (
-          <Circle 
-            args={[size / 2]} 
-            rotation={[-Math.PI / 2, 0, 0]} 
-            position={[0, 0, 0]}
-            receiveShadow
-            raycast={() => null}
-          >
-            {floorMaterial}
-          </Circle>
-        );
-      case 'square':
-        return (
+        <>
+          {/* Visual floor plane */}
           <Plane 
-            args={[size, size]} 
+            args={[1000, 1000]} 
             rotation={[-Math.PI / 2, 0, 0]} 
             position={[0, 0, 0]}
             receiveShadow
-            raycast={() => null}
           >
             {floorMaterial}
           </Plane>
+          {/* Physics collision plane - invisible but solid */}
+          <mesh ref={ref} visible={false}>
+            <planeGeometry args={[1000, 1000]} />
+            <meshBasicMaterial />
+          </mesh>
+        </>
+      );
+    }
+    
+    // Non-infinite floor shapes
+    switch (groundShape) {
+      case 'square':
+        return (
+          <>
+            {/* Visual floor */}
+            <Plane 
+              args={[size * 2, size * 2]} 
+              rotation={[-Math.PI / 2, 0, 0]} 
+              position={[0, 0, 0]}
+              receiveShadow
+            >
+              {floorMaterial}
+            </Plane>
+            {/* Physics collision plane */}
+            <mesh ref={ref} visible={false}>
+              <planeGeometry args={[size * 2, size * 2]} />
+              <meshBasicMaterial />
+            </mesh>
+          </>
+        );
+      case 'circle':
+        return (
+          <>
+            {/* Visual floor */}
+            <Circle 
+              args={[size]} 
+              rotation={[-Math.PI / 2, 0, 0]} 
+              position={[0, 0, 0]}
+              receiveShadow
+            >
+              {floorMaterial}
+            </Circle>
+            {/* Physics collision plane */}
+            <mesh ref={ref} visible={false}>
+              <circleGeometry args={[size]} />
+              <meshBasicMaterial />
+            </mesh>
+          </>
         );
       case 'hexagon':
         return (
-          <mesh
-            rotation={[-Math.PI / 2, 0, 0]} 
-            position={[0, 0, 0]}
-            receiveShadow
-            raycast={() => null}
-          >
-            <circleGeometry args={[size / 2, 6]} />
-            {floorMaterial}
-          </mesh>
+          <>
+            {/* Visual floor */}
+            <mesh
+              rotation={[-Math.PI / 2, 0, 0]} 
+              position={[0, 0, 0]}
+              receiveShadow
+            >
+              <circleGeometry args={[size / 2, 6]} />
+              {floorMaterial}
+            </mesh>
+            {/* Physics collision plane */}
+            <mesh ref={ref} visible={false}>
+              <circleGeometry args={[size / 2, 6]} />
+              <meshBasicMaterial />
+            </mesh>
+          </>
         );
       case 'triangle':
         return (
-          <mesh
-            rotation={[-Math.PI / 2, 0, 0]} 
-            position={[0, 0, 0]}
-            receiveShadow
-            raycast={() => null}
-          >
-            <circleGeometry args={[size / 2, 3]} />
-            {floorMaterial}
-          </mesh>
+          <>
+            {/* Visual floor */}
+            <mesh
+              rotation={[-Math.PI / 2, 0, 0]} 
+              position={[0, 0, 0]}
+              receiveShadow
+            >
+              <circleGeometry args={[size / 2, 3]} />
+              {floorMaterial}
+            </mesh>
+            {/* Physics collision plane */}
+            <mesh ref={ref} visible={false}>
+              <circleGeometry args={[size / 2, 3]} />
+              <meshBasicMaterial />
+            </mesh>
+          </>
         );
       case 'octagon':
         return (
-          <mesh
-            rotation={[-Math.PI / 2, 0, 0]} 
-            position={[0, 0, 0]}
-            receiveShadow
-            raycast={() => null}
-          >
-            <circleGeometry args={[size / 2, 8]} />
-            {floorMaterial}
-          </mesh>
+          <>
+            {/* Visual floor */}
+            <mesh
+              rotation={[-Math.PI / 2, 0, 0]} 
+              position={[0, 0, 0]}
+              receiveShadow
+            >
+              <circleGeometry args={[size / 2, 8]} />
+              {floorMaterial}
+            </mesh>
+            {/* Physics collision plane */}
+            <mesh ref={ref} visible={false}>
+              <circleGeometry args={[size / 2, 8]} />
+              <meshBasicMaterial />
+            </mesh>
+          </>
         );
       case 'diamond':
         return (
-          <mesh
-            rotation={[-Math.PI / 2, 0, 0]} 
-            position={[0, 0, 0]}
-            receiveShadow
-            raycast={() => null}
-          >
-            <circleGeometry args={[size / 2, 4, Math.PI/4]} />
-            {floorMaterial}
-          </mesh>
+          <>
+            {/* Visual floor */}
+            <mesh
+              rotation={[-Math.PI / 2, 0, 0]} 
+              position={[0, 0, 0]}
+              receiveShadow
+            >
+              <circleGeometry args={[size / 2, 4, Math.PI/4]} />
+              {floorMaterial}
+            </mesh>
+            {/* Physics collision plane */}
+            <mesh ref={ref} visible={false}>
+              <circleGeometry args={[size / 2, 4, Math.PI/4]} />
+              <meshBasicMaterial />
+            </mesh>
+          </>
         );
       default:
         return null;
     }
   };
-  
+
   return (
     <>
+      {/* Grid overlay */}
       {gridVisible && (
         <Grid
-          args={[size, size]}
+          position={[0, 0.01, 0]} // Slightly above floor to prevent z-fighting
+          args={[size * 2, size * 2]}
           cellSize={1}
           cellThickness={1}
           cellColor={parseColor(gridColor)}
           sectionSize={5}
-          sectionThickness={1.5}
+          sectionThickness={2}
           sectionColor={parseColor(gridColor)}
           fadeDistance={fadeDistance}
-          fadeStrength={isInfinite ? 0.5 : 1}
+          fadeStrength={1}
           followCamera={isInfinite}
-          position={[0, 0.01, 0]}
           infiniteGrid={isInfinite}
-          raycast={() => null}
         />
       )}
       
+      {/* Floor shape */}
       {renderFloorShape()}
     </>
   );

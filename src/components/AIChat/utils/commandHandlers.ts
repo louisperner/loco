@@ -113,8 +113,16 @@ export const processCommand = (
     const posMatch = lowerContent.match(/to\s+([^,\s]+(?:\s*,\s*[^,\s]+){2}|x:[^,\s]+ y:[^,\s]+ z:[^,\s]+)/);
     if (posMatch) {
       const position = parsePosition(posMatch[1]);
-      if (position && window.mainCamera) {
-        window.mainCamera.position.set(position[0], position[1], position[2]);
+      if (position) {
+        // Dispatch teleport event instead of directly setting camera position
+        // This will be handled by the physics system
+        const teleportEvent = new CustomEvent('teleportPlayer', {
+          detail: {
+            position: position,
+          },
+        });
+        window.dispatchEvent(teleportEvent);
+        
         setCommandFeedback(`Teleported to position [${position.join(', ')}]`);
         return true;
       }

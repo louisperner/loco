@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { useBox } from '@react-three/cannon';
 import * as THREE from 'three';
 import { SpaceGenerator, SpaceChunk, SpaceObject, SPACE_OBJECT_TYPES } from './TerrainGenerator';
 
@@ -12,55 +13,48 @@ interface SpaceChunkRendererProps {
   enableFadeAnimation?: boolean;
 }
 
-// Shared geometries for different space objects
-const sharedGeometries = {
-  sphere: new THREE.SphereGeometry(1, 16, 12),
-  asteroid: new THREE.DodecahedronGeometry(1, 1),
-  crystal: new THREE.OctahedronGeometry(1, 0),
-  debris: new THREE.BoxGeometry(1, 1, 1),
-  station: new THREE.CylinderGeometry(1, 1, 2, 8),
-};
+// Single cube geometry for all objects
+const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
 
-// Enhanced materials with space-like properties
-const createSpaceMaterial = (color: string, type: string) => {
+// Enhanced materials for different cube types with collision properties
+const createSpaceCubeMaterial = (color: string, type: string) => {
   const baseColor = new THREE.Color(color);
   
   switch (type) {
-    case 'planet_small':
-    case 'planet_large':
-      return new THREE.MeshStandardMaterial({ 
-        color: baseColor,
-        roughness: 0.8,
-        metalness: 0.1,
-        emissive: baseColor.clone().multiplyScalar(0.05)
-      });
-    
-    case 'moon':
-      return new THREE.MeshStandardMaterial({ 
-        color: baseColor,
-        roughness: 0.9,
-        metalness: 0.0
-      });
-    
-    case 'crystal_formation':
+    case 'energy_crystal':
       return new THREE.MeshStandardMaterial({ 
         color: baseColor,
         roughness: 0.1,
         metalness: 0.3,
-        emissive: baseColor.clone().multiplyScalar(0.2),
+        emissive: baseColor.clone().multiplyScalar(0.3),
         transparent: true,
-        opacity: 0.8
+        opacity: 0.9
       });
     
-    case 'space_station':
+    case 'cargo_container':
       return new THREE.MeshStandardMaterial({ 
         color: baseColor,
-        roughness: 0.3,
+        roughness: 0.4,
         metalness: 0.8,
-        emissive: baseColor.clone().multiplyScalar(0.1)
+        emissive: baseColor.clone().multiplyScalar(0.05)
       });
     
-    default: // asteroids and debris
+    case 'metal_fragment':
+      return new THREE.MeshStandardMaterial({ 
+        color: baseColor,
+        roughness: 0.6,
+        metalness: 0.9
+      });
+    
+    case 'large_wreckage':
+      return new THREE.MeshStandardMaterial({ 
+        color: baseColor,
+        roughness: 0.8,
+        metalness: 0.7,
+        emissive: baseColor.clone().multiplyScalar(0.02)
+      });
+    
+    default: // small_debris, asteroid_chunk
       return new THREE.MeshStandardMaterial({ 
         color: baseColor,
         roughness: 0.9,
@@ -69,22 +63,50 @@ const createSpaceMaterial = (color: string, type: string) => {
   }
 };
 
-// Get appropriate geometry for object type
-const getGeometryForType = (type: string): THREE.BufferGeometry => {
-  switch (type) {
-    case 'planet_small':
-    case 'planet_large':
-    case 'moon':
-      return sharedGeometries.sphere;
-    case 'crystal_formation':
-      return sharedGeometries.crystal;
-    case 'space_station':
-      return sharedGeometries.station;
-    case 'debris':
-      return sharedGeometries.debris;
-    default: // asteroids
-      return sharedGeometries.asteroid;
-  }
+// Individual physics cube component
+const PhysicsCube: React.FC<{
+  object: SpaceObject;
+  material: THREE.Material;
+  fadeOpacity: number;
+}> = ({ object, material, fadeOpacity }) => {
+  // Create physics box with mass and position
+  const [ref, api] = useBox(() => ({
+    mass: object.mass || 1,
+    position: object.position,
+    rotation: object.rotation,
+    type: object.isFloating ? 'Dynamic' : 'Static',
+    material: {
+      friction: 0.4,
+      restitution: 0.3,
+    },
+    args: [object.scale, object.scale, object.scale], // Box dimensions
+  }));
+
+  // Apply material opacity for fade animation
+  useEffect(() => {
+    if (material && 'opacity' in material) {
+      material.transparent = true;
+      material.opacity = fadeOpacity;
+      material.needsUpdate = true;
+    }
+  }, [material, fadeOpacity]);
+
+  return (
+    <mesh
+      ref={ref}
+      material={material}
+      geometry={cubeGeometry}
+      scale={[object.scale, object.scale, object.scale]}
+      castShadow
+      receiveShadow
+      userData={{
+        type: 'space_cube',
+        objectType: object.type.id,
+        mass: object.mass,
+        hasCollision: object.hasCollision
+      }}
+    />
+  );
 };
 
 export const SpaceChunkRenderer: React.FC<SpaceChunkRendererProps> = ({ 
@@ -98,19 +120,18 @@ export const SpaceChunkRenderer: React.FC<SpaceChunkRendererProps> = ({
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null);
   const [isVisible, setIsVisible] = useState(true);
-  const [instancedMeshes, setInstancedMeshes] = useState<Map<string, THREE.InstancedMesh>>(new Map());
   const [fadeProgress, setFadeProgress] = useState(0);
   const [isAnimating, setIsAnimating] = useState(enableFadeAnimation);
   
   // Calculate world position of chunk center
-  const chunkWorldX = chunk.coord.x * 100; // Space chunks are 100 units
-  const chunkWorldZ = chunk.coord.z * 100;
+  const chunkWorldX = chunk.coord.x * 200; // Space chunks are 200 units
+  const chunkWorldZ = chunk.coord.z * 200;
   
   // Calculate distance from player for fade animation
   const distanceFromPlayer = useMemo(() => {
     if (!playerPosition) return 0;
-    const chunkCenterX = chunkWorldX + 50;
-    const chunkCenterZ = chunkWorldZ + 50;
+    const chunkCenterX = chunkWorldX + 100;
+    const chunkCenterZ = chunkWorldZ + 100;
     return Math.sqrt(
       Math.pow(chunkCenterX - playerPosition.x, 2) + 
       Math.pow(chunkCenterZ - playerPosition.z, 2)
@@ -126,7 +147,7 @@ export const SpaceChunkRenderer: React.FC<SpaceChunkRendererProps> = ({
     }
 
     const startTime = Date.now() + animationDelay;
-    const animationDuration = 2000; // 2 seconds fade in
+    const animationDuration = 1500; // 1.5 seconds fade in for sparse objects
     
     const animate = () => {
       const elapsed = Date.now() - startTime;
@@ -154,123 +175,23 @@ export const SpaceChunkRenderer: React.FC<SpaceChunkRendererProps> = ({
     };
   }, [animationDelay, isAnimating, enableFadeAnimation]);
 
-  // Generate optimized mesh for space objects using instanced rendering
-  const generateSpaceObjectMesh = useMemo(() => {
-    if (!chunk.generated || !chunk.objects.length) return new Map();
+  // Generate physics cubes with collision
+  const physicsCubes = useMemo(() => {
+    if (!chunk.generated || !chunk.objects.length) return [];
     
-    // Group objects by type for instanced rendering
-    const objectGroups = new Map<string, Array<{ object: SpaceObject; distance: number }>>();
-    
-    chunk.objects.forEach(obj => {
-      const objectType = obj.type.id;
-      if (!objectGroups.has(objectType)) {
-        objectGroups.set(objectType, []);
-      }
+    return chunk.objects.map((object, index) => {
+      const material = createSpaceCubeMaterial(object.color, object.type.id);
       
-      // Calculate distance from player for LOD
-      const distance = playerPosition ? 
-        Math.sqrt(
-          Math.pow(obj.position[0] - playerPosition.x, 2) +
-          Math.pow(obj.position[1] - playerPosition.y, 2) +
-          Math.pow(obj.position[2] - playerPosition.z, 2)
-        ) : 0;
-      
-      objectGroups.get(objectType)!.push({ object: obj, distance });
-    });
-    
-    return objectGroups;
-  }, [chunk, playerPosition]);
-  
-  // Create instanced meshes for each object type with fade animation
-  useEffect(() => {
-    if (!generateSpaceObjectMesh.size) return;
-    
-    const newInstancedMeshes = new Map<string, THREE.InstancedMesh>();
-    
-    generateSpaceObjectMesh.forEach((objects, objectType) => {
-      if (objects.length === 0) return;
-      
-      const geometry = getGeometryForType(objectType);
-      const material = createSpaceMaterial(objects[0].object.color, objectType);
-      
-      // Apply fade animation to material
-      if (enableFadeAnimation) {
-        material.transparent = true;
-        material.opacity = fadeProgress;
-      }
-      
-      const instancedMesh = new THREE.InstancedMesh(
-        geometry,
-        material,
-        objects.length
+      return (
+        <PhysicsCube
+          key={`${chunk.coord.x}-${chunk.coord.z}-${index}`}
+          object={object}
+          material={material}
+          fadeOpacity={fadeProgress}
+        />
       );
-      
-      // Set positions and rotations for each instance
-      const matrix = new THREE.Matrix4();
-      const scale = new THREE.Vector3();
-      const position = new THREE.Vector3();
-      const quaternion = new THREE.Quaternion();
-      
-             objects.forEach(({ object, distance }: { object: SpaceObject; distance: number }, index: number) => {
-        // Apply LOD scaling based on distance
-        let lodScale = 1;
-        if (distance > renderDistance * 50) { // Half detail at far distance
-          lodScale = 0.5;
-        }
-        
-        scale.setScalar(object.scale * lodScale);
-        position.set(object.position[0], object.position[1], object.position[2]);
-        
-        // Apply rotation
-        quaternion.setFromEuler(new THREE.Euler(
-          object.rotation[0],
-          object.rotation[1], 
-          object.rotation[2]
-        ));
-        
-        matrix.compose(position, quaternion, scale);
-        instancedMesh.setMatrixAt(index, matrix);
-      });
-      
-      instancedMesh.instanceMatrix.needsUpdate = true;
-      instancedMesh.castShadow = true;
-      instancedMesh.receiveShadow = true;
-      
-      // Add to group
-      if (groupRef.current) {
-        groupRef.current.add(instancedMesh);
-      }
-      
-      newInstancedMeshes.set(objectType, instancedMesh);
     });
-    
-    setInstancedMeshes(newInstancedMeshes);
-    
-    // Cleanup function
-    return () => {
-      newInstancedMeshes.forEach(mesh => {
-        if (groupRef.current) {
-          groupRef.current.remove(mesh);
-        }
-        mesh.dispose();
-        if (mesh.material instanceof THREE.Material) {
-          mesh.material.dispose();
-        }
-      });
-    };
-  }, [generateSpaceObjectMesh, fadeProgress, enableFadeAnimation, renderDistance]);
-
-  // Update fade animation
-  useFrame(() => {
-    if (enableFadeAnimation && instancedMeshes.size > 0) {
-      instancedMeshes.forEach(mesh => {
-        if (mesh.material instanceof THREE.Material && mesh.material.transparent) {
-          mesh.material.opacity = fadeProgress;
-          mesh.material.needsUpdate = true;
-        }
-      });
-    }
-  });
+  }, [chunk, fadeProgress]);
   
   // Frustum culling and distance culling
   useFrame(() => {
@@ -278,40 +199,20 @@ export const SpaceChunkRenderer: React.FC<SpaceChunkRendererProps> = ({
     
     // Calculate distance from camera to chunk center
     const chunkCenter = new THREE.Vector3(
-      chunkWorldX + 50,
+      chunkWorldX + 100,
       0, // Space objects can be at any Y
-      chunkWorldZ + 50
+      chunkWorldZ + 100
     );
     
     const distanceToCamera = camera.position.distanceTo(chunkCenter);
     
-    // Distance culling
-    const maxRenderDistance = renderDistance * 100; // Convert chunk distance to world units
+    // Distance culling for sparse space
+    const maxRenderDistance = renderDistance * 200; // Convert chunk distance to world units
     const shouldBeVisible = distanceToCamera <= maxRenderDistance;
     
     if (shouldBeVisible !== isVisible) {
       setIsVisible(shouldBeVisible);
       groupRef.current.visible = shouldBeVisible;
-    }
-    
-    // LOD system - adjust material properties for distant chunks
-    if (shouldBeVisible && instancedMeshes.size > 0) {
-      const lodLevel = distanceToCamera > maxRenderDistance * 0.7 ? 'low' : 'high';
-      
-      instancedMeshes.forEach(mesh => {
-        if (mesh.material instanceof THREE.MeshStandardMaterial) {
-          if (lodLevel === 'low') {
-            // Reduce quality for distant chunks
-            mesh.material.roughness = 1;
-            mesh.material.metalness = 0;
-            mesh.material.emissive.setScalar(0);
-          } else {
-            // Restore full quality for nearby chunks
-            mesh.material.roughness = 0.8;
-            mesh.material.metalness = 0.1;
-          }
-        }
-      });
     }
   });
   
@@ -320,7 +221,9 @@ export const SpaceChunkRenderer: React.FC<SpaceChunkRendererProps> = ({
       ref={groupRef}
       position={[0, 0, 0]}
       visible={isVisible}
-    />
+    >
+      {physicsCubes}
+    </group>
   );
 };
 
@@ -334,7 +237,7 @@ interface SpaceWorldRendererProps {
 
 export const SpaceWorldRenderer: React.FC<SpaceWorldRendererProps> = ({
   playerPosition,
-  renderDistance = 4,
+  renderDistance = 3, // Reduced for sparse space
   enableCulling = true,
   terrainSeed,
   enableFadeAnimation = true
@@ -345,8 +248,8 @@ export const SpaceWorldRenderer: React.FC<SpaceWorldRendererProps> = ({
   
   // Update visible chunks when player moves
   useFrame(() => {
-    const currentChunkX = Math.floor(playerPosition.x / 100); // Space chunks are 100 units
-    const currentChunkZ = Math.floor(playerPosition.z / 100);
+    const currentChunkX = Math.floor(playerPosition.x / 200); // Space chunks are 200 units
+    const currentChunkZ = Math.floor(playerPosition.z / 200);
     
     // Only update if player moved to a different chunk
     if (currentChunkX !== lastPlayerChunk.current.x || 
@@ -358,7 +261,7 @@ export const SpaceWorldRenderer: React.FC<SpaceWorldRendererProps> = ({
       const newVisibleChunks = new Map<string, { chunk: SpaceChunk; generationTime: number }>();
       const currentTime = Date.now();
       
-      // Generate chunks in a spiral pattern
+      // Generate chunks in a spiral pattern for sparse space
       const chunksToGenerate: Array<{ x: number; z: number; distance: number }> = [];
       
       for (let x = currentChunkX - renderDistance; x <= currentChunkX + renderDistance; x++) {
@@ -384,7 +287,7 @@ export const SpaceWorldRenderer: React.FC<SpaceWorldRendererProps> = ({
         } else {
           // Generate new chunk with fade delay
           const chunk = spaceGenerator.generateChunk(x, z);
-          const fadeDelay = enableFadeAnimation ? distance * 200 : 0; // 200ms per distance unit
+          const fadeDelay = enableFadeAnimation ? distance * 300 : 0; // 300ms per distance unit for sparse space
           
           newVisibleChunks.set(chunkKey, {
             chunk,

@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls } from '@react-three/drei';
+import { useSphere } from '@react-three/cannon';
 import { Vector3, Euler, Quaternion } from 'three';
 import { useGameStore } from '@/store/useGameStore';
 import { getCurrentUserDirection, saveDirectionToHistory } from '@/utils/userDirection';
@@ -105,6 +106,28 @@ const FPSControls: React.FC<FPSControlsProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const controls = useRef<any>(null);
   
+  // Physics body for player collision
+  const [playerRef, playerApi] = useSphere(() => ({
+    mass: 1,
+    position: initialPosition,
+    fixedRotation: true, // Prevent player from rotating due to collisions
+    material: {
+      friction: 0.1,
+      restitution: 0.1,
+    },
+    args: [0.5], // Player collision sphere radius
+    onCollide: (e) => {
+      // Check if collision is with ground or solid object
+      if (e.contact.bi === playerRef.current || e.contact.bj === playerRef.current) {
+        // Simple ground detection - if collision normal points up, we're on ground
+        const normal = e.contact.ni;
+        if (normal[1] > 0.5) { // Y component is index 1
+          isOnGround.current = true;
+        }
+      }
+    },
+  }));
+  
   // Get selected hotbar item to check if cube is selected
   const selectedHotbarItem = useGameStore((state) => state.selectedHotbarItem);
   const raycaster = useRef<THREE.Raycaster>(new THREE.Raycaster());
@@ -176,6 +199,41 @@ const FPSControls: React.FC<FPSControlsProps> = ({
 
   // Add highlight mesh ref
   const highlightMesh = useRef<THREE.Mesh | null>(null);
+
+  // Add refs for double-click teleportation
+  const lastClickTime = useRef<number>(0);
+  const doubleClickDelay = 300; // milliseconds
+
+  // Teleport function that works with physics
+  const teleportToPosition = useCallback((targetPosition: [number, number, number]) => {
+    if (playerApi && playerRef.current) {
+      // Stop all movement first
+      playerApi.velocity.set(0, 0, 0);
+      playerApi.angularVelocity.set(0, 0, 0);
+      
+      // Set new position for physics body
+      playerApi.position.set(targetPosition[0], targetPosition[1] - 1.2, targetPosition[2]); // Offset for camera height
+      
+      // Immediately update camera position to match
+      camera.position.set(targetPosition[0], targetPosition[1], targetPosition[2]);
+    }
+  }, [playerApi, camera]);
+
+  // Listen for teleport events from AI chat
+  useEffect(() => {
+    const handleTeleportEvent = (event: CustomEvent) => {
+      const { position } = event.detail;
+      if (position && Array.isArray(position) && position.length === 3) {
+        teleportToPosition(position as [number, number, number]);
+      }
+    };
+
+    window.addEventListener('teleportPlayer', handleTeleportEvent as EventListener);
+    
+    return () => {
+      window.removeEventListener('teleportPlayer', handleTeleportEvent as EventListener);
+    };
+  }, [teleportToPosition]);
 
   // Update raycaster on each frame
   useFrame(() => {
@@ -655,30 +713,38 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     direction.y = 0;
     sideDirection.y = 0;
 
-    // Apply horizontal movement with speed
-    camera.position.addScaledVector(direction, actualSpeed);
-    camera.position.addScaledVector(sideDirection, actualSpeed);
+    // Apply physics-based movement instead of direct position changes
+    if (direction.length() > 0 || sideDirection.length() > 0) {
+      const totalMovement = direction.clone().add(sideDirection);
+      totalMovement.multiplyScalar(speed * 5); // Adjust force for physics
+      playerApi.velocity.set(totalMovement.x, 0, totalMovement.z);
+    } else {
+      // Stop horizontal movement when no input
+      playerApi.velocity.set(0, 0, 0);
+    }
 
-    // Gravity system
+    // Handle vertical movement with physics
     if (gravityEnabled) {
-      // Check floor collision
-      if (camera.position.y <= floorHeight + 1.8) {
-        // 1.8 = camera/player height
-        camera.position.y = floorHeight + 1.8;
-        verticalVelocity.current = 0;
-        isOnGround.current = true;
-      } else {
-        // Apply free-fall gravity
-        verticalVelocity.current -= GRAVITY;
+      // Jump when space is pressed and on ground
+      if (moveUp.current && isOnGround.current) {
+        playerApi.velocity.set(0, 10, 0); // Jump force
         isOnGround.current = false;
       }
-
-      // Update vertical position
-      camera.position.y += verticalVelocity.current;
     } else {
-      // Traditional vertical movement (no gravity)
-      if (moveUp.current) camera.position.y += actualSpeed;
-      if (moveDown.current) camera.position.y -= actualSpeed;
+      // Zero gravity mode - direct vertical control
+      if (moveUp.current) {
+        playerApi.applyImpulse([0, speed * 2, 0], [0, 0, 0]);
+      } else if (moveDown.current) {
+        playerApi.applyImpulse([0, -speed * 2, 0], [0, 0, 0]);
+      }
+    }
+
+    // Sync camera position with physics body
+    if (playerRef.current) {
+      const playerPosition = new THREE.Vector3();
+      playerRef.current.getWorldPosition(playerPosition);
+      camera.position.copy(playerPosition);
+      camera.position.y += 1.2; // Camera height offset from physics body center
     }
 
     // Check if we need to save the player state (every 5 seconds)
@@ -1112,12 +1178,106 @@ const FPSControls: React.FC<FPSControlsProps> = ({
         }
       };
 
+      // Function to handle teleportation on floor double-click
+      const handleFloorTeleport = (clickPosition: THREE.Vector3) => {
+        // Cast a ray downward from the click position to find floor
+        const teleportRaycaster = new THREE.Raycaster();
+        teleportRaycaster.set(clickPosition, new THREE.Vector3(0, -1, 0));
+        
+        // Get floor objects
+        const floorObjects: THREE.Object3D[] = [];
+        scene.traverse((object) => {
+          if ((object as THREE.Mesh).isMesh && 
+              object.visible &&
+              (object.name.includes('floor') || 
+               object.name.includes('ground') ||
+               object.name.includes('plane') ||
+               object.userData?.type === 'floor' ||
+               // Check for Three.js Plane or Circle geometries (floor components)
+               (object as THREE.Mesh).geometry?.type === 'PlaneGeometry' ||
+               (object as THREE.Mesh).geometry?.type === 'CircleGeometry')) {
+            floorObjects.push(object);
+          }
+        });
+        
+        const floorIntersects = teleportRaycaster.intersectObjects(floorObjects, false);
+        if (floorIntersects.length > 0) {
+          const floorY = floorIntersects[0].point.y;
+          const teleportPos: [number, number, number] = [
+            clickPosition.x,
+            floorY + 1.7, // Player height above floor
+            clickPosition.z
+          ];
+          
+          teleportToPosition(teleportPos);
+        } else {
+          // If no floor found, teleport to clicked position with default ground level
+          const teleportPos: [number, number, number] = [
+            clickPosition.x,
+            1.7, // Default player height
+            clickPosition.z
+          ];
+          
+          teleportToPosition(teleportPos);
+        }
+      };
+
       const handleMouseDown = (e: MouseEvent): void => {
         // Para cliques simulados de dispositivos móveis, não exija o pointer lock
         // @ts-ignore - acessando propriedade personalizada isSimulated
         const isMobileClick = e.isSimulated === true;
 
         if (!enabled || (!isLocked && !isMobileClick)) return;
+
+        // Handle double-click detection for teleportation
+        const currentTime = performance.now();
+        const timeSinceLastClick = currentTime - lastClickTime.current;
+        
+        if (e.button === 0 && timeSinceLastClick < doubleClickDelay) {
+          // Double-click detected - attempt teleportation
+          e.preventDefault();
+          
+          // Create raycaster to find the point clicked in 3D space
+          const teleportRaycaster = new THREE.Raycaster();
+          const direction = new THREE.Vector3(0, 0, -1);
+          direction.applyQuaternion(camera.quaternion);
+          teleportRaycaster.set(camera.position, direction);
+          
+          // Get all objects to find intersection point
+          const allObjects: THREE.Object3D[] = [];
+          scene.traverse((object) => {
+            if ((object as THREE.Mesh).isMesh && 
+                object.visible &&
+                object.name !== 'raycasterHelper' && 
+                object.name !== 'highlight' &&
+                !object.name.includes('helper')) {
+              allObjects.push(object);
+            }
+          });
+          
+          const intersects = teleportRaycaster.intersectObjects(allObjects, false);
+          
+          if (intersects.length > 0) {
+            // Teleport to the intersected point
+            handleFloorTeleport(intersects[0].point);
+          } else {
+            // No intersection, teleport to a point in front of camera
+            const targetPosition = new THREE.Vector3();
+            targetPosition.copy(camera.position);
+            const forwardDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            targetPosition.addScaledVector(forwardDirection, 10);
+            handleFloorTeleport(targetPosition);
+          }
+          
+          // Reset click timer to prevent triple-click issues
+          lastClickTime.current = 0;
+          return;
+        }
+        
+        // Update last click time for double-click detection
+        if (e.button === 0) {
+          lastClickTime.current = currentTime;
+        }
 
         isMouseDown.current = true;
         mouseButton.current = e.button;
@@ -1199,7 +1359,7 @@ const FPSControls: React.FC<FPSControlsProps> = ({
     }
 
     return undefined; // Return undefined when controls.current is falsy
-  }, [enabled, isLocked, scene, camera, selectedHotbarItem]);
+  }, [enabled, isLocked, scene, camera, selectedHotbarItem, teleportToPosition]);
 
   // Mobile detection
   useEffect(() => {
@@ -1431,6 +1591,11 @@ const FPSControls: React.FC<FPSControlsProps> = ({
   return (
     <>
       <PointerLockControls ref={controls} camera={camera} domElement={gl.domElement} />
+      {/* Invisible physics body for player collision */}
+      <mesh ref={playerRef} visible={false}>
+        <sphereGeometry args={[0.5]} />
+        <meshBasicMaterial />
+      </mesh>
     </>
   );
 };

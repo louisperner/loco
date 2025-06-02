@@ -1,11 +1,11 @@
-<p align="center">
-  <img src="./public/cover_loco_2.png" alt="Loco" width="500" />
-</p>
-
 <h1 align="center">LOCO AI</h1>
 
 <p align="center">
-  <strong>A powerful 3D AI interactive environment for immersive digital experiences</strong>
+  <img src="./public/screenshot.png" alt="Loco" width="700" />
+</p>
+
+<p align="center">
+  <strong>A powerful 3D AI-powered interactive environment for immersive </br >digital experiences like Minecraft on your desktop.</strong>
 </p>
 
 <p align="center">
@@ -298,6 +298,13 @@ Contributions are welcome! Feel free to open issues or submit pull requests to h
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+</br>
+</br>
+</br>
+</br>
+<p align="center">
+  <img src="./public/cover_loco_2.png" alt="Loco" width="520" />
+</p>
 
 <p align="center">
   Made with ❤️ by <a href="https://datamonkeys.ai" target="_blank" rel="noopener noreferrer">datamonkeys.ai</a> and <a href="https://louisperner.dev" target="_blank" rel="noopener noreferrer">louisperner.dev</a>.

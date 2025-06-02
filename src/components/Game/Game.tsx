@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Sky, Stars, Bvh } from '@react-three/drei';
+import { Physics } from '@react-three/cannon';
 import * as THREE from 'three';
 import FPSControls from '../Scene/FPSControls';
 import ImageCloneManager from '../Models/ImageCloneManager';
@@ -796,17 +797,18 @@ const Player: React.FC = () => {
               />
             )}
 
-            <Bvh>
-              <FPSControls
-                speed={5}
-                enabled={movementEnabled}
-                gravityEnabled={gravityEnabled}
-                floorHeight={0}
-                initialPosition={[0, 1.7, 0]}
-                onTouchStateChange={setTouchState}
-                onMobileChange={setIsMobile}
-                touchState={touchState}
-              />
+            <Physics gravity={[0, gravityEnabled ? -9.81 : 0, 0]} iterations={10} broadphase="SAP">
+              <Bvh>
+                <FPSControls
+                  speed={2}
+                  enabled={movementEnabled}
+                  gravityEnabled={gravityEnabled}
+                  floorHeight={0}
+                  initialPosition={[0, 1.7, 0]}
+                  onTouchStateChange={setTouchState}
+                  onMobileChange={setIsMobile}
+                  touchState={touchState}
+                />
 
               <CameraExposer cameraRef={cameraRef} />
               <ImageCloneManager onSelect={() => {}} />
@@ -855,7 +857,8 @@ const Player: React.FC = () => {
               
               {/* Minimap renderer - only renders to the shared canvas */}
               {visibilitySettings.minimapVisible && <MinimapRenderer />}
-            </Bvh>
+              </Bvh>
+            </Physics>
 
             <EffectComposer>
               {/* <DepthOfField focusDistance={-50} focalLength={0.02} bokehScale={2} height={480} /> */}
