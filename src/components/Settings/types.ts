@@ -145,6 +145,7 @@ export interface SettingsPanelProps {
     terrainSeed: number;
     enableCulling: boolean;
     autoGenerate: boolean;
+    enableWaveAnimation?: boolean;
   };
   onProceduralWorldSettingChange?: (setting: string, value: SettingValue) => void;
   onRegenerateWorld?: (newSeed?: number) => void;

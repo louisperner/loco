@@ -368,7 +368,7 @@ export function SettingsPanel({
     },
     {
       id: 'proceduralworld',
-      label: 'Procedural World',
+      label: 'Space Environment',
       icon: <FaCubes size='14' />,
       content: (
         <ProceduralWorldTab
@@ -377,11 +377,13 @@ export function SettingsPanel({
           terrainSeed={proceduralWorldSettings?.terrainSeed || 12345}
           enableCulling={proceduralWorldSettings?.enableCulling || true}
           autoGenerate={proceduralWorldSettings?.autoGenerate || true}
+          enableWaveAnimation={proceduralWorldSettings?.enableWaveAnimation || true}
           onEnabledChange={(enabled) => handleProceduralWorldSettingChange('enabled', enabled)}
           onRenderDistanceChange={(distance) => handleProceduralWorldSettingChange('renderDistance', distance)}
           onTerrainSeedChange={(seed) => handleProceduralWorldSettingChange('terrainSeed', seed)}
           onEnableCullingChange={(enabled) => handleProceduralWorldSettingChange('enableCulling', enabled)}
           onAutoGenerateChange={(enabled) => handleProceduralWorldSettingChange('autoGenerate', enabled)}
+          onEnableWaveAnimationChange={(enabled) => handleProceduralWorldSettingChange('enableWaveAnimation', enabled)}
           onRegenerateWorld={handleRegenerateWorld}
         />
       ),

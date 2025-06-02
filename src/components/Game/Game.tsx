@@ -28,8 +28,8 @@ import GamepadController from './GamepadController';
 import PerformanceMonitor from '../ui/PerformanceMonitor';
 import PerformanceTest from '../ui/PerformanceTest';
 import { useProceduralWorld } from '../../hooks/useProceduralWorld';
-import { WorldRenderer } from '../World/ChunkRenderer';
-import { BLOCK_TYPES } from '../World/TerrainGenerator';
+import { SpaceWorldRenderer } from '../World/ChunkRenderer';
+import { SPACE_OBJECT_TYPES } from '../World/TerrainGenerator';
 
 interface InventoryItem {
   id: string;
@@ -629,6 +629,7 @@ const Player: React.FC = () => {
     terrainSeed: 12345,
     enableCulling: true,
     autoGenerate: true,
+    enableWaveAnimation: true,
   });
 
   // Player position for procedural world
@@ -835,13 +836,14 @@ const Player: React.FC = () => {
                 groundShape={groundShape as 'circle' | 'square' | 'hexagon'}
               />
               
-              {/* Procedural World Renderer */}
+              {/* Space World Renderer */}
               {proceduralWorldSettings.enabled && (
-                <WorldRenderer
+                <SpaceWorldRenderer
                   playerPosition={playerPosition}
                   renderDistance={proceduralWorldSettings.renderDistance}
                   enableCulling={proceduralWorldSettings.enableCulling}
                   terrainSeed={proceduralWorldSettings.terrainSeed}
+                  enableFadeAnimation={proceduralWorldSettings.enableWaveAnimation}
                 />
               )}
               

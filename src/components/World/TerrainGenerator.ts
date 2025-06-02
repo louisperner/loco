@@ -1,378 +1,368 @@
-// Terrain Generator for Infinite Procedural Worlds
-// Inspired by Minecraft's terrain generation
+// Space-themed procedural world generator
+export interface SpaceObject {
+  type: SpaceObjectType;
+  position: [number, number, number];
+  scale: number;
+  rotation: [number, number, number];
+  color: string;
+  material?: string;
+  userData?: any;
+}
 
-export interface BlockType {
+export interface SpaceObjectType {
   id: string;
   name: string;
-  color: string;
-  material?: 'stone' | 'dirt' | 'grass' | 'sand' | 'water' | 'wood' | 'leaves';
+  density: number; // How common this object is
+  minScale: number;
+  maxScale: number;
+  colors: readonly string[];
 }
 
-export const BLOCK_TYPES: Record<string, BlockType> = {
-  AIR: { id: 'air', name: 'Air', color: 'transparent' },
-  STONE: { id: 'stone', name: 'Stone', color: '#6b7280', material: 'stone' },
-  DIRT: { id: 'dirt', name: 'Dirt', color: '#8b4513', material: 'dirt' },
-  GRASS: { id: 'grass', name: 'Grass', color: '#4ade80', material: 'grass' },
-  SAND: { id: 'sand', name: 'Sand', color: '#eab308', material: 'sand' },
-  WATER: { id: 'water', name: 'Water', color: '#3b82f6', material: 'water' },
-  WOOD: { id: 'wood', name: 'Wood', color: '#8b4513', material: 'wood' },
-  LEAVES: { id: 'leaves', name: 'Leaves', color: '#22c55e', material: 'leaves' },
-  COAL_ORE: { id: 'coal_ore', name: 'Coal Ore', color: '#1f2937', material: 'stone' },
-  IRON_ORE: { id: 'iron_ore', name: 'Iron Ore', color: '#9ca3af', material: 'stone' },
-  GOLD_ORE: { id: 'gold_ore', name: 'Gold Ore', color: '#fbbf24', material: 'stone' },
-  DIAMOND_ORE: { id: 'diamond_ore', name: 'Diamond Ore', color: '#06b6d4', material: 'stone' },
-};
+// Define space object types
+export const SPACE_OBJECT_TYPES = {
+  ASTEROID_SMALL: {
+    id: 'asteroid_small',
+    name: 'Small Asteroid',
+    density: 0.8,
+    minScale: 0.5,
+    maxScale: 2.0,
+    colors: ['#4a4a4a', '#6b6b6b', '#8b7355', '#5a5a5a', '#3a3a3a']
+  },
+  ASTEROID_MEDIUM: {
+    id: 'asteroid_medium',
+    name: 'Medium Asteroid',
+    density: 0.3,
+    minScale: 2.0,
+    maxScale: 5.0,
+    colors: ['#5a5a5a', '#7b7b7b', '#9b8366', '#6a6a6a', '#4a4a4a']
+  },
+  ASTEROID_LARGE: {
+    id: 'asteroid_large',
+    name: 'Large Asteroid',
+    density: 0.1,
+    minScale: 5.0,
+    maxScale: 12.0,
+    colors: ['#6a6a6a', '#8b8b8b', '#ab9377', '#7a7a7a', '#5a5a5a']
+  },
+  PLANET_SMALL: {
+    id: 'planet_small',
+    name: 'Small Planet',
+    density: 0.02,
+    minScale: 15.0,
+    maxScale: 25.0,
+    colors: ['#4a90e2', '#e74c3c', '#f39c12', '#27ae60', '#9b59b6']
+  },
+  PLANET_LARGE: {
+    id: 'planet_large',
+    name: 'Large Planet',
+    density: 0.005,
+    minScale: 30.0,
+    maxScale: 50.0,
+    colors: ['#3498db', '#e67e22', '#2ecc71', '#8e44ad', '#34495e']
+  },
+  MOON: {
+    id: 'moon',
+    name: 'Moon',
+    density: 0.05,
+    minScale: 3.0,
+    maxScale: 8.0,
+    colors: ['#bdc3c7', '#95a5a6', '#ecf0f1', '#d5dbdb', '#a6acaf']
+  },
+  SPACE_STATION: {
+    id: 'space_station',
+    name: 'Space Station',
+    density: 0.001,
+    minScale: 8.0,
+    maxScale: 15.0,
+    colors: ['#2c3e50', '#34495e', '#7f8c8d', '#95a5a6']
+  },
+  CRYSTAL_FORMATION: {
+    id: 'crystal_formation',
+    name: 'Crystal Formation',
+    density: 0.15,
+    minScale: 1.0,
+    maxScale: 4.0,
+    colors: ['#00ffff', '#ff00ff', '#ffff00', '#00ff00', '#ff0080']
+  },
+  DEBRIS: {
+    id: 'debris',
+    name: 'Space Debris',
+    density: 0.4,
+    minScale: 0.2,
+    maxScale: 1.0,
+    colors: ['#7f8c8d', '#95a5a6', '#bdc3c7', '#34495e']
+  }
+} as const;
 
-export interface ChunkCoord {
-  x: number;
-  z: number;
-}
-
-export interface Block {
-  type: BlockType;
-  position: [number, number, number];
-}
-
-export interface Chunk {
-  coord: ChunkCoord;
-  blocks: Block[][][]; // 3D array [x][y][z]
+export interface SpaceChunk {
+  coord: { x: number; z: number };
+  objects: SpaceObject[];
   generated: boolean;
-  meshGenerated: boolean;
+  generationTime: number;
 }
 
-export class TerrainGenerator {
-  private static instance: TerrainGenerator;
-  private chunks: Map<string, Chunk> = new Map();
+export class SpaceGenerator {
+  private static instance: SpaceGenerator;
   private seed: number;
-  
-  // Terrain generation parameters
-  private readonly CHUNK_SIZE = 16;
-  private readonly WORLD_HEIGHT = 128;
-  private readonly SEA_LEVEL = 64;
-  private readonly MOUNTAIN_HEIGHT = 32;
-  
-  // Noise parameters for different terrain features
-  private readonly TERRAIN_SCALE = 0.01;
-  private readonly CAVE_SCALE = 0.05;
-  private readonly ORE_SCALE = 0.1;
-  
-  constructor(seed: number = Math.random() * 1000000) {
+  private chunks: Map<string, SpaceChunk> = new Map();
+  private chunkSize = 100; // Space chunks are larger
+  private maxObjectsPerChunk = 25;
+
+  private constructor(seed: number = 12345) {
     this.seed = seed;
   }
-  
-  static getInstance(seed?: number): TerrainGenerator {
-    if (!TerrainGenerator.instance) {
-      TerrainGenerator.instance = new TerrainGenerator(seed);
+
+  public static getInstance(seed?: number): SpaceGenerator {
+    if (!SpaceGenerator.instance || (seed !== undefined && SpaceGenerator.instance.seed !== seed)) {
+      SpaceGenerator.instance = new SpaceGenerator(seed);
     }
-    return TerrainGenerator.instance;
+    return SpaceGenerator.instance;
   }
-  
-  // Simple noise function (Perlin-like)
-  private noise(x: number, y: number = 0, z: number = 0): number {
-    // Simple pseudo-random noise based on coordinates and seed
+
+  // Simple pseudo-random number generator
+  private random(x: number, y: number, z: number = 0): number {
     const n = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719 + this.seed) * 43758.5453;
-    return (n - Math.floor(n)) * 2 - 1; // Return value between -1 and 1
+    return n - Math.floor(n);
   }
-  
-  // Octave noise for more natural terrain
-  private octaveNoise(x: number, y: number, z: number, octaves: number = 4): number {
-    let value = 0;
-    let amplitude = 1;
-    let frequency = 1;
-    let maxValue = 0;
+
+  // 3D noise function for space density
+  private noise3D(x: number, y: number, z: number): number {
+    const X = Math.floor(x) & 255;
+    const Y = Math.floor(y) & 255;
+    const Z = Math.floor(z) & 255;
     
-    for (let i = 0; i < octaves; i++) {
-      value += this.noise(x * frequency, y * frequency, z * frequency) * amplitude;
-      maxValue += amplitude;
-      amplitude *= 0.5;
-      frequency *= 2;
-    }
+    x -= Math.floor(x);
+    y -= Math.floor(y);
+    z -= Math.floor(z);
     
-    return value / maxValue;
+    const u = this.fade(x);
+    const v = this.fade(y);
+    const w = this.fade(z);
+    
+    const A = this.random(X, Y) + Z;
+    const AA = this.random(A, Y + 1);
+    const AB = this.random(A + 1, Y + 1);
+    const B = this.random(X + 1, Y) + Z;
+    const BA = this.random(B, Y + 1);
+    const BB = this.random(B + 1, Y + 1);
+    
+    return this.lerp(w, 
+      this.lerp(v, 
+        this.lerp(u, this.random(AA, Z), this.random(BA, Z)),
+        this.lerp(u, this.random(AB, Z), this.random(BB, Z))
+      ),
+      this.lerp(v,
+        this.lerp(u, this.random(AA, Z + 1), this.random(BA, Z + 1)),
+        this.lerp(u, this.random(AB, Z + 1), this.random(BB, Z + 1))
+      )
+    );
   }
-  
-  // Generate height map for terrain
-  private getTerrainHeight(x: number, z: number): number {
-    const baseHeight = this.octaveNoise(x * this.TERRAIN_SCALE, 0, z * this.TERRAIN_SCALE, 6);
-    const mountainNoise = this.octaveNoise(x * this.TERRAIN_SCALE * 0.5, 0, z * this.TERRAIN_SCALE * 0.5, 4);
-    
-    // Combine different noise layers for varied terrain
-    const height = this.SEA_LEVEL + 
-                  (baseHeight * 16) + 
-                  (mountainNoise * this.MOUNTAIN_HEIGHT);
-    
-    return Math.floor(Math.max(0, Math.min(this.WORLD_HEIGHT - 1, height)));
+
+  private fade(t: number): number {
+    return t * t * t * (t * (t * 6 - 15) + 10);
   }
-  
-  // Check if position should have caves
-  private isCave(x: number, y: number, z: number): boolean {
-    if (y > this.SEA_LEVEL - 10) return false; // No caves near surface
-    
-    const caveNoise = this.octaveNoise(x * this.CAVE_SCALE, y * this.CAVE_SCALE, z * this.CAVE_SCALE, 3);
-    return caveNoise > 0.6; // Cave threshold
+
+  private lerp(t: number, a: number, b: number): number {
+    return a + t * (b - a);
   }
-  
-  // Generate ore deposits
-  private getOreType(x: number, y: number, z: number): BlockType | null {
-    if (y > this.SEA_LEVEL) return null; // No ores above sea level
-    
-    const oreNoise = this.octaveNoise(x * this.ORE_SCALE, y * this.ORE_SCALE, z * this.ORE_SCALE, 2);
-    
-    // Different ores at different depths and rarity
-    if (y < 16 && oreNoise > 0.8) return BLOCK_TYPES.DIAMOND_ORE;
-    if (y < 32 && oreNoise > 0.7) return BLOCK_TYPES.GOLD_ORE;
-    if (y < 48 && oreNoise > 0.6) return BLOCK_TYPES.IRON_ORE;
-    if (y < 64 && oreNoise > 0.5) return BLOCK_TYPES.COAL_ORE;
-    
-    return null;
-  }
-  
-  // Generate trees
-  private shouldGenerateTree(x: number, z: number, surfaceY: number): boolean {
-    if (surfaceY < this.SEA_LEVEL + 2) return false; // No trees too close to water
-    
-    const treeNoise = this.octaveNoise(x * 0.1, 0, z * 0.1, 2);
-    return treeNoise > 0.7; // Tree generation threshold
-  }
-  
-  // Generate a single tree
-  private generateTree(chunk: Chunk, localX: number, localZ: number, surfaceY: number): void {
-    const treeHeight = 4 + Math.floor(Math.random() * 3); // 4-6 blocks tall
-    
-    // Tree trunk
-    for (let y = surfaceY + 1; y <= surfaceY + treeHeight; y++) {
-      if (y < this.WORLD_HEIGHT) {
-        chunk.blocks[localX][y][localZ] = {
-          type: BLOCK_TYPES.WOOD,
-          position: [localX, y, localZ]
-        };
-      }
-    }
-    
-    // Tree leaves (simple sphere)
-    const leavesY = surfaceY + treeHeight;
-    for (let dx = -2; dx <= 2; dx++) {
-      for (let dy = -1; dy <= 2; dy++) {
-        for (let dz = -2; dz <= 2; dz++) {
-          const leafX = localX + dx;
-          const leafY = leavesY + dy;
-          const leafZ = localZ + dz;
-          
-          // Check bounds
-          if (leafX >= 0 && leafX < this.CHUNK_SIZE && 
-              leafZ >= 0 && leafZ < this.CHUNK_SIZE && 
-              leafY >= 0 && leafY < this.WORLD_HEIGHT) {
-            
-            // Simple sphere shape for leaves
-            const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-            if (distance <= 2.5 && Math.random() > 0.3) {
-              chunk.blocks[leafX][leafY][leafZ] = {
-                type: BLOCK_TYPES.LEAVES,
-                position: [leafX, leafY, leafZ]
-              };
-            }
-          }
-        }
-      }
-    }
-  }
-  
-  // Generate a chunk
-  generateChunk(chunkX: number, chunkZ: number): Chunk {
+
+  // Generate space objects for a chunk
+  public generateChunk(chunkX: number, chunkZ: number): SpaceChunk {
     const chunkKey = `${chunkX},${chunkZ}`;
     
     if (this.chunks.has(chunkKey)) {
       return this.chunks.get(chunkKey)!;
     }
-    
-    const chunk: Chunk = {
+
+    const chunk: SpaceChunk = {
       coord: { x: chunkX, z: chunkZ },
-      blocks: [],
+      objects: [],
       generated: false,
-      meshGenerated: false
+      generationTime: Date.now()
     };
+
+    // Generate space objects
+    const objects: SpaceObject[] = [];
+    const baseX = chunkX * this.chunkSize;
+    const baseZ = chunkZ * this.chunkSize;
+
+    // Determine object density based on distance from origin (0,0)
+    const distanceFromOrigin = Math.sqrt(chunkX * chunkX + chunkZ * chunkZ);
+    const densityMultiplier = Math.max(0.1, 1 - (distanceFromOrigin * 0.05)); // Less dense further out
+
+    // Generate different types of space objects
+    const objectTypes = Object.values(SPACE_OBJECT_TYPES);
     
-    // Initialize 3D array
-    for (let x = 0; x < this.CHUNK_SIZE; x++) {
-      chunk.blocks[x] = [];
-      for (let y = 0; y < this.WORLD_HEIGHT; y++) {
-        chunk.blocks[x][y] = [];
-        for (let z = 0; z < this.CHUNK_SIZE; z++) {
-          chunk.blocks[x][y][z] = {
-            type: BLOCK_TYPES.AIR,
-            position: [x, y, z]
-          };
+    for (let i = 0; i < this.maxObjectsPerChunk * densityMultiplier; i++) {
+      const x = baseX + this.random(i, chunkX, chunkZ) * this.chunkSize;
+      const z = baseZ + this.random(i + 100, chunkX, chunkZ) * this.chunkSize;
+      
+      // Use 3D noise to determine if an object should be placed here
+      const density = this.noise3D(x * 0.01, 0, z * 0.01);
+      if (density < 0.3) continue; // Skip if density is too low
+
+             // Determine object type based on noise and distance
+       let selectedType: SpaceObjectType = SPACE_OBJECT_TYPES.DEBRIS as SpaceObjectType;
+       const typeRandom = this.random(i + 200, chunkX, chunkZ);
+      
+             if (distanceFromOrigin > 10) {
+         // Far from origin - more likely to have large objects
+         if (typeRandom < 0.01) selectedType = SPACE_OBJECT_TYPES.PLANET_LARGE as SpaceObjectType;
+         else if (typeRandom < 0.03) selectedType = SPACE_OBJECT_TYPES.PLANET_SMALL as SpaceObjectType;
+         else if (typeRandom < 0.04) selectedType = SPACE_OBJECT_TYPES.SPACE_STATION as SpaceObjectType;
+         else if (typeRandom < 0.1) selectedType = SPACE_OBJECT_TYPES.ASTEROID_LARGE as SpaceObjectType;
+         else if (typeRandom < 0.3) selectedType = SPACE_OBJECT_TYPES.ASTEROID_MEDIUM as SpaceObjectType;
+         else if (typeRandom < 0.6) selectedType = SPACE_OBJECT_TYPES.ASTEROID_SMALL as SpaceObjectType;
+         else if (typeRandom < 0.75) selectedType = SPACE_OBJECT_TYPES.MOON as SpaceObjectType;
+         else if (typeRandom < 0.85) selectedType = SPACE_OBJECT_TYPES.CRYSTAL_FORMATION as SpaceObjectType;
+         else selectedType = SPACE_OBJECT_TYPES.DEBRIS as SpaceObjectType;
+       } else {
+         // Near origin - more asteroids and debris
+         if (typeRandom < 0.05) selectedType = SPACE_OBJECT_TYPES.MOON as SpaceObjectType;
+         else if (typeRandom < 0.15) selectedType = SPACE_OBJECT_TYPES.ASTEROID_LARGE as SpaceObjectType;
+         else if (typeRandom < 0.4) selectedType = SPACE_OBJECT_TYPES.ASTEROID_MEDIUM as SpaceObjectType;
+         else if (typeRandom < 0.7) selectedType = SPACE_OBJECT_TYPES.ASTEROID_SMALL as SpaceObjectType;
+         else if (typeRandom < 0.85) selectedType = SPACE_OBJECT_TYPES.CRYSTAL_FORMATION as SpaceObjectType;
+         else selectedType = SPACE_OBJECT_TYPES.DEBRIS as SpaceObjectType;
+       }
+
+      // Generate Y position with some variation
+      const y = (this.random(i + 300, chunkX, chunkZ) - 0.5) * 50; // Spread objects in 3D space
+
+      // Generate scale within type bounds
+      const scaleRandom = this.random(i + 400, chunkX, chunkZ);
+      const scale = selectedType.minScale + scaleRandom * (selectedType.maxScale - selectedType.minScale);
+
+      // Generate rotation
+      const rotation: [number, number, number] = [
+        this.random(i + 500, chunkX, chunkZ) * Math.PI * 2,
+        this.random(i + 600, chunkX, chunkZ) * Math.PI * 2,
+        this.random(i + 700, chunkX, chunkZ) * Math.PI * 2
+      ];
+
+      // Select color
+      const colorIndex = Math.floor(this.random(i + 800, chunkX, chunkZ) * selectedType.colors.length);
+      const color = selectedType.colors[colorIndex];
+
+      objects.push({
+        type: selectedType,
+        position: [x, y, z],
+        scale,
+        rotation,
+        color,
+        userData: {
+          chunkCoord: { x: chunkX, z: chunkZ },
+          objectIndex: i
         }
-      }
+      });
     }
-    
-    // Generate terrain for each column in the chunk
-    for (let x = 0; x < this.CHUNK_SIZE; x++) {
-      for (let z = 0; z < this.CHUNK_SIZE; z++) {
-        const worldX = chunkX * this.CHUNK_SIZE + x;
-        const worldZ = chunkZ * this.CHUNK_SIZE + z;
-        
-        const surfaceHeight = this.getTerrainHeight(worldX, worldZ);
-        
-        // Generate terrain column
-        for (let y = 0; y <= surfaceHeight; y++) {
-          if (this.isCave(worldX, y, worldZ)) {
-            continue; // Leave as air for caves
-          }
-          
-          let blockType: BlockType;
-          
-          // Check for ores first
-          const oreType = this.getOreType(worldX, y, worldZ);
-          if (oreType) {
-            blockType = oreType;
-          }
-          // Surface blocks
-          else if (y === surfaceHeight) {
-            if (surfaceHeight < this.SEA_LEVEL - 5) {
-              blockType = BLOCK_TYPES.SAND; // Beach/desert
-            } else {
-              blockType = BLOCK_TYPES.GRASS; // Grass on surface
-            }
-          }
-          // Sub-surface blocks
-          else if (y > surfaceHeight - 4) {
-            blockType = BLOCK_TYPES.DIRT; // Dirt layer
-          }
-          // Deep blocks
-          else {
-            blockType = BLOCK_TYPES.STONE; // Stone deep underground
-          }
-          
-          chunk.blocks[x][y][z] = {
-            type: blockType,
-            position: [x, y, z]
-          };
-        }
-        
-        // Fill water areas
-        if (surfaceHeight < this.SEA_LEVEL) {
-          for (let y = surfaceHeight + 1; y <= this.SEA_LEVEL; y++) {
-            chunk.blocks[x][y][z] = {
-              type: BLOCK_TYPES.WATER,
-              position: [x, y, z]
-            };
-          }
-        }
-        
-        // Generate trees on grass surfaces
-        if (surfaceHeight >= this.SEA_LEVEL && 
-            chunk.blocks[x][surfaceHeight][z].type === BLOCK_TYPES.GRASS &&
-            this.shouldGenerateTree(worldX, worldZ, surfaceHeight)) {
-          this.generateTree(chunk, x, z, surfaceHeight);
-        }
-      }
-    }
-    
+
+    chunk.objects = objects;
     chunk.generated = true;
     this.chunks.set(chunkKey, chunk);
+
     return chunk;
   }
-  
-  // Get chunk at world coordinates
-  getChunkAt(worldX: number, worldZ: number): Chunk {
-    const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
-    const chunkZ = Math.floor(worldZ / this.CHUNK_SIZE);
-    return this.generateChunk(chunkX, chunkZ);
-  }
-  
-  // Get block at world coordinates
-  getBlockAt(worldX: number, worldY: number, worldZ: number): Block | null {
-    if (worldY < 0 || worldY >= this.WORLD_HEIGHT) return null;
-    
-    const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
-    const chunkZ = Math.floor(worldZ / this.CHUNK_SIZE);
+
+  // Get object at specific position
+  public getObjectAt(x: number, y: number, z: number): SpaceObject | null {
+    const chunkX = Math.floor(x / this.chunkSize);
+    const chunkZ = Math.floor(z / this.chunkSize);
     const chunk = this.generateChunk(chunkX, chunkZ);
-    
-    const localX = worldX - chunkX * this.CHUNK_SIZE;
-    const localZ = worldZ - chunkZ * this.CHUNK_SIZE;
-    
-    if (localX < 0 || localX >= this.CHUNK_SIZE || 
-        localZ < 0 || localZ >= this.CHUNK_SIZE) {
-      return null;
-    }
-    
-    return chunk.blocks[localX][worldY][localZ];
-  }
-  
-  // Set block at world coordinates
-  setBlockAt(worldX: number, worldY: number, worldZ: number, blockType: BlockType): void {
-    if (worldY < 0 || worldY >= this.WORLD_HEIGHT) return;
-    
-    const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
-    const chunkZ = Math.floor(worldZ / this.CHUNK_SIZE);
-    const chunk = this.generateChunk(chunkX, chunkZ);
-    
-    const localX = worldX - chunkX * this.CHUNK_SIZE;
-    const localZ = worldZ - chunkZ * this.CHUNK_SIZE;
-    
-    if (localX < 0 || localX >= this.CHUNK_SIZE || 
-        localZ < 0 || localZ >= this.CHUNK_SIZE) {
-      return;
-    }
-    
-    chunk.blocks[localX][worldY][localZ] = {
-      type: blockType,
-      position: [localX, worldY, localZ]
-    };
-    
-    // Mark chunk as needing mesh regeneration
-    chunk.meshGenerated = false;
-  }
-  
-  // Get all chunks within render distance
-  getChunksInRange(centerX: number, centerZ: number, renderDistance: number): Chunk[] {
-    const chunks: Chunk[] = [];
-    const centerChunkX = Math.floor(centerX / this.CHUNK_SIZE);
-    const centerChunkZ = Math.floor(centerZ / this.CHUNK_SIZE);
-    
-    for (let x = centerChunkX - renderDistance; x <= centerChunkX + renderDistance; x++) {
-      for (let z = centerChunkZ - renderDistance; z <= centerChunkZ + renderDistance; z++) {
-        chunks.push(this.generateChunk(x, z));
-      }
-    }
-    
-    return chunks;
-  }
-  
-  // Cleanup distant chunks to save memory
-  cleanupDistantChunks(centerX: number, centerZ: number, maxDistance: number): void {
-    const centerChunkX = Math.floor(centerX / this.CHUNK_SIZE);
-    const centerChunkZ = Math.floor(centerZ / this.CHUNK_SIZE);
-    
-    const chunksToRemove: string[] = [];
-    
-    this.chunks.forEach((chunk, key) => {
+
+    // Find closest object within reasonable distance
+    let closestObject: SpaceObject | null = null;
+    let closestDistance = Infinity;
+
+    for (const obj of chunk.objects) {
       const distance = Math.sqrt(
-        Math.pow(chunk.coord.x - centerChunkX, 2) + 
-        Math.pow(chunk.coord.z - centerChunkZ, 2)
+        Math.pow(obj.position[0] - x, 2) +
+        Math.pow(obj.position[1] - y, 2) +
+        Math.pow(obj.position[2] - z, 2)
       );
-      
-      if (distance > maxDistance) {
-        chunksToRemove.push(key);
+
+      if (distance < obj.scale && distance < closestDistance) {
+        closestDistance = distance;
+        closestObject = obj;
       }
-    });
-    
-    chunksToRemove.forEach(key => {
-      this.chunks.delete(key);
-    });
+    }
+
+    return closestObject;
   }
-  
-  // Get chunk key
-  static getChunkKey(chunkX: number, chunkZ: number): string {
-    return `${chunkX},${chunkZ}`;
+
+  // Add object at position
+  public addObjectAt(x: number, y: number, z: number, type: SpaceObjectType): void {
+    const chunkX = Math.floor(x / this.chunkSize);
+    const chunkZ = Math.floor(z / this.chunkSize);
+    const chunk = this.generateChunk(chunkX, chunkZ);
+
+    const newObject: SpaceObject = {
+      type,
+      position: [x, y, z],
+      scale: (type.minScale + type.maxScale) / 2,
+      rotation: [0, 0, 0],
+      color: type.colors[0],
+      userData: {
+        chunkCoord: { x: chunkX, z: chunkZ },
+        objectIndex: chunk.objects.length,
+        userPlaced: true
+      }
+    };
+
+    chunk.objects.push(newObject);
   }
-  
-  // Reset generator with new seed
-  reset(newSeed?: number): void {
-    this.chunks.clear();
+
+  // Remove object at position
+  public removeObjectAt(x: number, y: number, z: number): boolean {
+    const obj = this.getObjectAt(x, y, z);
+    if (!obj || !obj.userData?.chunkCoord) return false;
+
+    const chunkKey = `${obj.userData.chunkCoord.x},${obj.userData.chunkCoord.z}`;
+    const chunk = this.chunks.get(chunkKey);
+    if (!chunk) return false;
+
+    const index = chunk.objects.indexOf(obj);
+    if (index > -1) {
+      chunk.objects.splice(index, 1);
+      return true;
+    }
+
+    return false;
+  }
+
+  // Clean up distant chunks
+  public cleanupDistantChunks(playerX: number, playerZ: number, maxDistance: number): void {
+    const playerChunkX = Math.floor(playerX / this.chunkSize);
+    const playerChunkZ = Math.floor(playerZ / this.chunkSize);
+
+    for (const [chunkKey, chunk] of this.chunks.entries()) {
+      const distance = Math.sqrt(
+        Math.pow(chunk.coord.x - playerChunkX, 2) + 
+        Math.pow(chunk.coord.z - playerChunkZ, 2)
+      );
+
+      if (distance > maxDistance + 2) {
+        this.chunks.delete(chunkKey);
+      }
+    }
+  }
+
+  // Regenerate world with new seed
+  public regenerateWorld(newSeed?: number): void {
     if (newSeed !== undefined) {
       this.seed = newSeed;
     }
+    this.chunks.clear();
   }
-} 
+
+  // Get all chunks
+  public getAllChunks(): SpaceChunk[] {
+    return Array.from(this.chunks.values());
+  }
+}
+
+// Export for backward compatibility
+export const TerrainGenerator = SpaceGenerator;
+export type Chunk = SpaceChunk;
+export type Block = SpaceObject;
+export const BLOCK_TYPES = SPACE_OBJECT_TYPES; 

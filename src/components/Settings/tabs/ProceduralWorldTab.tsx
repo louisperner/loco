@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
-  Mountain, 
+  Rocket, 
   Zap, 
   Eye, 
   RotateCcw, 
@@ -24,11 +24,13 @@ interface ProceduralWorldTabProps {
   terrainSeed: number;
   enableCulling: boolean;
   autoGenerate: boolean;
+  enableWaveAnimation?: boolean;
   onEnabledChange: (enabled: boolean) => void;
   onRenderDistanceChange: (distance: number) => void;
   onTerrainSeedChange: (seed: number) => void;
   onEnableCullingChange: (enabled: boolean) => void;
   onAutoGenerateChange: (enabled: boolean) => void;
+  onEnableWaveAnimationChange?: (enabled: boolean) => void;
   onRegenerateWorld: (newSeed?: number) => void;
 }
 
@@ -38,11 +40,13 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
   terrainSeed,
   enableCulling,
   autoGenerate,
+  enableWaveAnimation,
   onEnabledChange,
   onRenderDistanceChange,
   onTerrainSeedChange,
   onEnableCullingChange,
   onAutoGenerateChange,
+  onEnableWaveAnimationChange,
   onRegenerateWorld
 }) => {
   const [newSeed, setNewSeed] = useState(terrainSeed.toString());
@@ -73,12 +77,12 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
 
   const getRenderDistanceInfo = (distance: number) => {
     const chunks = (distance * 2 + 1) ** 2;
-    const blocks = chunks * 256; // Approximate visible blocks
+    const objects = chunks * 25; // Approximate space objects per chunk
     
-    if (distance <= 2) return { level: 'Low', color: 'bg-green-500', chunks, blocks };
-    if (distance <= 4) return { level: 'Medium', color: 'bg-yellow-500', chunks, blocks };
-    if (distance <= 6) return { level: 'High', color: 'bg-orange-500', chunks, blocks };
-    return { level: 'Ultra', color: 'bg-red-500', chunks, blocks };
+    if (distance <= 2) return { level: 'Low', color: 'bg-green-500', chunks, objects };
+    if (distance <= 4) return { level: 'Medium', color: 'bg-yellow-500', chunks, objects };
+    if (distance <= 6) return { level: 'High', color: 'bg-orange-500', chunks, objects };
+    return { level: 'Ultra', color: 'bg-red-500', chunks, objects };
   };
 
   const distanceInfo = getRenderDistanceInfo(renderDistance);
@@ -89,19 +93,19 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Globe className="w-5 h-5" />
-            Mundo Procedural
+            <Rocket className="w-5 h-5" />
+            Space Environment
           </CardTitle>
           <CardDescription>
-            Gere mundos infinitos como Minecraft com terreno procedural
+            Generate infinite space environments with asteroids, planets, and cosmic structures
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <Label>Ativar Geração Procedural</Label>
+              <Label>Enable Space Generation</Label>
               <p className="text-sm text-muted-foreground">
-                Gera terreno automaticamente conforme você explora
+                Generates space objects automatically as you explore the cosmos
               </p>
             </div>
             <Switch
@@ -114,24 +118,24 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
 
       {enabled && (
         <>
-          {/* Terrain Generation Settings */}
+          {/* Space Generation Settings */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Mountain className="w-5 h-5" />
-                Configurações do Terreno
+                <Globe className="w-5 h-5" />
+                Space Configuration
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Seed Configuration */}
               <div className="space-y-3">
-                <Label>Seed do Mundo</Label>
+                <Label>Universe Seed</Label>
                 <div className="flex gap-2">
                   <Input
                     type="number"
                     value={newSeed}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSeedChange(e.target.value)}
-                    placeholder="Digite uma seed..."
+                    placeholder="Enter a universe seed..."
                     className="flex-1"
                   />
                   <Button
@@ -143,7 +147,7 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  A seed determina como o terreno será gerado. Use a mesma seed para gerar o mesmo mundo.
+                  The seed determines how space objects are distributed. Use the same seed to generate identical universes.
                 </p>
               </div>
 
@@ -154,10 +158,10 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                 <div className="space-y-1">
                   <Label className="flex items-center gap-2">
                     <Zap className="w-4 h-4" />
-                    Geração Automática
+                    Auto Generation
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Gera chunks automaticamente conforme você se move
+                    Generates space regions automatically as you move through space
                   </p>
                 </div>
                 <Switch
@@ -182,7 +186,7 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2">
                     <Eye className="w-4 h-4" />
-                    Distância de Renderização
+                    Render Distance
                   </Label>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className={`${distanceInfo.color} text-white`}>
@@ -204,11 +208,11 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                 <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <Layers className="w-4 h-4" />
-                    <span>{distanceInfo.chunks} chunks</span>
+                    <span>{distanceInfo.chunks} regions</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Mountain className="w-4 h-4" />
-                    <span>~{Math.floor(distanceInfo.blocks / 1000)}k blocos</span>
+                    <Rocket className="w-4 h-4" />
+                    <span>~{Math.floor(distanceInfo.objects / 1000)}k objects</span>
                   </div>
                 </div>
               </div>
@@ -220,10 +224,10 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                 <div className="space-y-1">
                   <Label className="flex items-center gap-2">
                     <Settings className="w-4 h-4" />
-                    Otimização de Culling
+                    Optimization Culling
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Remove objetos fora da visão para melhor performance
+                    Removes objects outside view for better performance
                   </p>
                 </div>
                 <Switch
@@ -231,13 +235,35 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                   onCheckedChange={onEnableCullingChange}
                 />
               </div>
+
+              {/* Fade Animation */}
+              {onEnableWaveAnimationChange && (
+                <>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label className="flex items-center gap-2">
+                        <Zap className="w-4 h-4" />
+                        Fade Animation
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Objects fade in smoothly when new regions are discovered
+                      </p>
+                    </div>
+                    <Switch
+                      checked={enableWaveAnimation || false}
+                      onCheckedChange={onEnableWaveAnimationChange}
+                    />
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
-          {/* World Actions */}
+          {/* Universe Actions */}
           <Card>
             <CardHeader>
-              <CardTitle>Ações do Mundo</CardTitle>
+              <CardTitle>Universe Actions</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -250,64 +276,56 @@ export const ProceduralWorldTab: React.FC<ProceduralWorldTabProps> = ({
                   {isRegenerating ? (
                     <>
                       <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Regenerando Mundo...
+                      Regenerating Universe...
                     </>
                   ) : (
                     <>
                       <RotateCcw className="w-4 h-4 mr-2" />
-                      Regenerar Mundo
+                      Regenerate Universe
                     </>
                   )}
                 </Button>
                 
                 <p className="text-sm text-muted-foreground text-center">
-                  Isso irá limpar o mundo atual e gerar um novo com a seed especificada
+                  This will clear the current universe and generate a new one with the specified seed
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Block Types Info */}
+          {/* Space Object Types Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Tipos de Blocos</CardTitle>
+              <CardTitle>Space Object Types</CardTitle>
               <CardDescription>
-                Blocos que podem ser gerados no mundo procedural
+                Objects that can be found in the procedural space environment
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-green-500 rounded"></div>
-                  <span>Grama</span>
+                  <div className="w-4 h-4 bg-gray-500 rounded-full"></div>
+                  <span>Asteroids</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-amber-600 rounded"></div>
-                  <span>Terra</span>
+                  <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                  <span>Planets</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-gray-500 rounded"></div>
-                  <span>Pedra</span>
+                  <div className="w-4 h-4 bg-gray-300 rounded-full"></div>
+                  <span>Moons</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-                  <span>Areia</span>
+                  <div className="w-4 h-4 bg-cyan-400 rounded-full"></div>
+                  <span>Crystals</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                  <span>Água</span>
+                  <div className="w-4 h-4 bg-slate-600 rounded-full"></div>
+                  <span>Space Stations</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-amber-700 rounded"></div>
-                  <span>Madeira</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-green-600 rounded"></div>
-                  <span>Folhas</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-cyan-500 rounded"></div>
-                  <span>Minérios</span>
+                  <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
+                  <span>Debris</span>
                 </div>
               </div>
             </CardContent>
