@@ -281,33 +281,35 @@ app.whenReady().then(() => {
   // const win = BrowserWindow.getFocusedWindow();
   // let win = BrowserWindow.getAllWindows()[0];
 
-  // setInterval(() => {
-  //   const point = screen.getCursorScreenPoint();
-  //   const [x, y] = win.getPosition();
-  //   const [w, h] = win.getSize();
+  ///// uncomment to enable pointer pass through - START
+  setInterval(() => {
+    const point = screen.getCursorScreenPoint();
+    const [x, y] = win.getPosition();
+    const [w, h] = win.getSize();
 
-  //   if (point.x > x && point.x < x + w && point.y > y && point.y < y + h) {
-  //     updateIgnoreMouseEvents(point.x - x, point.y - y);
-  //   }
-  // }, 300);
+    if (point.x > x && point.x < x + w && point.y > y && point.y < y + h) {
+      updateIgnoreMouseEvents(point.x - x, point.y - y);
+    }
+  }, 300);
 
-  // const updateIgnoreMouseEvents = async (x, y) => {
-  //   // // console.log('updateIgnoreMouseEvents');
+  const updateIgnoreMouseEvents = async (x, y) => {
+    // // console.log('updateIgnoreMouseEvents');
 
-  //   // capture 1x1 image of mouse position.
-  //   const image = await win.webContents.capturePage({
-  //     x,
-  //     y,
-  //     width: 1,
-  //     height: 1,
-  //   });
+    // capture 1x1 image of mouse position.
+    const image = await win.webContents.capturePage({
+      x,
+      y,
+      width: 1,
+      height: 1,
+    });
 
-  //   const buffer = image.getBitmap();
+    const buffer = image.getBitmap();
 
-  //   // set ignore mouse events by alpha.
-  //   win.setIgnoreMouseEvents(!buffer[3]);
-  //   // // console.log('setIgnoreMouseEvents', !buffer[3]);
-  // };
+    // set ignore mouse events by alpha.
+    win.setIgnoreMouseEvents(!buffer[3]);
+    // // console.log('setIgnoreMouseEvents', !buffer[3]);
+  };
+    ///// uncomment to enable pointer pass through - END
 
   // Handle IPC calls for saving files
   ipcMain.handle('save-model-file', async (event, fileBuffer, fileName) => {
