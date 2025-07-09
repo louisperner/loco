@@ -30,7 +30,7 @@ import PerformanceMonitor from '../ui/PerformanceMonitor';
 import PerformanceTest from '../ui/PerformanceTest';
 import { useProceduralWorld } from '../../hooks/useProceduralWorld';
 import { SpaceWorldRenderer } from '../World/ChunkRenderer';
-import { SPACE_OBJECT_TYPES } from '../World/TerrainGenerator';
+import { checkWebGPUSupport, getCanvasGLConfig } from '../../utils/webgpuDetection';
 
 interface InventoryItem {
   id: string;
@@ -64,6 +64,8 @@ const Player: React.FC = () => {
   >;
   const movementKeys = useRef(new Set<string>()); // Ref to track pressed movement keys
   const [isMoving, setIsMoving] = useState(false); // State to control frameloop
+  const [webGPUSupported, setWebGPUSupported] = useState(false);
+  const [webGPUChecked, setWebGPUChecked] = useState(false);
 
   // Calculate position in front of camera
   const position = new THREE.Vector3();
@@ -429,6 +431,14 @@ const Player: React.FC = () => {
     }
   }, [setAlwaysOnTop]);
 
+  // Check for WebGPU support
+  useEffect(() => {
+    checkWebGPUSupport().then((supported) => {
+      setWebGPUSupported(supported);
+      setWebGPUChecked(true);
+    });
+  }, []);
+
   const onRemoveObject = useCallback((dataOrId?: { type: string; id: string } | string): void => {
     // If no parameter is provided, exit early
     if (!dataOrId) return;
@@ -744,7 +754,7 @@ const Player: React.FC = () => {
             // frameloop={isMoving ? 'always' : 'demand'} // Conditional frameloop
             frameloop={'always'} // Conditional frameloop
             onPointerMissed={() => setSelectedFrame(null)}
-            gl={{
+            gl={webGPUChecked ? getCanvasGLConfig(webGPUSupported) : {
               // Preserve the WebGL context to prevent it from being killed
               // when there are too many WebGL instances
               powerPreference: 'high-performance',
