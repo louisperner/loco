@@ -433,10 +433,17 @@ const Player: React.FC = () => {
 
   // Check for WebGPU support
   useEffect(() => {
-    checkWebGPUSupport().then((supported) => {
-      setWebGPUSupported(supported);
-      setWebGPUChecked(true);
-    });
+    checkWebGPUSupport()
+      .then((supported) => {
+        setWebGPUSupported(supported);
+        setWebGPUChecked(true);
+      })
+      .catch((error) => {
+        console.error('WebGPU detection failed:', error);
+        // Fallback to WebGL if detection fails
+        setWebGPUSupported(false);
+        setWebGPUChecked(true);
+      });
   }, []);
 
   const onRemoveObject = useCallback((dataOrId?: { type: string; id: string } | string): void => {
@@ -754,15 +761,22 @@ const Player: React.FC = () => {
             // frameloop={isMoving ? 'always' : 'demand'} // Conditional frameloop
             frameloop={'always'} // Conditional frameloop
             onPointerMissed={() => setSelectedFrame(null)}
+            onCreated={({ gl }) => {
+              // Verify the renderer is working correctly
+              console.log('Canvas created with renderer:', gl.constructor.name);
+              if (!gl) {
+                console.error('Failed to create WebGL/WebGPU context');
+                // Force a fallback to WebGL if WebGPU failed
+                setWebGPUSupported(false);
+              }
+            }}
             gl={webGPUChecked ? getCanvasGLConfig(webGPUSupported) : {
-              // Preserve the WebGL context to prevent it from being killed
-              // when there are too many WebGL instances
+              // Fallback WebGL configuration while WebGPU is being checked
               powerPreference: 'high-performance',
               preserveDrawingBuffer: true,
-              // Keep the priority high for this WebGL context
               antialias: true,
-              // Attempt to make this context more important than others
               failIfMajorPerformanceCaveat: false,
+              forceWebGL: true, // Force WebGL during initial load
             }}
           >
             {/* <Sparkles count={10000} size={1} position={[0, 0.9, 0]} scale={100} speed={0.3} /> */}
