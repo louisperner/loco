@@ -64,8 +64,6 @@ const Player: React.FC = () => {
   >;
   const movementKeys = useRef(new Set<string>()); // Ref to track pressed movement keys
   const [isMoving, setIsMoving] = useState(false); // State to control frameloop
-  const [webGPUSupported, setWebGPUSupported] = useState(false);
-  const [webGPUChecked, setWebGPUChecked] = useState(false);
 
   // Calculate position in front of camera
   const position = new THREE.Vector3();
@@ -122,7 +120,7 @@ const Player: React.FC = () => {
 
   const selectedTheme = useGameStore((state) => state.selectedTheme);
 
-  const { crosshairSettings, visibilitySettings, gravityEnabled, groundShape, environmentSettings } = useGameStore();
+  const { crosshairSettings, visibilitySettings, gravityEnabled, groundShape, environmentSettings, webGPUEnabled, webGPUSupported, setWebGPUSupported } = useGameStore();
   const { setCrosshairSetting, setVisibilitySetting, setGravityEnabled, setGroundShape, setEnvironmentSetting } =
     useGameStore();
 
@@ -436,15 +434,12 @@ const Player: React.FC = () => {
     checkWebGPUSupport()
       .then((supported) => {
         setWebGPUSupported(supported);
-        setWebGPUChecked(true);
       })
       .catch((error) => {
         console.error('WebGPU detection failed:', error);
-        // Fallback to WebGL if detection fails
         setWebGPUSupported(false);
-        setWebGPUChecked(true);
       });
-  }, []);
+  }, [setWebGPUSupported]);
 
   const onRemoveObject = useCallback((dataOrId?: { type: string; id: string } | string): void => {
     // If no parameter is provided, exit early
@@ -764,20 +759,8 @@ const Player: React.FC = () => {
             onCreated={({ gl }) => {
               // Verify the renderer is working correctly
               console.log('Canvas created with renderer:', gl.constructor.name);
-              if (!gl) {
-                console.error('Failed to create WebGL/WebGPU context');
-                // Force a fallback to WebGL if WebGPU failed
-                setWebGPUSupported(false);
-              }
             }}
-            gl={webGPUChecked ? getCanvasGLConfig(webGPUSupported) : {
-              // Fallback WebGL configuration while WebGPU is being checked
-              powerPreference: 'high-performance',
-              preserveDrawingBuffer: true,
-              antialias: true,
-              failIfMajorPerformanceCaveat: false,
-              forceWebGL: true, // Force WebGL during initial load
-            }}
+            gl={getCanvasGLConfig(webGPUEnabled && webGPUSupported)}
           >
             {/* <Sparkles count={10000} size={1} position={[0, 0.9, 0]} scale={100} speed={0.3} /> */}
 
@@ -1231,6 +1214,18 @@ const Player: React.FC = () => {
 
           {/* Coordinate Display */}
           {uiVisible && showCoordinates && <CoordinateDisplay cameraRef={cameraRef} />}
+
+          {/* Renderer Status Display */}
+          {uiVisible && showCoordinates && (
+            <div className="absolute top-20 left-4 bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 text-white text-sm font-mono">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${webGPUEnabled && webGPUSupported ? 'bg-blue-500' : 'bg-green-500'}`}></div>
+                <span>
+                  {webGPUEnabled && webGPUSupported ? 'WebGPU' : 'WebGL'}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Direction Display */}
           {/* {uiVisible && showCoordinates && <DirectionDisplay cameraRef={cameraRef} />} */}

@@ -150,6 +150,10 @@ export interface GameState {
     enabled: boolean;
   };
 
+  // WebGPU settings
+  webGPUEnabled: boolean;
+  webGPUSupported: boolean;
+
   // Actions
   setUiVisible: (visible: boolean) => void;
   setShowCatalog: (show: boolean) => void;
@@ -216,6 +220,10 @@ export interface GameState {
 
   // Culling settings actions
   setCullingSettings: (settings: Partial<GameState['cullingSettings']>) => void;
+
+  // WebGPU settings actions
+  setWebGPUEnabled: (enabled: boolean) => void;
+  setWebGPUSupported: (supported: boolean) => void;
 }
 
 // Add the missing interface
@@ -262,6 +270,8 @@ type GameStateActions = Pick<
   | 'setAlwaysOnTop'
   | 'setShowDrawingOverlay'
   | 'setCullingSettings'
+  | 'setWebGPUEnabled'
+  | 'setWebGPUSupported'
 >;
 
 export const useGameStore = create<GameState & GameStateActions>()(
@@ -359,6 +369,10 @@ export const useGameStore = create<GameState & GameStateActions>()(
         minimapRadius: 1000,
         enabled: true,
       },
+
+      // WebGPU settings
+      webGPUEnabled: false, // Default to false (WebGL default)
+      webGPUSupported: false,
 
       // Actions
       setUiVisible: (visible: boolean) => set({ uiVisible: visible }),
@@ -586,6 +600,10 @@ export const useGameStore = create<GameState & GameStateActions>()(
            };
          });
        },
+
+       // WebGPU settings actions
+       setWebGPUEnabled: (enabled: boolean) => set({ webGPUEnabled: enabled }),
+       setWebGPUSupported: (supported: boolean) => set({ webGPUSupported: supported }),
     }),
     {
       name: 'game-storage',
@@ -597,6 +615,7 @@ export const useGameStore = create<GameState & GameStateActions>()(
         visibilitySettings: state.visibilitySettings,
         selectedTheme: state.selectedTheme,
         environmentSettings: state.environmentSettings,
+        webGPUEnabled: state.webGPUEnabled,
       }),
     },
   ),

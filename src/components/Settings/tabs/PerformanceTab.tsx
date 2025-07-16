@@ -6,7 +6,7 @@ import { useGameStore } from '@/store/useGameStore';
 import { useModelStore } from '../../../store/useModelStore';
 
 const PerformanceTab: React.FC = () => {
-  const { cullingSettings, setCullingSettings, showCullingSphere, setShowCullingSphere } = useGameStore();
+  const { cullingSettings, setCullingSettings, showCullingSphere, setShowCullingSphere, webGPUEnabled, webGPUSupported, setWebGPUEnabled } = useGameStore();
   const { addModel } = useModelStore();
   // const [status, setStatus] = useState(''); // Unused
   // const [fpsHistory, setFpsHistory] = useState<number[]>([]); // Unused
@@ -123,6 +123,30 @@ const PerformanceTab: React.FC = () => {
               checked={showCullingSphere}
               onCheckedChange={setShowCullingSphere}
             />
+          </div>
+        </div>
+
+        {/* WebGPU Settings */}
+        <div className="mt-6 space-y-4">
+          <h4 className="text-sm font-semibold text-white">Renderer Settings</h4>
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium text-white">Enable WebGPU</label>
+              <p className="text-xs text-gray-400">
+                {webGPUSupported 
+                  ? "Use WebGPU for better performance (experimental)" 
+                  : "WebGPU not supported in this browser"}
+              </p>
+            </div>
+            <Switch
+              checked={webGPUEnabled}
+              onCheckedChange={setWebGPUEnabled}
+              disabled={!webGPUSupported}
+            />
+          </div>
+          
+          <div className="text-xs text-gray-400">
+            Current renderer: {webGPUEnabled && webGPUSupported ? 'WebGPU' : 'WebGL'}
           </div>
         </div>
 

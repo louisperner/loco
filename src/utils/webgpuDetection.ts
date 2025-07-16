@@ -55,16 +55,9 @@ export const getCanvasGLConfig = (useWebGPU: boolean) => {
 
   if (useWebGPU) {
     console.log('Attempting to use WebGPU renderer');
-    return {
-      ...baseConfig,
-      forceWebGL: false,
-    };
+    return baseConfig;
   } else {
-    console.log('Using WebGL renderer (WebGPU not available)');
-    return {
-      ...baseConfig,
-      // Explicitly force WebGL when WebGPU is not supported
-      forceWebGL: true,
-    };
+    console.log('Using WebGL renderer');
+    return baseConfig;
   }
 };
