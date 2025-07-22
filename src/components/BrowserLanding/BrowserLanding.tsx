@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const BrowserLanding: React.FC = () => {
+  const [useYarn, setUseYarn] = useState(false);
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 relative">
       {/* Grid Background */}
@@ -64,6 +65,32 @@ const BrowserLanding: React.FC = () => {
               How to run Loco
             </h2>
             
+            {/* Package Manager Switch */}
+            <div className="flex justify-center mb-8">
+              <div className="bg-gray-800/50 rounded-lg p-1 flex items-center">
+                <button
+                  onClick={() => setUseYarn(false)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    !useYarn 
+                      ? 'bg-indigo-600 text-white' 
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  npm
+                </button>
+                <button
+                  onClick={() => setUseYarn(true)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    useYarn 
+                      ? 'bg-indigo-600 text-white' 
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  yarn
+                </button>
+              </div>
+            </div>
+            
             <div className="grid md:grid-cols-2 gap-8 text-left">
               <div className="space-y-6">
                 <div>
@@ -73,8 +100,8 @@ const BrowserLanding: React.FC = () => {
                   </h3>
                   <ul className="text-gray-200 space-y-2 ml-11">
                     <li>• Clone the repository from GitHub</li>
-                    <li>• Install dependencies with <code className="bg-gray-800 px-2 py-1 rounded text-sm">npm install</code></li>
-                    <li>• Run <code className="bg-gray-800 px-2 py-1 rounded text-sm">npm run dev</code> for development</li>
+                    <li>• Install dependencies with <code className="bg-gray-800 px-2 py-1 rounded text-sm">{useYarn ? 'yarn' : 'npm install'}</code></li>
+                    <li>• Run <code className="bg-gray-800 px-2 py-1 rounded text-sm">{useYarn ? 'yarn dev' : 'npm run dev'}</code> for development</li>
                   </ul>
                 </div>
                 
@@ -84,9 +111,9 @@ const BrowserLanding: React.FC = () => {
                     Building
                   </h3>
                   <ul className="text-gray-200 space-y-2 ml-11">
-                    <li>• Build for production with <code className="bg-gray-800 px-2 py-1 rounded text-sm">npm run build</code></li>
-                    <li>• Build Electron app with <code className="bg-gray-800 px-2 py-1 rounded text-sm">npm run electron:build</code></li>
-                    <li>• Package for distribution with <code className="bg-gray-800 px-2 py-1 rounded text-sm">npm run package</code></li>
+                    <li>• Build for production with <code className="bg-gray-800 px-2 py-1 rounded text-sm">{useYarn ? 'yarn build' : 'npm run build'}</code></li>
+                    <li>• Build Electron app with <code className="bg-gray-800 px-2 py-1 rounded text-sm">{useYarn ? 'yarn electron:build' : 'npm run electron:build'}</code></li>
+                    <li>• Package for distribution with <code className="bg-gray-800 px-2 py-1 rounded text-sm">{useYarn ? 'yarn package' : 'npm run package'}</code></li>
                   </ul>
                 </div>
                 
@@ -110,7 +137,7 @@ const BrowserLanding: React.FC = () => {
                     Requirements
                   </h3>
                   <ul className="text-gray-200 space-y-2 ml-11">
-                    <li>• Node.js 18+ and npm</li>
+                    <li>• Node.js 18+ and {useYarn ? 'Yarn' : 'npm'}</li>
                     <li>• Modern browser with WebGL/WebGPU support</li>
                     <li>• Git for version control</li>
                     <li>• Optional: Docker for containerized development</li>
@@ -136,10 +163,10 @@ const BrowserLanding: React.FC = () => {
                     Scripts
                   </h3>
                   <ul className="text-gray-200 space-y-2 ml-11">
-                    <li>• <code className="bg-gray-800 px-2 py-1 rounded text-sm">npm run lint</code> - Run ESLint</li>
-                    <li>• <code className="bg-gray-800 px-2 py-1 rounded text-sm">npm run test</code> - Run tests</li>
-                    <li>• <code className="bg-gray-800 px-2 py-1 rounded text-sm">npm run preview</code> - Preview build</li>
-                    <li>• <code className="bg-gray-800 px-2 py-1 rounded text-sm">npm run electron:dev</code> - Run Electron dev</li>
+                    <li>• <code className="bg-gray-800 px-2 py-1 rounded text-sm">{useYarn ? 'yarn lint' : 'npm run lint'}</code> - Run ESLint</li>
+                    <li>• <code className="bg-gray-800 px-2 py-1 rounded text-sm">{useYarn ? 'yarn test' : 'npm run test'}</code> - Run tests</li>
+                    <li>• <code className="bg-gray-800 px-2 py-1 rounded text-sm">{useYarn ? 'yarn preview' : 'npm run preview'}</code> - Preview build</li>
+                    <li>• <code className="bg-gray-800 px-2 py-1 rounded text-sm">{useYarn ? 'yarn electron:dev' : 'npm run electron:dev'}</code> - Run Electron dev</li>
                   </ul>
                 </div>
               </div>
