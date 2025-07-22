@@ -15,6 +15,7 @@ import AIChat from './components/AIChat';
 import { useAIChatStore } from './store/useAIChatStore';
 import { useInterviewAssistantStore } from './store/interviewAssistantStore';
 import UnifiedNavigation from './components/ui/UnifiedNavigation';
+import BrowserLanding from './components/BrowserLanding/BrowserLanding';
 
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const initialize = useAuthStore(state => state.initialize);
@@ -33,6 +34,10 @@ const AppContent: React.FC = () => {
   const { currentUser, authModalOpen, isFirebaseAvailable } = useAuthStore();
   const { isVisible, toggleVisibility } = useAIChatStore();
   const interviewAssistant = useInterviewAssistantStore();
+
+  // Check if running in browser (not Electron)
+  const isBrowser = typeof window !== 'undefined' && 
+    !window.navigator.userAgent.toLowerCase().includes('electron');
 
   // @ts-ignore
   useEffect(() => {
@@ -145,6 +150,11 @@ const AppContent: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [toggleVisibility]);
+
+  // Show browser landing page if in browser
+  if (isBrowser) {
+    return <BrowserLanding />;
+  }
 
   return (
     <div className='fixed inset-0 w-screen h-screen overflow-hidden select-none' draggable={false}>
